@@ -1,0 +1,13 @@
+[package]
+name = "ployer-server"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ployer-core = { workspace = true }
+russh = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+sysinfo = { workspace = true }
+serde = { workspace = true }

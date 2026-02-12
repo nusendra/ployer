@@ -1,0 +1,82 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/ployer-core",
+    "crates/ployer-db",
+    "crates/ployer-docker",
+    "crates/ployer-proxy",
+    "crates/ployer-git",
+    "crates/ployer-server",
+    "crates/ployer-api",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["ws"] }
+tower-http = { version = "0.5", features = ["cors", "compression-gzip", "fs"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "chrono", "uuid"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Auth
+jsonwebtoken = "9"
+argon2 = "0.5"
+
+# Docker
+bollard = "0.16"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# SSH
+russh = "0.44"
+
+# Git
+git2 = "0.19"
+
+# Crypto
+aes-gcm = "0.10"
+rand = "0.8"
+
+# Embedding
+rust-embed = { version = "8", features = ["mime-guess"] }
+
+# System info
+sysinfo = "0.31"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Config
+toml = "0.8"
+
+# Utils
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"
+thiserror = "1"
+
+# Internal crates
+ployer-core = { path = "crates/ployer-core" }
+ployer-db = { path = "crates/ployer-db" }
+ployer-docker = { path = "crates/ployer-docker" }
+ployer-proxy = { path = "crates/ployer-proxy" }
+ployer-git = { path = "crates/ployer-git" }
+ployer-server = { path = "crates/ployer-server" }
+ployer-api = { path = "crates/ployer-api" }

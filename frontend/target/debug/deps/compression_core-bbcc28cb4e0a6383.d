@@ -1,0 +1,10 @@
+/Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/deps/compression_core-bbcc28cb4e0a6383.d: /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/lib.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/level.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/unshared.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/util.rs
+
+/Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/deps/libcompression_core-bbcc28cb4e0a6383.rlib: /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/lib.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/level.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/unshared.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/util.rs
+
+/Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/deps/libcompression_core-bbcc28cb4e0a6383.rmeta: /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/lib.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/level.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/unshared.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/util.rs
+
+/Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/lib.rs:
+/Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/level.rs:
+/Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/unshared.rs:
+/Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/compression-core-0.4.31/src/util.rs:

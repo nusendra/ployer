@@ -1,0 +1,11 @@
+[package]
+name = "ployer-git"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ployer-core = { workspace = true }
+git2 = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }

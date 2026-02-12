@@ -1,0 +1,13 @@
+[package]
+name = "ployer-db"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ployer-core = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }

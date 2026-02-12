@@ -1,0 +1,598 @@
+cargo:rerun-if-env-changed=LIBGIT2_NO_VENDOR
+cargo:rerun-if-env-changed=LIBGIT2_NO_PKG_CONFIG
+cargo:rerun-if-env-changed=PKG_CONFIG_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG
+cargo:rerun-if-env-changed=PKG_CONFIG
+cargo:rerun-if-env-changed=LIBGIT2_STATIC
+cargo:rerun-if-env-changed=LIBGIT2_DYNAMIC
+cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC
+cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC
+cargo:rerun-if-env-changed=PKG_CONFIG_PATH_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_PATH_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG_PATH
+cargo:rerun-if-env-changed=PKG_CONFIG_PATH
+cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG_LIBDIR
+cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_aarch64-apple-darwin
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_aarch64_apple_darwin
+cargo:rerun-if-env-changed=HOST_PKG_CONFIG_SYSROOT_DIR
+cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR
+cargo:warning=failed to probe system libgit2: 
+pkg-config exited with status code 1
+> PKG_CONFIG_PATH=/nix/store/h0qgqik0mk0wn7rmm2kk3grfi1wzly74-openssl-3.6.0-dev/lib/pkgconfig PKG_CONFIG_ALLOW_SYSTEM_LIBS=1 PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1 pkg-config --libs --cflags libgit2 'libgit2 >= 1.8.1' 'libgit2 < 1.9.0'
+
+The system library `libgit2` required by crate `libgit2-sys` was not found.
+The file `libgit2.pc` needs to be installed and the PKG_CONFIG_PATH environment variable must contain its parent directory.
+PKG_CONFIG_PATH_FOR_TARGET contains the following:
+    - /nix/store/h0qgqik0mk0wn7rmm2kk3grfi1wzly74-openssl-3.6.0-dev/lib/pkgconfig
+    - /nix/store/4ipd216fp0gf459f82lp2n0s665a99cb-sqlite-3.50.4-dev/lib/pkgconfig
+    - /nix/store/1l5dl9d9mcpm7i0r5bhb23xczlfd2i0i-jq-1.8.1-dev/lib/pkgconfig
+    - /nix/store/ydp55g2mbd6rk6lfw0krkk3jwgdiqj5d-curl-8.17.0-dev/lib/pkgconfig
+    - /nix/store/6v8b8wzfr3nbwa49jg5gl48x2nadwm35-brotli-1.1.0-dev/lib/pkgconfig
+    - /nix/store/wb4gz19ql46bp91xd1bxsdada1ms6g2x-c-ares-1.34.5-dev/lib/pkgconfig
+    - /nix/store/7fmdwfb6c41mgfxazqxn4g5h11g7n3vd-krb5-1.22.1-dev/lib/pkgconfig
+    - /nix/store/1jfpimimidlx2npqy92zi0wiqkqn7wxx-nghttp2-1.67.1-dev/lib/pkgconfig
+    - /nix/store/1jhhllbw8siqv5y6ldiqa9a0z5rwi1n4-nghttp3-1.12.0-dev/lib/pkgconfig
+    - /nix/store/6amnlv29k8yb6x5l7nqwhj7a296s2pka-ngtcp2-1.17.0-dev/lib/pkgconfig
+    - /nix/store/1j8qc9f9hs853dbbn21pz2n71ihzgm35-libidn2-2.3.8-dev/lib/pkgconfig
+    - /nix/store/aqlp14sad18db9xlz9yr9mlvj1vmm3q9-libpsl-0.21.5-dev/lib/pkgconfig
+    - /nix/store/wshnn8za45az2vjg61vbxbaa6g9b9mj4-libssh2-1.11.1-dev/lib/pkgconfig
+    - /nix/store/ydi7sxal9zz8f12l7zbm6hg21qygky8c-zlib-1.3.1-dev/lib/pkgconfig
+    - /nix/store/aaw0qx4rmbvcc4v2i2c02xslfj0sc8l3-zstd-1.5.7-dev/lib/pkgconfig
+
+HINT: you may need to install a package such as libgit2, libgit2-dev or libgit2-devel.
+
+cargo:rustc-cfg=libgit2_vendored
+libgit2/include/git2.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2.h
+libgit2/include/git2/signature.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/signature.h
+libgit2/include/git2/oid.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/oid.h
+libgit2/include/git2/index.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/index.h
+libgit2/include/git2/email.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/email.h
+libgit2/include/git2/ignore.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/ignore.h
+libgit2/include/git2/attr.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/attr.h
+libgit2/include/git2/blame.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/blame.h
+libgit2/include/git2/oidarray.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/oidarray.h
+libgit2/include/git2/pack.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/pack.h
+libgit2/include/git2/revert.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/revert.h
+libgit2/include/git2/version.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/version.h
+libgit2/include/git2/odb.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/odb.h
+libgit2/include/git2/status.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/status.h
+libgit2/include/git2/net.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/net.h
+libgit2/include/git2/tag.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/tag.h
+libgit2/include/git2/annotated_commit.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/annotated_commit.h
+libgit2/include/git2/config.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/config.h
+libgit2/include/git2/branch.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/branch.h
+libgit2/include/git2/types.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/types.h
+libgit2/include/git2/repository.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/repository.h
+libgit2/include/git2/clone.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/clone.h
+libgit2/include/git2/global.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/global.h
+libgit2/include/git2/blob.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/blob.h
+libgit2/include/git2/cherrypick.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/cherrypick.h
+libgit2/include/git2/mailmap.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/mailmap.h
+libgit2/include/git2/submodule.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/submodule.h
+libgit2/include/git2/errors.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/errors.h
+libgit2/include/git2/message.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/message.h
+libgit2/include/git2/merge.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/merge.h
+libgit2/include/git2/pathspec.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/pathspec.h
+libgit2/include/git2/tree.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/tree.h
+libgit2/include/git2/odb_backend.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/odb_backend.h
+libgit2/include/git2/graph.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/graph.h
+libgit2/include/git2/describe.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/describe.h
+libgit2/include/git2/rebase.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/rebase.h
+libgit2/include/git2/worktree.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/worktree.h
+libgit2/include/git2/stash.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/stash.h
+libgit2/include/git2/remote.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/remote.h
+libgit2/include/git2/strarray.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/strarray.h
+libgit2/include/git2/reflog.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/reflog.h
+libgit2/include/git2/cred_helpers.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/cred_helpers.h
+libgit2/include/git2/buffer.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/buffer.h
+libgit2/include/git2/diff.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/diff.h
+libgit2/include/git2/sys/index.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/index.h
+libgit2/include/git2/sys/email.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/email.h
+libgit2/include/git2/sys/config.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/config.h
+libgit2/include/git2/sys/path.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/path.h
+libgit2/include/git2/sys/repository.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/repository.h
+libgit2/include/git2/sys/openssl.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/openssl.h
+libgit2/include/git2/sys/midx.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/midx.h
+libgit2/include/git2/sys/cred.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/cred.h
+libgit2/include/git2/sys/errors.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/errors.h
+libgit2/include/git2/sys/merge.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/merge.h
+libgit2/include/git2/sys/stream.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/stream.h
+libgit2/include/git2/sys/odb_backend.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/odb_backend.h
+libgit2/include/git2/sys/remote.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/remote.h
+libgit2/include/git2/sys/reflog.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/reflog.h
+libgit2/include/git2/sys/diff.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/diff.h
+libgit2/include/git2/sys/commit_graph.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/commit_graph.h
+libgit2/include/git2/sys/transport.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/transport.h
+libgit2/include/git2/sys/hashsig.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/hashsig.h
+libgit2/include/git2/sys/credential.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/credential.h
+libgit2/include/git2/sys/refs.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/refs.h
+libgit2/include/git2/sys/filter.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/filter.h
+libgit2/include/git2/sys/alloc.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/alloc.h
+libgit2/include/git2/sys/mempack.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/mempack.h
+libgit2/include/git2/sys/commit.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/commit.h
+libgit2/include/git2/sys/refdb_backend.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/sys/refdb_backend.h
+libgit2/include/git2/trace.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/trace.h
+libgit2/include/git2/common.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/common.h
+libgit2/include/git2/proxy.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/proxy.h
+libgit2/include/git2/indexer.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/indexer.h
+libgit2/include/git2/refspec.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/refspec.h
+libgit2/include/git2/notes.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/notes.h
+libgit2/include/git2/cert.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/cert.h
+libgit2/include/git2/deprecated.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/deprecated.h
+libgit2/include/git2/transport.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/transport.h
+libgit2/include/git2/revwalk.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/revwalk.h
+libgit2/include/git2/patch.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/patch.h
+libgit2/include/git2/object.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/object.h
+libgit2/include/git2/checkout.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/checkout.h
+libgit2/include/git2/apply.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/apply.h
+libgit2/include/git2/revparse.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/revparse.h
+libgit2/include/git2/credential_helpers.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/credential_helpers.h
+libgit2/include/git2/credential.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/credential.h
+libgit2/include/git2/refs.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/refs.h
+libgit2/include/git2/reset.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/reset.h
+libgit2/include/git2/filter.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/filter.h
+libgit2/include/git2/transaction.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/transaction.h
+libgit2/include/git2/experimental.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/experimental.h
+libgit2/include/git2/stdint.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/stdint.h
+libgit2/include/git2/commit.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/commit.h
+libgit2/include/git2/refdb.h => /Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/include/git2/refdb.h
+OPT_LEVEL = Some(0)
+TARGET = Some(aarch64-apple-darwin)
+CARGO_ENCODED_RUSTFLAGS = Some()
+HOST = Some(aarch64-apple-darwin)
+cargo:rerun-if-env-changed=CC_aarch64-apple-darwin
+CC_aarch64-apple-darwin = None
+cargo:rerun-if-env-changed=CC_aarch64_apple_darwin
+CC_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = Some(clang)
+cargo:rerun-if-env-changed=CC_KNOWN_WRAPPER_CUSTOM
+CC_KNOWN_WRAPPER_CUSTOM = None
+RUSTC_WRAPPER = None
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+DEBUG = Some(true)
+cargo:rerun-if-env-changed=MACOSX_DEPLOYMENT_TARGET
+MACOSX_DEPLOYMENT_TARGET = Some(14.0)
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS_aarch64_apple_darwin
+CFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=CFLAGS_aarch64-apple-darwin
+CFLAGS_aarch64-apple-darwin = None
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+cargo:warning=Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:rerun-if-env-changed=AR_aarch64-apple-darwin
+AR_aarch64-apple-darwin = None
+cargo:rerun-if-env-changed=AR_aarch64_apple_darwin
+AR_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=HOST_AR
+HOST_AR = None
+cargo:rerun-if-env-changed=AR
+AR = Some(ar)
+cargo:rerun-if-env-changed=ARFLAGS
+ARFLAGS = None
+cargo:rerun-if-env-changed=HOST_ARFLAGS
+HOST_ARFLAGS = None
+cargo:rerun-if-env-changed=ARFLAGS_aarch64_apple_darwin
+ARFLAGS_aarch64_apple_darwin = None
+cargo:rerun-if-env-changed=ARFLAGS_aarch64-apple-darwin
+ARFLAGS_aarch64-apple-darwin = None
+cargo:rustc-link-lib=static=git2
+cargo:rustc-link-search=native=/Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out/build
+cargo:root=/Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/build/libgit2-sys-bdca7a9931072bae/out
+cargo:rustc-link-lib=iconv
+cargo:rustc-link-lib=framework=Security
+cargo:rustc-link-lib=framework=CoreFoundation
+cargo:rerun-if-changed=libgit2/include
+cargo:rerun-if-changed=libgit2/src
+cargo:rerun-if-changed=libgit2/deps

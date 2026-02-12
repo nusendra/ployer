@@ -1,0 +1,8 @@
+/target
+*.db
+*.db-wal
+*.db-shm
+.env
+node_modules/
+frontend/build/
+frontend/.svelte-kit/

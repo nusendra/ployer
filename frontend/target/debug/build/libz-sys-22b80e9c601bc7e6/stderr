@@ -1,0 +1,5 @@
+Warning: supplying the --target arm64-apple-macosx != arm64-apple-darwin argument to a nix-wrapped compiler may not work correctly - cc-wrapper is currently not designed with multi-target compilers in mind. You may want to use an un-wrapped compiler instead.
+src/smoke.c:4:10: warning: cast to smaller integer type 'int' from 'uLong (*)(uLong, const Bytef *, uInt)' (aka 'unsigned long (*)(unsigned long, const unsigned char *, unsigned int)') [-Wpointer-to-int-cast]
+    4 |   return (int) adler32;
+      |          ^~~~~~~~~~~~~
+1 warning generated.

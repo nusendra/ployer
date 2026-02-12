@@ -1,0 +1,29 @@
+[package]
+name = "ployer-api"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "ployer"
+path = "src/main.rs"
+
+[dependencies]
+ployer-core = { workspace = true }
+ployer-db = { workspace = true }
+ployer-docker = { workspace = true }
+ployer-proxy = { workspace = true }
+ployer-git = { workspace = true }
+ployer-server = { workspace = true }
+axum = { workspace = true }
+tower-http = { workspace = true }
+tokio = { workspace = true }
+sqlx = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap = { workspace = true }
+toml = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }

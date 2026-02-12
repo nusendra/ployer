@@ -1,0 +1,9 @@
+/Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/deps/flume-d7e518ddc3242494.d: /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/lib.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/async.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/signal.rs
+
+/Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/deps/libflume-d7e518ddc3242494.rlib: /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/lib.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/async.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/signal.rs
+
+/Users/nusendra/Projects/FunProject/ployer/frontend/target/debug/deps/libflume-d7e518ddc3242494.rmeta: /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/lib.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/async.rs /Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/signal.rs
+
+/Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/lib.rs:
+/Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/async.rs:
+/Users/nusendra/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/signal.rs:

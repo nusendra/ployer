@@ -1,0 +1,17 @@
+[server]
+host = "0.0.0.0"
+port = 3001
+base_domain = "localhost"
+
+[database]
+url = "sqlite://ployer.db?mode=rwc"
+
+[auth]
+jwt_secret = "change-me-in-production"
+token_expiry_hours = 24
+
+[docker]
+socket_path = "/var/run/docker.sock"
+
+[caddy]
+admin_url = "http://localhost:2019"
