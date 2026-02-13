@@ -97,7 +97,6 @@ impl DockerClient {
 
     // List containers
     pub async fn list_containers(&self, all: bool) -> Result<Vec<ContainerInfo>> {
-        let mut filters = HashMap::new();
         let options = ListContainersOptions {
             all,
             ..Default::default()
@@ -393,7 +392,7 @@ impl DockerClient {
             .map(|p| PortInfo {
                 container_port: p.private_port,
                 host_port: p.public_port,
-                protocol: p.typ.unwrap_or_else(|| "tcp".to_string()),
+                protocol: p.typ.map(|t| t.to_string()).unwrap_or_else(|| "tcp".to_string()),
             })
             .collect();
 
