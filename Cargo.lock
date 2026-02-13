@@ -2229,9 +2229,14 @@ dependencies = [
 name = "ployer-core"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "base64 0.21.7",
  "chrono",
+ "rand",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 1.0.69",
  "uuid",
 ]
@@ -2270,6 +2275,8 @@ dependencies = [
  "anyhow",
  "git2",
  "ployer-core",
+ "rand",
+ "rsa",
  "tokio",
  "tracing",
 ]

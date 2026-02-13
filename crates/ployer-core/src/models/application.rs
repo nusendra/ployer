@@ -18,10 +18,17 @@ pub struct Application {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum BuildStrategy {
     Dockerfile,
     Nixpacks,
+    DockerCompose,
+}
+
+impl Default for BuildStrategy {
+    fn default() -> Self {
+        BuildStrategy::Dockerfile
+    }
 }
 
 impl BuildStrategy {
@@ -29,13 +36,16 @@ impl BuildStrategy {
         match self {
             BuildStrategy::Dockerfile => "dockerfile",
             BuildStrategy::Nixpacks => "nixpacks",
+            BuildStrategy::DockerCompose => "docker_compose",
         }
     }
 
     pub fn from_str(s: &str) -> Self {
         match s {
             "dockerfile" => BuildStrategy::Dockerfile,
-            _ => BuildStrategy::Nixpacks,
+            "nixpacks" => BuildStrategy::Nixpacks,
+            "docker_compose" => BuildStrategy::DockerCompose,
+            _ => BuildStrategy::Dockerfile,
         }
     }
 }

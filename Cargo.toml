@@ -51,6 +51,8 @@ git2 = "0.19"
 aes-gcm = "0.10"
 rand = "0.8"
 base64 = "0.21"
+rsa = { version = "0.9", features = ["pem"] }
+sha2 = "0.10"
 
 # Embedding
 rust-embed = { version = "8", features = ["mime-guess"] }

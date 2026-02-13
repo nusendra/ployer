@@ -3,6 +3,7 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
 };
 use anyhow::{anyhow, Result};
+use base64::{Engine as _, engine::general_purpose};
 use rand::RngCore;
 
 const NONCE_SIZE: usize = 12;
@@ -35,7 +36,7 @@ pub fn encrypt(plaintext: &str, key: &[u8; 32]) -> Result<String> {
     result.extend_from_slice(&ciphertext);
 
     // Return base64-encoded
-    Ok(base64::encode(&result))
+    Ok(general_purpose::STANDARD.encode(&result))
 }
 
 /// Decrypt a base64-encoded string
@@ -44,7 +45,7 @@ pub fn decrypt(ciphertext_b64: &str, key: &[u8; 32]) -> Result<String> {
     let cipher = Aes256Gcm::new(key.into());
 
     // Decode from base64
-    let data = base64::decode(ciphertext_b64)
+    let data = general_purpose::STANDARD.decode(ciphertext_b64)
         .map_err(|e| anyhow!("Invalid base64: {}", e))?;
 
     // Extract nonce and ciphertext

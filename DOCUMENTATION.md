@@ -506,6 +506,206 @@ ws.onmessage = (event) => {
 - `pong` - Response to ping
 - `error` - Error message
 
+### Application Management
+
+**List applications**
+
+```bash
+GET /api/v1/applications
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "applications": [
+    {
+      "id": "uuid",
+      "name": "my-app",
+      "server_id": "uuid",
+      "git_url": "git@github.com:user/repo.git",
+      "git_branch": "main",
+      "build_strategy": "dockerfile",
+      "dockerfile_path": null,
+      "port": 3000,
+      "auto_deploy": true,
+      "status": "running",
+      "created_at": "2026-02-13T00:00:00Z",
+      "updated_at": "2026-02-13T00:00:00Z"
+    }
+  ]
+}
+```
+
+**Create application**
+
+```bash
+POST /api/v1/applications
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "my-app",
+  "server_id": "uuid",
+  "git_url": "git@github.com:user/repo.git",
+  "git_branch": "main",
+  "build_strategy": "dockerfile",
+  "dockerfile_path": "./Dockerfile",
+  "port": 3000,
+  "auto_deploy": true,
+  "env_vars": {
+    "NODE_ENV": "production",
+    "API_KEY": "secret123"
+  }
+}
+```
+
+Response (201 Created):
+
+```json
+{
+  "application": { ... }
+}
+```
+
+Note: If `git_url` is provided, a deploy key is automatically generated.
+
+**Get application**
+
+```bash
+GET /api/v1/applications/:id
+Authorization: Bearer <token>
+```
+
+**Update application**
+
+```bash
+PUT /api/v1/applications/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "updated-name",
+  "port": 3001,
+  "auto_deploy": false
+}
+```
+
+**Delete application**
+
+```bash
+DELETE /api/v1/applications/:id
+Authorization: Bearer <token>
+```
+
+Response: 204 No Content
+
+### Environment Variables
+
+**List environment variables**
+
+```bash
+GET /api/v1/applications/:id/envs
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "env_vars": [
+    {
+      "key": "NODE_ENV",
+      "value": "production"
+    },
+    {
+      "key": "API_KEY",
+      "value": "secret123"
+    }
+  ]
+}
+```
+
+Note: Values are automatically decrypted.
+
+**Add environment variable**
+
+```bash
+POST /api/v1/applications/:id/envs
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "key": "DATABASE_URL",
+  "value": "postgres://localhost/db"
+}
+```
+
+Response: 201 Created
+
+Note: Values are automatically encrypted with AES-256-GCM.
+
+**Update environment variable**
+
+```bash
+PUT /api/v1/applications/:id/envs/:key
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "key": "DATABASE_URL",
+  "value": "postgres://newhost/db"
+}
+```
+
+Response: 204 No Content
+
+**Delete environment variable**
+
+```bash
+DELETE /api/v1/applications/:id/envs/:key
+Authorization: Bearer <token>
+```
+
+Response: 204 No Content
+
+### Deploy Keys
+
+**Get deploy key**
+
+```bash
+GET /api/v1/applications/:id/deploy-key
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ...",
+  "created_at": "2026-02-13T00:00:00Z"
+}
+```
+
+**Generate new deploy key**
+
+```bash
+POST /api/v1/applications/:id/deploy-key
+Authorization: Bearer <token>
+```
+
+Response (201 Created):
+
+```json
+{
+  "public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ...",
+  "created_at": "2026-02-13T00:00:00Z"
+}
+```
+
+Note: This generates a new RSA 4096 key pair. The old key is deleted.
+
 ### Health Check
 
 ```bash

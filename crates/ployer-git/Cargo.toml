@@ -9,3 +9,5 @@ git2 = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
+rsa = { workspace = true }
+rand = { workspace = true }

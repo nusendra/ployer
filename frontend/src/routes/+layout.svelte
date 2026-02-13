@@ -66,7 +66,7 @@
 			</div>
 			<ul class="nav-links">
 				<li><a href="/">Dashboard</a></li>
-				<li><a href="/apps">Applications</a></li>
+				<li><a href="/applications">Applications</a></li>
 				<li><a href="/servers">Servers</a></li>
 				<li><a href="/containers">Containers</a></li>
 				<li><a href="/settings">Settings</a></li>

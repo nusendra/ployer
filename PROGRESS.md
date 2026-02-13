@@ -99,6 +99,17 @@ SQLite WAL mode enabled for concurrent reads.
 | GET | `/api/v1/volumes/:name` | Done |
 | DELETE | `/api/v1/volumes/:name` | Done |
 | GET | `/api/v1/ws` | Done |
+| GET | `/api/v1/applications` | Done |
+| POST | `/api/v1/applications` | Done |
+| GET | `/api/v1/applications/:id` | Done |
+| PUT | `/api/v1/applications/:id` | Done |
+| DELETE | `/api/v1/applications/:id` | Done |
+| GET | `/api/v1/applications/:id/envs` | Done |
+| POST | `/api/v1/applications/:id/envs` | Done |
+| PUT | `/api/v1/applications/:id/envs/:key` | Done |
+| DELETE | `/api/v1/applications/:id/envs/:key` | Done |
+| GET | `/api/v1/applications/:id/deploy-key` | Done |
+| POST | `/api/v1/applications/:id/deploy-key` | Done |
 
 ---
 
@@ -214,12 +225,38 @@ SQLite WAL mode enabled for concurrent reads.
 
 ---
 
-### Phase 4: Application CRUD + Git — PENDING
+### Phase 4: Application CRUD + Git — COMPLETE
 
-**Scope:**
-- Git clone via git2, deploy key generation
-- App CRUD endpoints, encrypted env var storage
-- Frontend: app list, create wizard, env var editor
+**Completed:**
+- ApplicationRepository, EnvVarRepository, DeployKeyRepository in ployer-db with full CRUD operations
+- Enhanced GitService with SSH deploy key generation (RSA 4096)
+- Git operations: clone with SSH auth, pull with fast-forward merge, commit info retrieval, branch checkout
+- Encryption service with AES-256-GCM for sensitive data (environment variables, SSH private keys)
+- Crypto module with comprehensive unit tests for encryption/decryption
+- AppConfig.get_secret_key() method for deriving encryption key from JWT secret using SHA-256
+- Application API endpoints: list, create, get, update, delete
+- Environment variable endpoints: list, add, update, delete (automatic encryption/decryption)
+- Deploy key endpoints: get public key, generate new key pair
+- Frontend application management UI with:
+  - Application list with status indicators and build strategy badges
+  - Create application form with build strategy selection (Dockerfile, Nixpacks, Docker Compose)
+  - Git configuration (URL, branch) and auto-deploy toggle
+  - Environment variables editor with add/delete functionality
+  - Deploy key viewer with regeneration capability
+  - Edit application modal with all configurable fields
+  - Server selection from available servers
+- Shared TypeScript types file for better code organization
+- Applications link in navigation menu
+
+**Verified:**
+- Application CRUD operations working through API endpoints
+- Environment variables automatically encrypted when stored, decrypted when retrieved
+- Deploy keys automatically generated when application created with git_url
+- SSH keys are RSA 4096 in PEM format
+- Private keys encrypted at rest with AES-256-GCM
+- Frontend UI displays applications correctly with proper server associations
+- Environment variables can be added, updated, and deleted through UI
+- Deploy key regeneration works and displays public key for repository configuration
 
 ---
 

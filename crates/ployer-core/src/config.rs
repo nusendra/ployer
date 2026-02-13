@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use sha2::{Sha256, Digest};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -7,6 +8,15 @@ pub struct AppConfig {
     pub auth: AuthConfig,
     pub docker: DockerConfig,
     pub caddy: CaddyConfig,
+}
+
+impl AppConfig {
+    /// Derive a 32-byte encryption key from the JWT secret using SHA-256
+    pub fn get_secret_key(&self) -> [u8; 32] {
+        let mut hasher = Sha256::new();
+        hasher.update(self.auth.jwt_secret.as_bytes());
+        hasher.finalize().into()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
