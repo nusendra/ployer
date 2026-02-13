@@ -71,6 +71,9 @@ SQLite WAL mode enabled for concurrent reads.
 | Method | Path | Status |
 |--------|------|--------|
 | GET | `/api/v1/health` | Done |
+| POST | `/api/v1/auth/register` | Done |
+| POST | `/api/v1/auth/login` | Done |
+| GET | `/api/v1/auth/me` | Done |
 
 ---
 
@@ -101,14 +104,28 @@ SQLite WAL mode enabled for concurrent reads.
 
 ---
 
-### Phase 1: Auth + User Management — PENDING
+### Phase 1: Auth + User Management — COMPLETE
 
-**Scope:**
-- Users/API keys tables + repos
-- Password hashing (argon2), JWT (jsonwebtoken)
-- Auth middleware, login/register endpoints
-- First-user-is-admin registration
-- Frontend: login page, auth store integration, protected layout
+**Completed:**
+- UserRepository and ApiKeyRepository in ployer-db with CRUD operations
+- Password hashing with argon2 (hash_password, verify_password)
+- JWT token generation/validation with jsonwebtoken
+- AuthService with first-user-is-admin logic
+- Auth middleware for protected routes
+- POST `/api/v1/auth/register` — user registration, first user becomes admin
+- POST `/api/v1/auth/login` — email/password authentication, returns JWT
+- GET `/api/v1/auth/me` — get current user from token
+- Frontend login/register page with tab switcher
+- Auth store integration with localStorage token persistence
+- Protected layout with auth check and logout button
+- Redirect to /login when unauthenticated
+
+**Verified:**
+- Registration creates user with role "admin" for first user, "user" for others
+- Login validates credentials and returns JWT token
+- /me endpoint validates token and returns user data
+- Frontend redirects to login when no token present
+- Logout clears token and redirects to login
 
 ---
 

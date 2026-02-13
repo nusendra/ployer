@@ -1,3 +1,5 @@
+pub mod repositories;
+
 use anyhow::Result;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::SqlitePool;

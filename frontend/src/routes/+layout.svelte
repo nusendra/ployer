@@ -1,31 +1,85 @@
 <script lang="ts">
 	import '../app.css';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { browser } from '$app/environment';
+	import { clearAuth } from '$lib/stores/auth';
 
 	let { children } = $props();
+	let isAuthenticated = $state(false);
+	let isChecking = $state(true);
+
+	// Check auth on every route change
+	$effect(() => {
+		if (!browser) return;
+
+		const currentPath = $page.url.pathname;
+
+		// Skip auth check for login page
+		if (currentPath === '/login') {
+			isAuthenticated = true;
+			isChecking = false;
+			return;
+		}
+
+		// Check if user has a token
+		const token = localStorage.getItem('token');
+		if (!token) {
+			clearAuth();
+			goto('/login');
+			isAuthenticated = false;
+		} else {
+			isAuthenticated = true;
+		}
+		isChecking = false;
+	});
+
+	function handleLogout() {
+		clearAuth();
+		goto('/login');
+	}
 </script>
 
 <svelte:head>
 	<title>Ployer</title>
 </svelte:head>
 
-<div class="app-shell">
-	<nav class="sidebar">
-		<div class="logo">
-			<h1>Ployer</h1>
-		</div>
-		<ul class="nav-links">
-			<li><a href="/">Dashboard</a></li>
-			<li><a href="/apps">Applications</a></li>
-			<li><a href="/servers">Servers</a></li>
-			<li><a href="/settings">Settings</a></li>
-		</ul>
-	</nav>
-	<main class="content">
-		{@render children()}
-	</main>
-</div>
+{#if isChecking}
+	<div class="loading-screen">
+		<p>Loading...</p>
+	</div>
+{:else if isAuthenticated}
+	<div class="app-shell">
+		<nav class="sidebar">
+			<div class="logo">
+				<h1>Ployer</h1>
+			</div>
+			<ul class="nav-links">
+				<li><a href="/">Dashboard</a></li>
+				<li><a href="/apps">Applications</a></li>
+				<li><a href="/servers">Servers</a></li>
+				<li><a href="/settings">Settings</a></li>
+			</ul>
+			<div class="sidebar-footer">
+				<button class="btn-logout" onclick={handleLogout}>Logout</button>
+			</div>
+		</nav>
+		<main class="content">
+			{@render children()}
+		</main>
+	</div>
+{/if}
 
 <style>
+	.loading-screen {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 100vh;
+		background: var(--bg);
+		color: var(--text-muted);
+	}
+
 	.app-shell {
 		display: flex;
 		min-height: 100vh;
@@ -37,6 +91,8 @@
 		border-right: 1px solid var(--border);
 		padding: 1.5rem;
 		flex-shrink: 0;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.logo h1 {
@@ -69,5 +125,23 @@
 		flex: 1;
 		padding: 2rem;
 		overflow-y: auto;
+	}
+
+	.sidebar-footer {
+		margin-top: auto;
+		padding-top: 2rem;
+	}
+
+	.btn-logout {
+		width: 100%;
+		background: transparent;
+		color: var(--text-muted);
+		border: 1px solid var(--border);
+		padding: 0.5rem;
+	}
+
+	.btn-logout:hover {
+		background: var(--bg-tertiary);
+		color: var(--text);
 	}
 </style>

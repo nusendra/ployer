@@ -95,3 +95,91 @@ bun run dev    # or npm run dev
 ```
 
 The dev server runs on **http://localhost:5173** and proxies API calls to the backend.
+
+## API Documentation
+
+### Authentication
+
+**Register a new user**
+
+```bash
+POST /api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "name": "John Doe"
+}
+```
+
+Response:
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "admin",  // First user is admin, others are "user"
+    "created_at": "2026-02-13T00:00:00Z",
+    "updated_at": "2026-02-13T00:00:00Z"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+**Login**
+
+```bash
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+Response:
+
+```json
+{
+  "user": { ... },
+  "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+**Get current user**
+
+```bash
+GET /api/v1/auth/me
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "user": { ... }
+}
+```
+
+### Health Check
+
+```bash
+GET /api/v1/health
+```
+
+Response:
+
+```json
+{
+  "status": "ok",
+  "version": "0.1.0",
+  "services": {
+    "database": true,
+    "docker": false
+  }
+}
+```
