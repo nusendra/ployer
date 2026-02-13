@@ -97,7 +97,7 @@ impl DockerClient {
 
     // List containers
     pub async fn list_containers(&self, all: bool) -> Result<Vec<ContainerInfo>> {
-        let options = ListContainersOptions {
+        let options = ListContainersOptions::<String> {
             all,
             ..Default::default()
         };
