@@ -2,6 +2,7 @@ mod app_state;
 mod auth;
 mod routes;
 mod services;
+mod websocket;
 
 use anyhow::Result;
 use axum::Router;

@@ -18,6 +18,7 @@ license = "MIT"
 [workspace.dependencies]
 # Async runtime
 tokio = { version = "1", features = ["full"] }
+futures-util = "0.3"
 
 # Web framework
 axum = { version = "0.7", features = ["ws"] }
