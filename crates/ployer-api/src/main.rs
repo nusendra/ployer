@@ -1,6 +1,7 @@
 mod app_state;
 mod auth;
 mod routes;
+mod services;
 
 use anyhow::Result;
 use axum::Router;
@@ -54,10 +55,45 @@ async fn run_migrations(config: AppConfig) -> Result<()> {
     Ok(())
 }
 
+async fn register_local_server(pool: &sqlx::SqlitePool) -> Result<()> {
+    use ployer_db::repositories::ServerRepository;
+    use ployer_core::models::ServerStatus;
+
+    let repo = ServerRepository::new(pool.clone());
+
+    // Check if local server already exists
+    if repo.find_local().await?.is_some() {
+        return Ok(());
+    }
+
+    // Get hostname
+    let hostname = sysinfo::System::host_name().unwrap_or_else(|| "local".to_string());
+
+    // Create local server
+    let server = repo.create(
+        &hostname,
+        "localhost",
+        22,
+        "root",
+        None,
+        true,
+    ).await?;
+
+    // Set initial status to online
+    repo.update_status(&server.id, ServerStatus::Online, chrono::Utc::now()).await?;
+
+    info!("Local server registered: {}", hostname);
+
+    Ok(())
+}
+
 async fn start_server(config: AppConfig) -> Result<()> {
     // Database
     let pool = ployer_db::create_pool(&config.database.url).await?;
     ployer_db::run_migrations(&pool).await?;
+
+    // Auto-register local server if not exists
+    register_local_server(&pool).await?;
 
     // Docker (optional — don't fail if Docker isn't available)
     let docker = match DockerClient::new(&config.docker.socket_path) {
@@ -82,7 +118,10 @@ async fn start_server(config: AppConfig) -> Result<()> {
     let addr = format!("{}:{}", config.server.host, config.server.port);
 
     // Build shared state
-    let state = app_state::AppState::new(pool, docker, caddy, config);
+    let state = app_state::AppState::new(pool.clone(), docker, caddy, config);
+
+    // Start health monitor
+    services::health_monitor::spawn_health_monitor(pool, state.ws_broadcast.clone());
 
     // Build router
     let app = Router::new()

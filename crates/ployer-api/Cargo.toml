@@ -29,3 +29,4 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 argon2 = { workspace = true }
 jsonwebtoken = { workspace = true }
+sysinfo = { workspace = true }

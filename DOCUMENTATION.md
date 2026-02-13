@@ -165,6 +165,126 @@ Response:
 }
 ```
 
+### Server Management
+
+**List all servers**
+
+```bash
+GET /api/v1/servers
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "servers": [
+    {
+      "id": "uuid",
+      "name": "localhost",
+      "host": "localhost",
+      "port": 22,
+      "username": "root",
+      "is_local": true,
+      "status": "online",
+      "last_seen_at": "2026-02-13T00:00:00Z",
+      "created_at": "2026-02-13T00:00:00Z",
+      "updated_at": "2026-02-13T00:00:00Z"
+    }
+  ]
+}
+```
+
+**Create a server**
+
+```bash
+POST /api/v1/servers
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Production Server",
+  "host": "192.168.1.100",
+  "port": 22,
+  "username": "deploy",
+  "ssh_key": "-----BEGIN PRIVATE KEY-----\n...",
+  "is_local": false
+}
+```
+
+Response (201 Created):
+
+```json
+{
+  "server": { ... }
+}
+```
+
+**Get server by ID**
+
+```bash
+GET /api/v1/servers/:id
+Authorization: Bearer <token>
+```
+
+**Update server**
+
+```bash
+PUT /api/v1/servers/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Updated Name",
+  "port": 2222
+}
+```
+
+**Delete server**
+
+```bash
+DELETE /api/v1/servers/:id
+Authorization: Bearer <token>
+```
+
+Response: 204 No Content
+
+**Test server connection**
+
+```bash
+POST /api/v1/servers/:id/validate
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "reachable": true,
+  "status": "online"
+}
+```
+
+**Get server resources (local only)**
+
+```bash
+GET /api/v1/servers/:id/resources
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "stats": {
+    "total_memory_mb": 16384,
+    "used_memory_mb": 8192,
+    "cpu_count": 8,
+    "cpu_usage": 25.5
+  }
+}
+```
+
 ### Health Check
 
 ```bash

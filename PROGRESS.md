@@ -74,6 +74,13 @@ SQLite WAL mode enabled for concurrent reads.
 | POST | `/api/v1/auth/register` | Done |
 | POST | `/api/v1/auth/login` | Done |
 | GET | `/api/v1/auth/me` | Done |
+| GET | `/api/v1/servers` | Done |
+| POST | `/api/v1/servers` | Done |
+| GET | `/api/v1/servers/:id` | Done |
+| PUT | `/api/v1/servers/:id` | Done |
+| DELETE | `/api/v1/servers/:id` | Done |
+| POST | `/api/v1/servers/:id/validate` | Done |
+| GET | `/api/v1/servers/:id/resources` | Done |
 
 ---
 
@@ -129,14 +136,33 @@ SQLite WAL mode enabled for concurrent reads.
 
 ---
 
-### Phase 2: Server Management — PENDING
+### Phase 2: Server Management — COMPLETE
 
-**Scope:**
-- Servers table + repo
-- SSH client via russh, connection testing
-- Local server auto-detection
-- Background health monitoring (30s interval)
-- Frontend: server list, add form, health indicators
+**Completed:**
+- ServerRepository in ployer-db with full CRUD operations (create, find_by_id, list, update, update_status, delete, find_local)
+- Server API endpoints: list, create, get, update, delete, validate, resources
+- Auth helper function `extract_user_id()` for protected routes
+- Local server auto-detection on startup (registers hostname as local server)
+- TCP connection testing via `ServerManager::test_ssh_connection()`
+- POST `/api/v1/servers/:id/validate` — tests server connectivity, updates status
+- GET `/api/v1/servers/:id/resources` — returns CPU/RAM stats for local servers
+- Background health monitor service (30s interval, Tokio task)
+- Health monitor checks all servers, updates status, broadcasts WsEvent::ServerHealth
+- Frontend server management UI with:
+  - Server list with status indicators (online/offline/unknown)
+  - Add server form (name, host, port, username, SSH key)
+  - Test connection button per server
+  - View resources modal for local servers (CPU, memory stats)
+  - Delete server with confirmation
+  - Auto-refresh on actions
+
+**Verified:**
+- Local server auto-registered on first startup with status "online"
+- Server CRUD operations work through API endpoints
+- Connection validation updates server status in database
+- Health monitor runs every 30 seconds and updates server statuses
+- Frontend displays servers with correct status badges
+- Resource stats modal shows live CPU/memory data for local server
 
 ---
 
