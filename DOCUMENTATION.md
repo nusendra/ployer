@@ -285,6 +285,227 @@ Response:
 }
 ```
 
+### Container Management
+
+**List containers**
+
+```bash
+GET /api/v1/containers?all=true
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "containers": [
+    {
+      "id": "abc123",
+      "name": "my-app",
+      "image": "nginx:latest",
+      "state": "running",
+      "status": "Up 2 hours",
+      "created": 1707820800,
+      "ports": [
+        {
+          "container_port": 80,
+          "host_port": 8080,
+          "protocol": "tcp"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Create container**
+
+```bash
+POST /api/v1/containers
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "image": "nginx:latest",
+  "name": "my-nginx",
+  "env": ["ENV=production", "DEBUG=false"],
+  "ports": {
+    "80/tcp": "8080"
+  },
+  "volumes": {
+    "/host/data": "/app/data"
+  },
+  "cmd": ["nginx", "-g", "daemon off;"]
+}
+```
+
+Response (201 Created):
+
+```json
+{
+  "container_id": "abc123def456"
+}
+```
+
+**Start/Stop/Restart container**
+
+```bash
+POST /api/v1/containers/:id/start
+POST /api/v1/containers/:id/stop
+POST /api/v1/containers/:id/restart
+Authorization: Bearer <token>
+```
+
+Response: 204 No Content
+
+**Get container logs**
+
+```bash
+GET /api/v1/containers/:id/logs?tail=100
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "logs": [
+    "2024-02-13 10:00:00 Starting server...",
+    "2024-02-13 10:00:01 Server listening on port 80"
+  ]
+}
+```
+
+**Get container stats**
+
+```bash
+GET /api/v1/containers/:id/stats
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "stats": {
+    "cpu_usage": 25.5,
+    "memory_usage_mb": 128.5,
+    "memory_limit_mb": 512.0,
+    "network_rx_bytes": 1048576,
+    "network_tx_bytes": 524288
+  }
+}
+```
+
+**Delete container**
+
+```bash
+DELETE /api/v1/containers/:id
+Authorization: Bearer <token>
+```
+
+Response: 204 No Content
+
+### Network Management
+
+**List networks**
+
+```bash
+GET /api/v1/networks
+Authorization: Bearer <token>
+```
+
+**Create network**
+
+```bash
+POST /api/v1/networks
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "my-network",
+  "driver": "bridge"
+}
+```
+
+**Delete network**
+
+```bash
+DELETE /api/v1/networks/:id
+Authorization: Bearer <token>
+```
+
+### Volume Management
+
+**List volumes**
+
+```bash
+GET /api/v1/volumes
+Authorization: Bearer <token>
+```
+
+**Create volume**
+
+```bash
+POST /api/v1/volumes
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "my-data"
+}
+```
+
+**Delete volume**
+
+```bash
+DELETE /api/v1/volumes/:name
+Authorization: Bearer <token>
+```
+
+### WebSocket (Real-time Updates)
+
+**Connect to WebSocket**
+
+```javascript
+const token = localStorage.getItem('token');
+const ws = new WebSocket(`ws://localhost:3001/api/v1/ws?token=${token}`);
+
+ws.onopen = () => {
+  // Subscribe to channels
+  ws.send(JSON.stringify({
+    type: 'subscribe',
+    channel: 'container:abc123:logs'
+  }));
+};
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+
+  if (message.type === 'container_logs') {
+    console.log(message.line);
+  }
+
+  if (message.type === 'container_stats') {
+    console.log(message.cpu_usage, message.memory_usage_mb);
+  }
+};
+```
+
+**Available channels:**
+- `server:<id>` - Server health updates
+- `container:<id>:logs` - Container log streaming
+- `container:<id>:stats` - Container resource stats
+- `deployment:<id>` - Deployment progress
+
+**Message types from server:**
+- `server_health` - Server status changed
+- `container_logs` - New log line from container
+- `container_stats` - Container resource metrics
+- `deployment_status` - Deployment status update
+- `pong` - Response to ping
+- `error` - Error message
+
 ### Health Check
 
 ```bash

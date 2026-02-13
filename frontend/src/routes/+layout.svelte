@@ -4,6 +4,8 @@
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
 	import { clearAuth } from '$lib/stores/auth';
+	import { wsClient } from '$lib/stores/websocket';
+	import { onDestroy } from 'svelte';
 
 	let { children } = $props();
 	let isAuthenticated = $state(false);
@@ -28,13 +30,21 @@
 			clearAuth();
 			goto('/login');
 			isAuthenticated = false;
+			wsClient.disconnect();
 		} else {
 			isAuthenticated = true;
+			// Connect to WebSocket with token
+			wsClient.connect(token);
 		}
 		isChecking = false;
 	});
 
+	onDestroy(() => {
+		wsClient.disconnect();
+	});
+
 	function handleLogout() {
+		wsClient.disconnect();
 		clearAuth();
 		goto('/login');
 	}
@@ -58,6 +68,7 @@
 				<li><a href="/">Dashboard</a></li>
 				<li><a href="/apps">Applications</a></li>
 				<li><a href="/servers">Servers</a></li>
+				<li><a href="/containers">Containers</a></li>
 				<li><a href="/settings">Settings</a></li>
 			</ul>
 			<div class="sidebar-footer">

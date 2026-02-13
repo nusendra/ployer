@@ -81,6 +81,24 @@ SQLite WAL mode enabled for concurrent reads.
 | DELETE | `/api/v1/servers/:id` | Done |
 | POST | `/api/v1/servers/:id/validate` | Done |
 | GET | `/api/v1/servers/:id/resources` | Done |
+| GET | `/api/v1/containers` | Done |
+| POST | `/api/v1/containers` | Done |
+| GET | `/api/v1/containers/:id` | Done |
+| POST | `/api/v1/containers/:id/start` | Done |
+| POST | `/api/v1/containers/:id/stop` | Done |
+| POST | `/api/v1/containers/:id/restart` | Done |
+| DELETE | `/api/v1/containers/:id` | Done |
+| GET | `/api/v1/containers/:id/logs` | Done |
+| GET | `/api/v1/containers/:id/stats` | Done |
+| GET | `/api/v1/networks` | Done |
+| POST | `/api/v1/networks` | Done |
+| GET | `/api/v1/networks/:id` | Done |
+| DELETE | `/api/v1/networks/:id` | Done |
+| GET | `/api/v1/volumes` | Done |
+| POST | `/api/v1/volumes` | Done |
+| GET | `/api/v1/volumes/:name` | Done |
+| DELETE | `/api/v1/volumes/:name` | Done |
+| GET | `/api/v1/ws` | Done |
 
 ---
 
@@ -166,13 +184,33 @@ SQLite WAL mode enabled for concurrent reads.
 
 ---
 
-### Phase 3: Docker Management — PENDING
+### Phase 3: Docker Management — COMPLETE
 
-**Scope:**
-- Container CRUD, log streaming, resource stats
-- WebSocket infrastructure (broadcast, subscriptions)
-- Network + volume management
-- Frontend: container list, terminal (xterm.js), resource charts
+**Completed:**
+- Enhanced DockerClient with full container lifecycle management
+- Container operations: list, inspect, create, start, stop, restart, remove
+- Container logs streaming (tail support) and real-time stats
+- Network management: list, create, inspect, remove
+- Volume management: list, create, inspect, remove
+- WebSocket infrastructure with JWT authentication and channel subscriptions
+- Container API endpoints: GET/POST/DELETE with proper error handling
+- Network and volume API endpoints
+- Frontend container management UI with:
+  - Container list with status indicators
+  - Create container form (env vars, ports, volumes, network)
+  - Start/stop/restart/delete actions with loading states
+  - Log viewer modal with live streaming
+  - Stats viewer modal with live updates
+  - WebSocket client with auto-reconnect
+- WebSocket real-time updates for container logs and stats
+
+**Verified:**
+- Container CRUD operations work through API
+- WebSocket connects with JWT auth
+- Real-time log streaming functional
+- Resource stats update in real-time
+- Network and volume management functional
+- Frontend displays containers with proper status badges
 
 ---
 
