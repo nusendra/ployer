@@ -19,9 +19,13 @@ class WebSocketClient {
 			return; // Already connected
 		}
 
+		// In development, connect directly to backend. In production, use same host.
+		const isDev = import.meta.env.DEV;
+		const wsHost = isDev ? 'localhost:3001' : window.location.host;
 		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-		const wsUrl = `${protocol}//${window.location.host}/api/v1/ws?token=${encodeURIComponent(token)}`;
+		const wsUrl = `${protocol}//${wsHost}/api/v1/ws?token=${encodeURIComponent(token)}`;
 
+		console.log('Connecting to WebSocket:', wsUrl);
 		this.ws = new WebSocket(wsUrl);
 
 		this.ws.onopen = () => {
