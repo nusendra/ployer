@@ -2205,6 +2205,7 @@ dependencies = [
  "axum",
  "chrono",
  "clap",
+ "futures-util",
  "jsonwebtoken",
  "ployer-core",
  "ployer-db",

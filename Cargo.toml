@@ -50,6 +50,7 @@ git2 = "0.19"
 # Crypto
 aes-gcm = "0.10"
 rand = "0.8"
+base64 = "0.21"
 
 # Embedding
 rust-embed = { version = "8", features = ["mime-guess"] }
