@@ -9,11 +9,12 @@ use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use tokio::sync::{broadcast, Mutex};
-use tracing::{error, info, warn};
+use tokio::sync::Mutex;
+use tracing::{info, warn};
 
 use crate::app_state::SharedState;
 use crate::auth::validate_token;
+use ployer_core::models::WsEvent;
 
 // Client message types (from browser to server)
 #[derive(Debug, Deserialize)]
@@ -155,43 +156,36 @@ async fn handle_socket(socket: WebSocket, user_id: String, state: SharedState) {
     let mut send_task = tokio::spawn(async move {
         while let Ok(event) = broadcast_rx.recv().await {
             // Convert ployer_core::models::WsEvent to our WsServerMessage
-            let message = match event.event_type.as_str() {
-                "server_health" => {
-                    if let (Some(server_id), Some(status)) = (event.server_id, event.data) {
-                        Some(WsServerMessage::ServerHealth {
-                            server_id,
-                            status,
-                            timestamp: chrono::Utc::now().to_rfc3339(),
-                        })
-                    } else {
-                        None
-                    }
+            let message = match event {
+                WsEvent::ServerHealth { server_id, status } => {
+                    Some(WsServerMessage::ServerHealth {
+                        server_id,
+                        status: status.as_str().to_string(),
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                    })
                 }
-                "container_logs" => {
-                    if let (Some(container_id), Some(line)) = (event.container_id, event.data) {
-                        Some(WsServerMessage::ContainerLogs {
-                            container_id,
-                            line,
-                            timestamp: chrono::Utc::now().to_rfc3339(),
-                        })
-                    } else {
-                        None
-                    }
+                WsEvent::DeploymentLog { deployment_id, line } => {
+                    Some(WsServerMessage::ContainerLogs {
+                        container_id: deployment_id, // Using deployment_id as container_id for now
+                        line,
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                    })
                 }
-                "deployment_status" => {
-                    if let (Some(deployment_id), Some(status)) =
-                        (event.deployment_id, event.data.clone())
-                    {
-                        Some(WsServerMessage::DeploymentStatus {
-                            deployment_id,
-                            status,
-                            message: event.message,
-                        })
-                    } else {
-                        None
-                    }
+                WsEvent::DeploymentStatus { deployment_id, status, .. } => {
+                    Some(WsServerMessage::DeploymentStatus {
+                        deployment_id,
+                        status: status.as_str().to_string(),
+                        message: None,
+                    })
                 }
-                _ => None,
+                WsEvent::ContainerStats { container_id, cpu_percent, memory_mb } => {
+                    Some(WsServerMessage::ContainerStats {
+                        container_id,
+                        cpu_usage: cpu_percent,
+                        memory_usage_mb: memory_mb,
+                        memory_limit_mb: 0.0, // Not available in this event
+                    })
+                }
             };
 
             if let Some(msg) = message {

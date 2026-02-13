@@ -2254,6 +2254,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bollard",
+ "futures-util",
  "ployer-core",
  "serde",
  "serde_json",

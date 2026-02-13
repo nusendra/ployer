@@ -178,11 +178,16 @@ async fn get_container(
         })?;
 
     // Convert inspect response to ContainerInfo
+    let state = inspect.state
+        .and_then(|s| s.status)
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+
     let container = ContainerInfo {
         id: inspect.id.unwrap_or_default(),
         name: inspect.name.unwrap_or_default().trim_start_matches('/').to_string(),
         image: inspect.config.and_then(|c| c.image).unwrap_or_default(),
-        state: inspect.state.and_then(|s| s.status).unwrap_or_default().to_string(),
+        state,
         status: "running".to_string(), // Simplified
         created: 0, // Would need to parse from inspect.created
         ports: vec![], // Would need to parse from inspect.network_settings
