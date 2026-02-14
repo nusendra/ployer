@@ -1,19 +1,22 @@
 use anyhow::{anyhow, Result};
 use ployer_core::models::{Application, Deployment, DeploymentStatus, WsEvent};
-use ployer_db::repositories::DeploymentRepository;
+use ployer_db::repositories::{DeploymentRepository, DomainRepository};
 use ployer_docker::{DockerClient, ContainerConfig};
 use ployer_git::GitService;
+use ployer_proxy::{CaddyClient, ReverseProxyConfig};
 use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub struct DeploymentService {
     db: SqlitePool,
     docker: Arc<DockerClient>,
     git: GitService,
+    caddy: Option<Arc<CaddyClient>>,
+    base_domain: String,
     ws_broadcast: broadcast::Sender<WsEvent>,
 }
 
@@ -21,12 +24,16 @@ impl DeploymentService {
     pub fn new(
         db: SqlitePool,
         docker: Arc<DockerClient>,
+        caddy: Option<Arc<CaddyClient>>,
+        base_domain: String,
         ws_broadcast: broadcast::Sender<WsEvent>,
     ) -> Self {
         Self {
             db,
             docker,
             git: GitService::new(),
+            caddy,
+            base_domain,
             ws_broadcast,
         }
     }
@@ -56,12 +63,16 @@ impl DeploymentService {
         // Spawn deployment task in background
         let db = self.db.clone();
         let docker = self.docker.clone();
+        let caddy = self.caddy.clone();
+        let base_domain = self.base_domain.clone();
         let ws_broadcast = self.ws_broadcast.clone();
 
         tokio::spawn(async move {
             if let Err(e) = Self::execute_deployment(
                 db,
                 docker,
+                caddy,
+                base_domain,
                 ws_broadcast,
                 deployment_id,
                 application,
@@ -81,6 +92,8 @@ impl DeploymentService {
     async fn execute_deployment(
         db: SqlitePool,
         docker: Arc<DockerClient>,
+        caddy: Option<Arc<CaddyClient>>,
+        base_domain: String,
         ws_broadcast: broadcast::Sender<WsEvent>,
         deployment_id: String,
         application: Application,
@@ -185,8 +198,73 @@ impl DeploymentService {
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
         // Step 5: Stop old container (rolling update)
-        // TODO: Get previous deployment and stop its container
         send_log("Performing rolling update...".to_string()).await;
+
+        // Get the previous running deployment
+        if let Ok(Some(prev_deployment)) = deployment_repo.get_latest_running(&application.id).await {
+            if let Some(prev_container_id) = prev_deployment.container_id {
+                if prev_container_id != container_id {
+                    send_log(format!("Stopping old container: {}", prev_container_id)).await;
+
+                    // Stop the old container (10 second timeout)
+                    if let Err(e) = docker.stop_container(&prev_container_id, Some(10)).await {
+                        warn!("Failed to stop old container {}: {}", prev_container_id, e);
+                        send_log(format!("Warning: Failed to stop old container: {}", e)).await;
+                    } else {
+                        send_log(format!("Old container stopped: {}", prev_container_id)).await;
+                    }
+
+                    // Remove the old container (force=true to remove even if running)
+                    if let Err(e) = docker.remove_container(&prev_container_id, true).await {
+                        warn!("Failed to remove old container {}: {}", prev_container_id, e);
+                        send_log(format!("Warning: Failed to remove old container: {}", e)).await;
+                    } else {
+                        send_log(format!("Old container removed: {}", prev_container_id)).await;
+                    }
+
+                    // Update old deployment status to rolled_back
+                    let _ = deployment_repo.update_status(&prev_deployment.id, DeploymentStatus::RolledBack).await;
+                }
+            }
+        }
+
+        // Step 5.5: Create subdomain and configure Caddy
+        // For MVP, skip actual Caddy configuration (would need Caddy running)
+        // Just create the domain record
+        send_log("Configuring domain...".to_string()).await;
+        let subdomain = format!("{}.{}", application.name, base_domain);
+
+        let domain_repo = DomainRepository::new(db.clone());
+        // Check if subdomain already exists
+        if domain_repo.find_by_domain(&subdomain).await.ok().flatten().is_none() {
+            match domain_repo.create(&application.id, &subdomain, true).await {
+                Ok(_) => {
+                    send_log(format!("Subdomain created: {}", subdomain)).await;
+
+                    // Configure Caddy if available
+                    if let Some(ref caddy_client) = caddy {
+                        if let Some(port) = application.port {
+                            let upstream = format!("localhost:{}", port);
+                            let caddy_config = ReverseProxyConfig {
+                                domain: subdomain.clone(),
+                                upstream,
+                                enable_https: true,
+                            };
+
+                            if let Err(e) = caddy_client.add_route(caddy_config).await {
+                                warn!("Failed to configure Caddy route: {}", e);
+                                send_log(format!("Warning: Caddy configuration failed: {}", e)).await;
+                            } else {
+                                send_log(format!("Caddy configured: https://{}", subdomain)).await;
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to create subdomain: {}", e);
+                }
+            }
+        }
 
         // Step 6: Mark deployment as running
         deployment_repo.update_status(&deployment_id, DeploymentStatus::Running).await?;

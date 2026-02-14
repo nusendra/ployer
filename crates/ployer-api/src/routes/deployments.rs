@@ -88,6 +88,8 @@ async fn trigger_deployment(
     let deployment_service = DeploymentService::new(
         state.db.clone(),
         docker,
+        Some(Arc::new(state.caddy.clone())),
+        state.config.server.base_domain.clone(),
         state.ws_broadcast.clone(),
     );
 
@@ -147,6 +149,8 @@ async fn cancel_deployment(
     let deployment_service = DeploymentService::new(
         state.db.clone(),
         docker,
+        Some(Arc::new(state.caddy.clone())),
+        state.config.server.base_domain.clone(),
         state.ws_broadcast.clone(),
     );
 

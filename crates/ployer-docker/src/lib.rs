@@ -185,10 +185,18 @@ impl DockerClient {
     pub async fn create_container(&self, config: ContainerConfig) -> Result<String> {
         let name = config.name.clone();
 
-        // Build port bindings
+        info!("Creating container with config: {:?}", config);
+
+        // Build exposed ports and port bindings
+        let mut exposed_ports: HashMap<String, HashMap<(), ()>> = HashMap::new();
         let mut port_bindings = HashMap::new();
         if let Some(ports) = &config.ports {
+            info!("Configuring ports: {:?}", ports);
             for (container_port, host_port) in ports {
+                // Expose the port in the container
+                exposed_ports.insert(container_port.clone(), HashMap::new());
+
+                // Bind the port to the host
                 port_bindings.insert(
                     container_port.clone(),
                     Some(vec![PortBinding {
@@ -197,6 +205,9 @@ impl DockerClient {
                     }]),
                 );
             }
+            info!("Port bindings configured: {:?}", port_bindings);
+        } else {
+            warn!("No ports configured in ContainerConfig!");
         }
 
         // Build volume bindings
@@ -218,6 +229,7 @@ impl DockerClient {
             image: Some(config.image.clone()),
             env: config.env,
             cmd: config.cmd,
+            exposed_ports: if exposed_ports.is_empty() { None } else { Some(exposed_ports) },
             host_config,
             ..Default::default()
         };

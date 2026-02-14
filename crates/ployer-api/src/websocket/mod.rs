@@ -222,7 +222,7 @@ async fn handle_socket(socket: WebSocket, user_id: String, state: SharedState) {
                     Ok(WsClientMessage::Ping) => {
                         // Send pong back
                         let pong = WsServerMessage::Pong;
-                        if let Ok(json) = serde_json::to_string(&pong) {
+                        if let Ok(_json) = serde_json::to_string(&pong) {
                             // Note: Can't send here directly, would need a channel
                             // For now, ping/pong is mostly for keepalive
                         }

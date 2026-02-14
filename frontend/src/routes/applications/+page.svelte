@@ -55,6 +55,11 @@
 	let deploymentLogs = $state<string[]>([]);
 	let deploying = $state(false);
 
+	// Domain modal state
+	let showDomainsModal = $state(false);
+	let appDomains = $state<any[]>([]);
+	let newDomain = $state('');
+
 	onMount(async () => {
 		await loadApplications();
 		await loadServers();
@@ -297,6 +302,75 @@
 		await loadDeployments(app.id);
 	}
 
+	// Domain management functions
+	async function openDomainsModal(app: Application) {
+		selectedApp = app;
+		showDomainsModal = true;
+		await loadDomains(app.id);
+	}
+
+	async function loadDomains(appId: string) {
+		try {
+			const response = await api.get<{ domains: any[] }>(`/applications/${appId}/domains`);
+			appDomains = response.domains;
+		} catch (e: any) {
+			console.error('Failed to load domains:', e);
+			appDomains = [];
+		}
+	}
+
+	async function addDomain() {
+		if (!selectedApp || !newDomain.trim()) return;
+		error = '';
+		try {
+			await api.post(`/applications/${selectedApp.id}/domains`, {
+				domain: newDomain.trim(),
+				is_primary: appDomains.length === 0
+			});
+			newDomain = '';
+			await loadDomains(selectedApp.id);
+		} catch (e: any) {
+			error = e.message || 'Failed to add domain';
+		}
+	}
+
+	async function removeDomain(domain: string) {
+		if (!selectedApp || !confirm(`Remove domain ${domain}?`)) return;
+		error = '';
+		try {
+			await api.delete(`/applications/${selectedApp.id}/domains/${domain}`);
+			await loadDomains(selectedApp.id);
+		} catch (e: any) {
+			error = e.message || 'Failed to remove domain';
+		}
+	}
+
+	async function setPrimaryDomain(domain: string) {
+		if (!selectedApp) return;
+		error = '';
+		try {
+			await api.post(`/applications/${selectedApp.id}/domains/${domain}/primary`, {});
+			await loadDomains(selectedApp.id);
+		} catch (e: any) {
+			error = e.message || 'Failed to set primary domain';
+		}
+	}
+
+	async function verifyDomain(domain: string) {
+		if (!selectedApp) return;
+		error = '';
+		try {
+			const response = await api.post<{ success: boolean; message: string }>(
+				`/applications/${selectedApp.id}/domains/${domain}/verify`,
+				{}
+			);
+			alert(response.message);
+			await loadDomains(selectedApp.id);
+		} catch (e: any) {
+			error = e.message || 'Failed to verify domain';
+		}
+	}
+
 	async function loadDeployments(appId: string) {
 		try {
 			const response = await api.get<{ deployments: any[] }>(
@@ -369,6 +443,7 @@
 								</button>
 							{/if}
 							<button class="btn-sm" onclick={() => openDeploymentsModal(app)}>Deployments</button>
+							<button class="btn-sm" onclick={() => openDomainsModal(app)}>Domains</button>
 							<button class="btn-sm" onclick={() => openDetailModal(app)}>Edit</button>
 							<button class="btn-sm" onclick={() => openEnvModal(app)}>Env Vars</button>
 							{#if app.git_url}
@@ -692,6 +767,78 @@
 
 			<div class="modal-actions">
 				<button class="btn-secondary" onclick={() => (showDeploymentLogsModal = false)}>Close</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Domains Modal -->
+{#if showDomainsModal && selectedApp}
+	<div class="modal-overlay" onclick={() => (showDomainsModal = false)}>
+		<div class="modal" onclick={(e) => e.stopPropagation()}>
+			<h2>Domains - {selectedApp.name}</h2>
+
+			<div class="domains-section">
+				<div class="domain-input">
+					<input type="text" placeholder="example.com" bind:value={newDomain} />
+					<button class="btn-primary" onclick={addDomain}>Add Domain</button>
+				</div>
+
+				{#if appDomains.length === 0}
+					<p class="empty-message">No custom domains added yet.</p>
+					<p class="domain-hint">
+						Your app will be available at: <strong>{selectedApp.name}.{servers.find((s) => s.id === selectedApp.server_id)?.host || 'localhost'}</strong>
+					</p>
+				{:else}
+					<div class="domains-list">
+						{#each appDomains as domain (domain.id)}
+							<div class="domain-item">
+								<div class="domain-info">
+									<span class="domain-name">{domain.domain}</span>
+									{#if domain.is_primary}
+										<span class="badge badge-primary">Primary</span>
+									{/if}
+									{#if domain.ssl_active}
+										<span class="badge badge-success">SSL Active</span>
+									{:else}
+										<span class="badge badge-warning">SSL Pending</span>
+									{/if}
+								</div>
+								<div class="domain-actions">
+									{#if !domain.is_primary}
+										<button class="btn-sm" onclick={() => setPrimaryDomain(domain.domain)}>
+											Set Primary
+										</button>
+									{/if}
+									{#if !domain.ssl_active}
+										<button class="btn-sm" onclick={() => verifyDomain(domain.domain)}>
+											Verify
+										</button>
+									{/if}
+									<button class="btn-sm btn-danger" onclick={() => removeDomain(domain.domain)}>
+										Remove
+									</button>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+
+				<div class="dns-instructions">
+					<h4>DNS Configuration</h4>
+					<p>Point your domain to this server by adding an A record:</p>
+					<div class="dns-record">
+						<code>
+							Type: A<br />
+							Name: @ (or your subdomain)<br />
+							Value: {servers.find((s) => s.id === selectedApp?.server_id)?.host || 'server-ip'}
+						</code>
+					</div>
+				</div>
+			</div>
+
+			<div class="modal-actions">
+				<button class="btn-secondary" onclick={() => (showDomainsModal = false)}>Close</button>
 			</div>
 		</div>
 	</div>
@@ -1113,5 +1260,127 @@
 
 	.log-line {
 		margin-bottom: 0.25rem;
+	}
+
+	/* Domain Management Styles */
+	.domains-section {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.domain-input {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.domain-input input {
+		flex: 1;
+	}
+
+	.domains-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.domain-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem;
+		background: #f9fafb;
+		border-radius: 4px;
+		border: 1px solid #e5e7eb;
+	}
+
+	.domain-info {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.domain-name {
+		font-family: 'Courier New', monospace;
+		font-size: 0.875rem;
+		color: #1f2937;
+		font-weight: 600;
+	}
+
+	.domain-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.badge {
+		padding: 0.25rem 0.5rem;
+		border-radius: 12px;
+		font-size: 0.75rem;
+		font-weight: 500;
+	}
+
+	.badge-primary {
+		background: #3b82f6;
+		color: white;
+	}
+
+	.badge-success {
+		background: #10b981;
+		color: white;
+	}
+
+	.badge-warning {
+		background: #f59e0b;
+		color: white;
+	}
+
+	.empty-message {
+		color: #6b7280;
+		text-align: center;
+		margin: 1rem 0;
+	}
+
+	.domain-hint {
+		color: #4b5563;
+		text-align: center;
+		font-size: 0.875rem;
+	}
+
+	.domain-hint strong {
+		color: #1f2937;
+		font-family: 'Courier New', monospace;
+	}
+
+	.dns-instructions {
+		background: #f3f4f6;
+		padding: 1rem;
+		border-radius: 4px;
+		border-left: 4px solid #3b82f6;
+	}
+
+	.dns-instructions h4 {
+		margin: 0 0 0.5rem 0;
+		color: #1f2937;
+		font-size: 0.875rem;
+		font-weight: 600;
+	}
+
+	.dns-instructions p {
+		margin: 0 0 0.5rem 0;
+		font-size: 0.875rem;
+		color: #4b5563;
+	}
+
+	.dns-record {
+		background: #1f2937;
+		padding: 0.75rem;
+		border-radius: 4px;
+	}
+
+	.dns-record code {
+		color: #f3f4f6;
+		font-family: 'Courier New', monospace;
+		font-size: 0.75rem;
+		line-height: 1.5;
 	}
 </style>

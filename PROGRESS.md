@@ -300,12 +300,32 @@ SQLite WAL mode enabled for concurrent reads.
 
 ---
 
-### Phase 6: Domains + Caddy Integration — PENDING
+### Phase 6: Domains + Caddy Integration — COMPLETE
 
-**Scope:**
-- Caddy Admin API client (dynamic route management)
-- Automatic HTTPS, auto subdomain generation
-- Frontend: domain management, SSL status
+**Completed:**
+- Enhanced CaddyClient with dynamic route management (add_route, remove_route, list_routes, get_ssl_status)
+- DomainRepository with full CRUD operations and SSL status tracking
+- Domain API endpoints: list, add, remove, verify DNS, set primary domain
+- Auto-subdomain generation integrated into deployment pipeline
+- Automatic subdomain creation: `{app-name}.{base-domain}` for every successful deployment
+- Caddy integration in DeploymentService for automatic reverse proxy configuration
+- Frontend domain management UI:
+  - View all domains per application
+  - Add custom domains with DNS instructions
+  - Set primary domain
+  - Verify domain DNS
+  - SSL status badges (active/pending)
+  - Remove domains
+  - Auto-generated subdomain display
+
+**Verified:**
+- Domain CRUD operations work through API endpoints
+- Auto-subdomains created automatically on deployment
+- Caddy routes configured dynamically (when Caddy is available)
+- Frontend displays domains with SSL status
+- DNS configuration instructions shown to users
+- Primary domain can be set and unset
+- Domain verification updates SSL status
 
 ---
 

@@ -802,6 +802,100 @@ Response: 204 No Content
 
 Note: Can only cancel deployments that are queued, cloning, building, or deploying. Running deployments cannot be cancelled.
 
+### Domain Management
+
+**List domains for an application**
+
+```bash
+GET /api/v1/applications/:id/domains
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "domains": [
+    {
+      "id": "uuid",
+      "application_id": "uuid",
+      "domain": "my-app.example.com",
+      "is_primary": true,
+      "ssl_active": true,
+      "created_at": "2026-02-15T00:00:00Z"
+    }
+  ]
+}
+```
+
+**Add a custom domain**
+
+```bash
+POST /api/v1/applications/:id/domains
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "domain": "app.example.com",
+  "is_primary": false
+}
+```
+
+Response (201 Created):
+
+```json
+{
+  "domain": {
+    "id": "uuid",
+    "application_id": "uuid",
+    "domain": "app.example.com",
+    "is_primary": false,
+    "ssl_active": false,
+    "created_at": "2026-02-15T00:00:00Z"
+  }
+}
+```
+
+Note: When you deploy an application, a subdomain is automatically generated in the format `{app-name}.{base-domain}`.
+
+**Remove a domain**
+
+```bash
+DELETE /api/v1/applications/:id/domains/:domain
+Authorization: Bearer <token>
+```
+
+Response: 204 No Content
+
+**Verify domain DNS**
+
+```bash
+POST /api/v1/applications/:id/domains/:domain/verify
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Domain verified successfully"
+}
+```
+
+Note: This checks if the domain points to the server and updates the SSL status.
+
+**Set domain as primary**
+
+```bash
+POST /api/v1/applications/:id/domains/:domain/primary
+Authorization: Bearer <token>
+```
+
+Response: 204 No Content
+
+Note: Only one domain can be primary per application.
+
 ### Health Check
 
 ```bash

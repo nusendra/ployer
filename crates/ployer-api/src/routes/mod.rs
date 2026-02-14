@@ -4,6 +4,7 @@ pub mod servers;
 pub mod containers;
 pub mod applications;
 pub mod deployments;
+pub mod domains;
 
 use axum::{routing::get, Router};
 use crate::app_state::SharedState;
@@ -19,6 +20,7 @@ pub fn api_router() -> Router<SharedState> {
         .nest("/volumes", containers::volumes_router())
         .nest("/applications", applications::router())
         .merge(deployments::app_deploy_router())
+        .merge(domains::router())
         .nest("/deployments", deployments::router())
         .route("/ws", get(websocket::websocket_handler))
 }
