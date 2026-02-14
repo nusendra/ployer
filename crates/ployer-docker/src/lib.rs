@@ -3,14 +3,19 @@ use bollard::container::{
     Config, CreateContainerOptions, InspectContainerOptions, ListContainersOptions,
     LogsOptions, RemoveContainerOptions, StartContainerOptions, StatsOptions, StopContainerOptions,
 };
+use bollard::image::BuildImageOptions;
 use bollard::models::{ContainerInspectResponse, ContainerSummary, HostConfig, PortBinding};
 use bollard::network::{CreateNetworkOptions, InspectNetworkOptions, ListNetworksOptions};
 use bollard::volume::{CreateVolumeOptions, ListVolumesOptions, RemoveVolumeOptions};
 use bollard::Docker;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::default::Default;
-use tracing::info;
+use std::path::Path;
+use tokio::sync::mpsc;
+use tracing::{info, warn};
+use tar::Builder;
 
 pub struct DockerClient {
     client: Docker,
@@ -93,6 +98,69 @@ impl DockerClient {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
         }
+    }
+
+    /// Build a Docker image from a context directory
+    /// Returns a channel that streams build log lines
+    pub async fn build_image(
+        &self,
+        context_path: &Path,
+        dockerfile_path: Option<&str>,
+        tag: &str,
+    ) -> Result<mpsc::Receiver<String>> {
+        info!("Building Docker image: {} from {:?}", tag, context_path);
+
+        // Create a tar archive of the build context
+        let tar_data = Self::create_build_context_tar(context_path)?;
+
+        let options = BuildImageOptions {
+            dockerfile: dockerfile_path.unwrap_or("Dockerfile").to_string(),
+            t: tag.to_string(),
+            rm: true, // Remove intermediate containers
+            pull: true, // Always pull the latest base image
+            ..Default::default()
+        };
+
+        // Clone the client to avoid borrowing self in the spawned task
+        let client = self.client.clone();
+        let (tx, rx) = mpsc::channel(100);
+
+        // Spawn a task to process the build stream
+        tokio::spawn(async move {
+            let mut stream = client.build_image(options, None, Some(tar_data.into()));
+            while let Some(result) = stream.next().await {
+                match result {
+                    Ok(info) => {
+                        // Extract log message from BuildInfo
+                        if let Some(stream) = info.stream {
+                            let _ = tx.send(stream).await;
+                        } else if let Some(error) = info.error {
+                            let _ = tx.send(format!("ERROR: {}", error)).await;
+                        } else if let Some(status) = info.status {
+                            let _ = tx.send(status).await;
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Build stream error: {}", e);
+                        let _ = tx.send(format!("ERROR: {}", e)).await;
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok(rx)
+    }
+
+    /// Create a tar archive of the build context directory
+    fn create_build_context_tar(context_path: &Path) -> Result<Vec<u8>> {
+        let mut tar_data = Vec::new();
+        {
+            let mut tar = Builder::new(&mut tar_data);
+            tar.append_dir_all(".", context_path)?;
+            tar.finish()?;
+        }
+        Ok(tar_data)
     }
 
     // List containers

@@ -47,6 +47,14 @@
 	let showDeployKeyModal = $state(false);
 	let deployKey = $state<{ public_key: string; created_at: string } | null>(null);
 
+	// Deployment modal state
+	let showDeploymentsModal = $state(false);
+	let deployments = $state<any[]>([]);
+	let showDeploymentLogsModal = $state(false);
+	let selectedDeployment = $state<any>(null);
+	let deploymentLogs = $state<string[]>([]);
+	let deploying = $state(false);
+
 	onMount(async () => {
 		await loadApplications();
 		await loadServers();
@@ -56,7 +64,7 @@
 		loading = true;
 		error = '';
 		try {
-			const response = await api.get<{ applications: Application[] }>('/api/v1/applications');
+			const response = await api.get<{ applications: Application[] }>('/applications');
 			applications = response.applications;
 		} catch (e: any) {
 			error = e.message || 'Failed to load applications';
@@ -67,7 +75,7 @@
 
 	async function loadServers() {
 		try {
-			const response = await api.get<{ servers: any[] }>('/api/v1/servers');
+			const response = await api.get<{ servers: any[] }>('/servers');
 			servers = response.servers;
 		} catch (e: any) {
 			console.error('Failed to load servers:', e);
@@ -77,7 +85,7 @@
 	async function createApplication() {
 		error = '';
 		try {
-			await api.post('/api/v1/applications', createForm);
+			await api.post('/applications', createForm);
 			showCreateModal = false;
 			resetCreateForm();
 			await loadApplications();
@@ -144,7 +152,7 @@
 			if (editForm.port !== selectedApp.port) payload.port = editForm.port;
 			if (editForm.auto_deploy !== selectedApp.auto_deploy) payload.auto_deploy = editForm.auto_deploy;
 
-			await api.put(`/api/v1/applications/${selectedApp.id}`, payload);
+			await api.put(`/applications/${selectedApp.id}`, payload);
 			showDetailModal = false;
 			await loadApplications();
 		} catch (e: any) {
@@ -156,7 +164,7 @@
 		if (!confirm('Are you sure you want to delete this application?')) return;
 		error = '';
 		try {
-			await api.delete(`/api/v1/applications/${id}`);
+			await api.delete(`/applications/${id}`);
 			await loadApplications();
 		} catch (e: any) {
 			error = e.message || 'Failed to delete application';
@@ -172,7 +180,7 @@
 	async function loadEnvVars(appId: string) {
 		try {
 			const response = await api.get<{ env_vars: Array<{ key: string; value: string }> }>(
-				`/api/v1/applications/${appId}/envs`
+				`/applications/${appId}/envs`
 			);
 			appEnvVars = response.env_vars;
 		} catch (e: any) {
@@ -184,7 +192,7 @@
 		if (!selectedApp || !newEnvKey) return;
 		error = '';
 		try {
-			await api.post(`/api/v1/applications/${selectedApp.id}/envs`, {
+			await api.post(`/applications/${selectedApp.id}/envs`, {
 				key: newEnvKey,
 				value: newEnvValue
 			});
@@ -201,7 +209,7 @@
 		if (!confirm(`Delete environment variable ${key}?`)) return;
 		error = '';
 		try {
-			await api.delete(`/api/v1/applications/${selectedApp.id}/envs/${key}`);
+			await api.delete(`/applications/${selectedApp.id}/envs/${key}`);
 			await loadEnvVars(selectedApp.id);
 		} catch (e: any) {
 			error = e.message || 'Failed to delete environment variable';
@@ -217,7 +225,7 @@
 	async function loadDeployKey(appId: string) {
 		try {
 			const response = await api.get<{ public_key: string; created_at: string }>(
-				`/api/v1/applications/${appId}/deploy-key`
+				`/applications/${appId}/deploy-key`
 			);
 			deployKey = response;
 		} catch (e: any) {
@@ -231,7 +239,7 @@
 		error = '';
 		try {
 			const response = await api.post<{ public_key: string; created_at: string }>(
-				`/api/v1/applications/${selectedApp.id}/deploy-key`,
+				`/applications/${selectedApp.id}/deploy-key`,
 				{}
 			);
 			deployKey = response;
@@ -267,6 +275,62 @@
 				return strategy;
 		}
 	}
+
+	async function triggerDeploy(app: Application) {
+		if (!confirm(`Deploy ${app.name}?`)) return;
+		deploying = true;
+		error = '';
+		try {
+			await api.post(`/applications/${app.id}/deploy`, {});
+			alert('Deployment started! Check deployment history to view progress.');
+			await loadApplications();
+		} catch (e: any) {
+			error = e.message || 'Failed to trigger deployment';
+		} finally {
+			deploying = false;
+		}
+	}
+
+	async function openDeploymentsModal(app: Application) {
+		selectedApp = app;
+		showDeploymentsModal = true;
+		await loadDeployments(app.id);
+	}
+
+	async function loadDeployments(appId: string) {
+		try {
+			const response = await api.get<{ deployments: any[] }>(
+				`/deployments?application_id=${appId}`
+			);
+			deployments = response.deployments;
+		} catch (e: any) {
+			error = e.message || 'Failed to load deployments';
+		}
+	}
+
+	async function openDeploymentLogs(deployment: any) {
+		selectedDeployment = deployment;
+		deploymentLogs = deployment.build_log ? deployment.build_log.split('\n').filter((l: string) => l) : [];
+		showDeploymentLogsModal = true;
+	}
+
+	function getDeploymentStatusColor(status: string) {
+		switch (status) {
+			case 'running':
+				return 'green';
+			case 'queued':
+			case 'cloning':
+			case 'building':
+			case 'deploying':
+				return 'blue';
+			case 'failed':
+				return 'red';
+			case 'cancelled':
+				return 'gray';
+			default:
+				return 'gray';
+		}
+	}
 </script>
 
 <div class="applications-page">
@@ -299,6 +363,12 @@
 							<span class="status status-{getStatusColor(app.status)}">{app.status}</span>
 						</div>
 						<div class="app-actions">
+							{#if app.git_url}
+								<button class="btn-sm btn-primary" onclick={() => triggerDeploy(app)} disabled={deploying}>
+									{deploying ? 'Deploying...' : 'Deploy'}
+								</button>
+							{/if}
+							<button class="btn-sm" onclick={() => openDeploymentsModal(app)}>Deployments</button>
 							<button class="btn-sm" onclick={() => openDetailModal(app)}>Edit</button>
 							<button class="btn-sm" onclick={() => openEnvModal(app)}>Env Vars</button>
 							{#if app.git_url}
@@ -551,6 +621,82 @@
 	</div>
 {/if}
 
+<!-- Deployments Modal -->
+{#if showDeploymentsModal && selectedApp}
+	<div class="modal-overlay" onclick={() => (showDeploymentsModal = false)}>
+		<div class="modal" onclick={(e) => e.stopPropagation()}>
+			<h2>Deployments - {selectedApp.name}</h2>
+
+			{#if deployments.length === 0}
+				<p>No deployments yet. Click the "Deploy" button to create your first deployment.</p>
+			{:else}
+				<div class="deployments-list">
+					{#each deployments as deployment (deployment.id)}
+						<div class="deployment-item">
+							<div class="deployment-header">
+								<div>
+									<span class="status status-{getDeploymentStatusColor(deployment.status)}">
+										{deployment.status}
+									</span>
+									<span class="deployment-id">{deployment.id.substring(0, 8)}</span>
+								</div>
+								<button class="btn-sm" onclick={() => openDeploymentLogs(deployment)}>
+									View Logs
+								</button>
+							</div>
+							<div class="deployment-details">
+								{#if deployment.commit_sha}
+									<div>Commit: {deployment.commit_sha.substring(0, 7)}</div>
+								{/if}
+								{#if deployment.commit_message}
+									<div>Message: {deployment.commit_message}</div>
+								{/if}
+								<div>Started: {new Date(deployment.started_at).toLocaleString()}</div>
+								{#if deployment.finished_at}
+									<div>Finished: {new Date(deployment.finished_at).toLocaleString()}</div>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
+
+			<div class="modal-actions">
+				<button class="btn-secondary" onclick={() => (showDeploymentsModal = false)}>Close</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Deployment Logs Modal -->
+{#if showDeploymentLogsModal && selectedDeployment}
+	<div class="modal-overlay" onclick={() => (showDeploymentLogsModal = false)}>
+		<div class="modal" onclick={(e) => e.stopPropagation()}>
+			<h2>Deployment Logs</h2>
+			<p>
+				<span class="status status-{getDeploymentStatusColor(selectedDeployment.status)}">
+					{selectedDeployment.status}
+				</span>
+				<span class="deployment-id">{selectedDeployment.id}</span>
+			</p>
+
+			<div class="log-viewer">
+				{#if deploymentLogs.length === 0}
+					<div class="log-line">No logs available yet...</div>
+				{:else}
+					{#each deploymentLogs as line}
+						<div class="log-line">{line}</div>
+					{/each}
+				{/if}
+			</div>
+
+			<div class="modal-actions">
+				<button class="btn-secondary" onclick={() => (showDeploymentLogsModal = false)}>Close</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
 	.applications-page {
 		padding: 2rem;
@@ -571,9 +717,13 @@
 		font-weight: 600;
 	}
 
+	p {
+		color: #4b5563;
+	}
+
 	.header p {
 		margin: 0;
-		color: #6b7280;
+		color: #4b5563;
 	}
 
 	.loading,
@@ -612,6 +762,7 @@
 		margin: 0 0 0.5rem 0;
 		font-size: 1.25rem;
 		font-weight: 600;
+		color: #111827;
 	}
 
 	.app-actions {
@@ -658,6 +809,7 @@
 		display: flex;
 		gap: 0.5rem;
 		font-size: 0.875rem;
+		color: #374151;
 	}
 
 	.detail-row .label {
@@ -675,7 +827,8 @@
 	.modal-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.5);
+		background: rgba(0, 0, 0, 0.7);
+		backdrop-filter: blur(2px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -697,6 +850,12 @@
 		margin: 0 0 1.5rem 0;
 		font-size: 1.5rem;
 		font-weight: 600;
+		color: #111827;
+	}
+
+	.modal p {
+		color: #4b5563;
+		margin: 1rem 0;
 	}
 
 	.form-group {
@@ -782,6 +941,10 @@
 		margin-bottom: 1.5rem;
 	}
 
+	.deploy-key-section p {
+		color: #4b5563;
+	}
+
 	.deploy-key-info {
 		margin-bottom: 1rem;
 		color: #6b7280;
@@ -802,10 +965,12 @@
 		font-size: 0.75rem;
 		white-space: pre-wrap;
 		word-break: break-all;
+		color: #1f2937;
 	}
 
 	.deploy-key-date {
 		font-size: 0.875rem;
+		color: #6b7280;
 		color: #6b7280;
 		margin-bottom: 1rem;
 	}
@@ -884,5 +1049,69 @@
 		padding: 1rem;
 		border-radius: 4px;
 		margin-bottom: 1rem;
+	}
+
+	.btn-sm.btn-primary {
+		background: #3b82f6;
+		color: white;
+	}
+
+	.btn-sm.btn-primary:hover:not(:disabled) {
+		background: #2563eb;
+	}
+
+	.btn-sm:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.deployments-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		max-height: 400px;
+		overflow-y: auto;
+	}
+
+	.deployment-item {
+		padding: 1rem;
+		background: #f9fafb;
+		border-radius: 4px;
+		border: 1px solid #e5e7eb;
+	}
+
+	.deployment-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 0.5rem;
+	}
+
+	.deployment-id {
+		font-family: 'Courier New', monospace;
+		font-size: 0.75rem;
+		color: #6b7280;
+	}
+
+	.deployment-details {
+		font-size: 0.875rem;
+		color: #4b5563;
+	}
+
+	.log-viewer {
+		background: #1f2937;
+		color: #f3f4f6;
+		font-family: 'Courier New', monospace;
+		font-size: 0.75rem;
+		padding: 1rem;
+		border-radius: 4px;
+		max-height: 500px;
+		overflow-y: auto;
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+
+	.log-line {
+		margin-bottom: 0.25rem;
 	}
 </style>

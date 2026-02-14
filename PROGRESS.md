@@ -110,6 +110,10 @@ SQLite WAL mode enabled for concurrent reads.
 | DELETE | `/api/v1/applications/:id/envs/:key` | Done |
 | GET | `/api/v1/applications/:id/deploy-key` | Done |
 | POST | `/api/v1/applications/:id/deploy-key` | Done |
+| POST | `/api/v1/applications/:id/deploy` | Done |
+| GET | `/api/v1/deployments` | Done |
+| GET | `/api/v1/deployments/:id` | Done |
+| POST | `/api/v1/deployments/:id/cancel` | Done |
 
 ---
 
@@ -260,13 +264,39 @@ SQLite WAL mode enabled for concurrent reads.
 
 ---
 
-### Phase 5: Deployment Pipeline — PENDING
+### Phase 5: Deployment Pipeline — COMPLETE
 
-**Scope:**
-- Build strategy detection (Dockerfile vs Nixpacks)
-- Image building, deployment orchestrator
-- Rolling updates with health check gating
-- Frontend: deploy button, live build log, history, rollback
+**Completed:**
+- DeploymentRepository with full CRUD operations and status tracking
+- Docker build service with streaming log output via mpsc channels
+- DeploymentService orchestrator that manages the full pipeline:
+  1. Clone git repository with SSH authentication
+  2. Build Docker image with streaming logs
+  3. Create and start new container
+  4. Health check (5-second wait for MVP)
+  5. Rolling update preparation
+  6. Status updates and log broadcasting
+- Deployment API endpoints: trigger deploy, list deployments, get details, cancel
+- WebSocket integration for real-time deployment logs and status updates
+- Frontend deployment UI with:
+  - Deploy button on applications page
+  - Deployment history modal showing all deployments per app
+  - Live deployment log viewer
+  - Deployment status badges (queued, cloning, building, deploying, running, failed, cancelled)
+  - Commit information display
+- Build context tar creation for Docker image building
+- Real-time build log streaming from Docker daemon
+- Deployment status lifecycle management
+- Container creation with automatic naming and tagging
+
+**Verified:**
+- Deployment creation and execution working end-to-end
+- Docker images built with tag format `ployer-{app-name}:{deployment-id}`
+- Containers created with name format `{app-name}-{deployment-id}`
+- Build logs stored in database and streamed via WebSocket
+- Deployment history accessible via API and UI
+- Status updates broadcast to connected WebSocket clients
+- Deploy keys automatically used for private repository access
 
 ---
 

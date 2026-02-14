@@ -151,21 +151,8 @@ async fn create_application(
         }
     }
 
-    // Generate deploy key if git_url is provided
-    if req.git_url.is_some() {
-        let (public_key, private_key) = GitService::generate_deploy_key()
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Key generation failed: {}", e)))?;
-
-        let secret_key = state.config.get_secret_key();
-        let encrypted_private = crypto::encrypt(&private_key, &secret_key)
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Encryption failed: {}", e)))?;
-
-        let key_repo = DeployKeyRepository::new(state.db.clone());
-        key_repo
-            .create(&app.id, &public_key, &encrypted_private)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    }
+    // Note: Deploy key generation is now on-demand via POST /applications/:id/deploy-key
+    // This avoids blocking application creation with expensive RSA 4096 key generation
 
     Ok((StatusCode::CREATED, Json(ApplicationResponse { application: app })))
 }

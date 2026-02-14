@@ -706,6 +706,102 @@ Response (201 Created):
 
 Note: This generates a new RSA 4096 key pair. The old key is deleted.
 
+### Deployments
+
+**Trigger deployment**
+
+```bash
+POST /api/v1/applications/:id/deploy
+Authorization: Bearer <token>
+```
+
+Response (201 Created):
+
+```json
+{
+  "deployment": {
+    "id": "uuid",
+    "application_id": "uuid",
+    "server_id": "uuid",
+    "commit_sha": null,
+    "commit_message": null,
+    "status": "queued",
+    "build_log": null,
+    "container_id": null,
+    "image_tag": "ployer-my-app:uuid",
+    "started_at": "2026-02-14T00:00:00Z",
+    "finished_at": null
+  }
+}
+```
+
+Note: Deployment runs in the background. Status will progress through: queued → cloning → building → deploying → running.
+
+**List deployments**
+
+```bash
+GET /api/v1/deployments
+Authorization: Bearer <token>
+
+# Filter by application
+GET /api/v1/deployments?application_id=uuid
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "deployments": [
+    {
+      "id": "uuid",
+      "application_id": "uuid",
+      "server_id": "uuid",
+      "commit_sha": "abc123",
+      "commit_message": "Fix bug in auth",
+      "status": "running",
+      "build_log": "Step 1/5 : FROM node:18...\n...",
+      "container_id": "docker-container-id",
+      "image_tag": "ployer-my-app:uuid",
+      "started_at": "2026-02-14T00:00:00Z",
+      "finished_at": "2026-02-14T00:05:00Z"
+    }
+  ]
+}
+```
+
+**Get deployment details**
+
+```bash
+GET /api/v1/deployments/:id
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+{
+  "deployment": {
+    "id": "uuid",
+    "application_id": "uuid",
+    "status": "running",
+    "build_log": "Full build logs...",
+    ...
+  }
+}
+```
+
+**Cancel deployment**
+
+```bash
+POST /api/v1/deployments/:id/cancel
+Authorization: Bearer <token>
+```
+
+Response: 204 No Content
+
+Note: Can only cancel deployments that are queued, cloning, building, or deploying. Running deployments cannot be cancelled.
+
 ### Health Check
 
 ```bash

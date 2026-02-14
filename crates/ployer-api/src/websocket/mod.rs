@@ -57,6 +57,12 @@ enum WsServerMessage {
         status: String,
         message: Option<String>,
     },
+    #[serde(rename = "deployment_logs")]
+    DeploymentLogs {
+        deployment_id: String,
+        line: String,
+        timestamp: String,
+    },
     #[serde(rename = "pong")]
     Pong,
     #[serde(rename = "error")]
@@ -165,8 +171,8 @@ async fn handle_socket(socket: WebSocket, user_id: String, state: SharedState) {
                     })
                 }
                 WsEvent::DeploymentLog { deployment_id, line } => {
-                    Some(WsServerMessage::ContainerLogs {
-                        container_id: deployment_id, // Using deployment_id as container_id for now
+                    Some(WsServerMessage::DeploymentLogs {
+                        deployment_id,
                         line,
                         timestamp: chrono::Utc::now().to_rfc3339(),
                     })

@@ -10,4 +10,5 @@ tokio = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 rsa = { workspace = true }
+base64 = { workspace = true }
 rand = { workspace = true }

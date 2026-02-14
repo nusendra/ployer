@@ -8,7 +8,7 @@ use tokio::sync::broadcast;
 
 pub struct AppState {
     pub db: SqlitePool,
-    pub docker: Option<DockerClient>,
+    pub docker: Option<Arc<DockerClient>>,
     pub caddy: CaddyClient,
     pub config: AppConfig,
     pub ws_broadcast: broadcast::Sender<WsEvent>,
@@ -26,7 +26,7 @@ impl AppState {
         let (ws_broadcast, _) = broadcast::channel(256);
         Arc::new(Self {
             db,
-            docker,
+            docker: docker.map(Arc::new),
             caddy,
             config,
             ws_broadcast,
