@@ -19,7 +19,9 @@ A lightweight Coolify alternative built with Rust + SvelteKit + Caddy, targeting
 ployer/
 ├── Cargo.toml                     # Workspace root
 ├── config/default.toml            # Default configuration
-├── migrations/001_initial.sql     # SQLite schema (all 9 tables)
+├── migrations/
+│   ├── 001_initial.sql            # Initial schema (9 core tables)
+│   └── 002_webhooks.sql           # Webhook tables (webhooks, webhook_deliveries)
 ├── crates/
 │   ├── ployer-core/               # Domain models, config, error types
 │   ├── ployer-db/                 # SQLite pool + migrations
@@ -50,19 +52,21 @@ ployer/
 
 ## Database Schema
 
-9 tables defined in `migrations/001_initial.sql`:
+11 tables defined in `migrations/`:
 
-| Table | Purpose |
-|-------|---------|
-| `users` | User accounts with email, password_hash, role |
-| `api_keys` | API key authentication per user |
-| `servers` | Local + remote servers with SSH config |
-| `applications` | App config: git URL, branch, build strategy, port |
-| `environment_variables` | Encrypted env vars per application |
-| `domains` | Custom domains per application |
-| `deployments` | Deployment history with build logs |
-| `deploy_keys` | SSH deploy keys per application |
-| `health_checks` | Health check config per application |
+| Table | Purpose | Migration |
+|-------|---------|-----------|
+| `users` | User accounts with email, password_hash, role | 001_initial.sql |
+| `api_keys` | API key authentication per user | 001_initial.sql |
+| `servers` | Local + remote servers with SSH config | 001_initial.sql |
+| `applications` | App config: git URL, branch, build strategy, port | 001_initial.sql |
+| `environment_variables` | Encrypted env vars per application | 001_initial.sql |
+| `domains` | Custom domains per application | 001_initial.sql |
+| `deployments` | Deployment history with build logs | 001_initial.sql |
+| `deploy_keys` | SSH deploy keys per application | 001_initial.sql |
+| `health_checks` | Health check config per application | 001_initial.sql |
+| `webhooks` | Webhook config per application (provider, secret, enabled) | 002_webhooks.sql |
+| `webhook_deliveries` | Webhook delivery history with status and commit metadata | 002_webhooks.sql |
 
 SQLite WAL mode enabled for concurrent reads.
 
@@ -114,6 +118,17 @@ SQLite WAL mode enabled for concurrent reads.
 | GET | `/api/v1/deployments` | Done |
 | GET | `/api/v1/deployments/:id` | Done |
 | POST | `/api/v1/deployments/:id/cancel` | Done |
+| GET | `/api/v1/applications/:id/domains` | Done |
+| POST | `/api/v1/applications/:id/domains` | Done |
+| DELETE | `/api/v1/applications/:id/domains/:domain` | Done |
+| POST | `/api/v1/applications/:id/domains/:domain/verify` | Done |
+| POST | `/api/v1/applications/:id/domains/:domain/primary` | Done |
+| POST | `/api/v1/applications/:id/webhooks` | Done |
+| GET | `/api/v1/applications/:id/webhooks` | Done |
+| DELETE | `/api/v1/applications/:id/webhooks` | Done |
+| GET | `/api/v1/applications/:id/webhooks/deliveries` | Done |
+| POST | `/api/v1/webhooks/github` | Done |
+| POST | `/api/v1/webhooks/gitlab` | Done |
 
 ---
 
@@ -329,12 +344,54 @@ SQLite WAL mode enabled for concurrent reads.
 
 ---
 
-### Phase 7: Webhooks + Auto-Deploy — PENDING
+### Phase 7: Webhooks + Auto-Deploy — COMPLETE
 
-**Scope:**
-- GitHub/GitLab webhook parsing + signature verification
-- Auto-trigger deployment on push
-- Frontend: webhook URL display, delivery history
+**Completed:**
+- Webhook tables schema (webhooks, webhook_deliveries) in new migration 002_webhooks.sql
+- Webhook and WebhookDelivery models with WebhookProvider enum (GitHub, GitLab)
+- WebhookDeliveryStatus enum (Success, Failed, Skipped) for tracking delivery outcomes
+- WebhookRepository with full CRUD operations and delivery history tracking
+- Webhook payload parser service with:
+  - GitHub push event parsing (ref, head_commit, repository)
+  - GitLab push event parsing (ref, checkout_sha, commits, repository)
+  - HMAC-SHA256 signature verification for GitHub (X-Hub-Signature-256 header)
+  - Token-based verification for GitLab (X-Gitlab-Token header)
+- Webhook API endpoints:
+  - POST/GET/DELETE `/applications/:app_id/webhooks` — create/get/delete webhook
+  - GET `/applications/:app_id/webhooks/deliveries` — list webhook delivery history
+  - POST `/webhooks/github?app_id=<id>` — GitHub webhook receiver
+  - POST `/webhooks/gitlab?app_id=<id>` — GitLab webhook receiver
+- Auto-deploy integration:
+  - Validates incoming webhook against configured secret
+  - Checks if push is on configured branch
+  - Triggers deployment via DeploymentService if branch matches
+  - Records delivery status (success/failed/skipped) with commit details
+  - Links webhook delivery to deployment ID
+- public_url field added to ServerConfig for webhook URL generation
+- Frontend webhook management UI:
+  - Webhook configuration modal accessible from application actions
+  - Provider selection (GitHub/GitLab)
+  - Webhook URL and secret token display with copy support
+  - Step-by-step instructions for GitHub and GitLab webhook setup
+  - Recent webhook deliveries list with:
+    - Event type, status badges (success/failed/skipped)
+    - Branch, commit SHA, author, commit message
+    - Timestamp of delivery
+  - Delete webhook configuration option
+
+**Dependencies Added:**
+- hmac = "0.12" — HMAC-SHA256 for GitHub webhook verification
+- hex = "0.4" — Hexadecimal encoding for signature comparison
+
+**Verified:**
+- Webhook creation generates unique secret token
+- Webhook URLs properly formatted with app_id query parameter
+- GitHub signature verification rejects invalid signatures
+- GitLab token verification works correctly
+- Auto-deploy triggered only when push is on configured branch
+- Webhook deliveries recorded with commit metadata
+- Frontend displays webhook setup instructions correctly
+- Delivery history shows status and commit details
 
 ---
 

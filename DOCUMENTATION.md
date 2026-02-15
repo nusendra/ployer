@@ -896,6 +896,143 @@ Response: 204 No Content
 
 Note: Only one domain can be primary per application.
 
+### Webhooks
+
+**Create webhook**
+
+```bash
+POST /api/v1/applications/:id/webhooks
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "provider": "github"  # or "gitlab"
+}
+```
+
+Response:
+
+```json
+{
+  "id": "webhook-uuid",
+  "application_id": "app-uuid",
+  "provider": "github",
+  "webhook_url": "http://your-domain.com/api/v1/webhooks/github?app_id=app-uuid",
+  "secret": "generated-secret-token",
+  "enabled": true
+}
+```
+
+**Get webhook configuration**
+
+```bash
+GET /api/v1/applications/:id/webhooks
+Authorization: Bearer <token>
+```
+
+Response: Same as create webhook response, or 404 if no webhook configured.
+
+**Delete webhook**
+
+```bash
+DELETE /api/v1/applications/:id/webhooks
+Authorization: Bearer <token>
+```
+
+Response: 204 No Content
+
+**List webhook deliveries**
+
+```bash
+GET /api/v1/applications/:id/webhooks/deliveries
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+[
+  {
+    "id": "delivery-uuid",
+    "provider": "github",
+    "event_type": "push",
+    "branch": "main",
+    "commit_sha": "abc123def456",
+    "commit_message": "Fix bug in deployment",
+    "author": "John Doe",
+    "status": "success",  # or "failed", "skipped"
+    "deployment_id": "deployment-uuid",
+    "delivered_at": "2024-01-15T10:30:00Z"
+  }
+]
+```
+
+**GitHub webhook endpoint**
+
+```bash
+POST /api/v1/webhooks/github?app_id=<app-uuid>
+X-Hub-Signature-256: sha256=<hmac-signature>
+Content-Type: application/json
+
+{
+  "ref": "refs/heads/main",
+  "head_commit": {
+    "id": "abc123",
+    "message": "Update feature",
+    "author": { "name": "Jane Smith" }
+  },
+  "repository": {
+    "clone_url": "https://github.com/user/repo.git"
+  }
+}
+```
+
+**GitLab webhook endpoint**
+
+```bash
+POST /api/v1/webhooks/gitlab?app_id=<app-uuid>
+X-Gitlab-Token: <secret-token>
+Content-Type: application/json
+
+{
+  "ref": "refs/heads/main",
+  "checkout_sha": "abc123",
+  "commits": [
+    {
+      "message": "Update feature",
+      "author": { "name": "Jane Smith" }
+    }
+  ],
+  "repository": {
+    "git_ssh_url": "git@gitlab.com:user/repo.git"
+  }
+}
+```
+
+**Webhook Configuration Guide**
+
+*For GitHub:*
+1. Go to your repository → Settings → Webhooks → Add webhook
+2. Paste the webhook URL from Ployer
+3. Set Content type to `application/json`
+4. Paste the secret token from Ployer
+5. Select event: "Push events"
+6. Click "Add webhook"
+
+*For GitLab:*
+1. Go to your repository → Settings → Webhooks
+2. Paste the webhook URL from Ployer
+3. Paste the secret token
+4. Check "Push events"
+5. Click "Add webhook"
+
+**Auto-Deploy Behavior:**
+- Webhook validates the signature/token
+- Checks if the push is on the configured branch (from application settings)
+- If branch matches, triggers automatic deployment
+- Records delivery status (success/failed/skipped)
+- Links delivery to the triggered deployment
+
 ### Health Check
 
 ```bash
