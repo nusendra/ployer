@@ -5,6 +5,7 @@ pub mod containers;
 pub mod applications;
 pub mod deployments;
 pub mod domains;
+pub mod webhooks;
 
 use axum::{routing::get, Router};
 use crate::app_state::SharedState;
@@ -21,6 +22,7 @@ pub fn api_router() -> Router<SharedState> {
         .nest("/applications", applications::router())
         .merge(deployments::app_deploy_router())
         .merge(domains::router())
+        .merge(webhooks::router())
         .nest("/deployments", deployments::router())
         .route("/ws", get(websocket::websocket_handler))
 }

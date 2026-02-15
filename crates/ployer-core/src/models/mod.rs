@@ -3,12 +3,14 @@ pub mod server;
 pub mod application;
 pub mod deployment;
 pub mod domain;
+pub mod webhook;
 
 pub use user::*;
 pub use server::*;
 pub use application::*;
 pub use deployment::*;
 pub use domain::*;
+pub use webhook::*;
 
 use serde::{Deserialize, Serialize};
 

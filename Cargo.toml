@@ -54,6 +54,7 @@ base64 = "0.21"
 rsa = { version = "0.9", features = ["pem"] }
 ssh-key = { version = "0.6", features = ["rsa"] }
 sha2 = "0.10"
+hmac = "0.12"
 
 # Embedding
 rust-embed = { version = "8", features = ["mime-guess"] }
@@ -77,6 +78,7 @@ chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
 thiserror = "1"
 tar = "0.4"
+hex = "0.4"
 
 # Internal crates
 ployer-core = { path = "crates/ployer-core" }

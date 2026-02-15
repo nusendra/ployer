@@ -24,6 +24,7 @@ pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub base_domain: String,
+    pub public_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,6 +55,7 @@ impl Default for AppConfig {
                 host: "0.0.0.0".to_string(),
                 port: 3001,
                 base_domain: "localhost".to_string(),
+                public_url: "http://localhost:3001".to_string(),
             },
             database: DatabaseConfig {
                 url: "sqlite://ployer.db?mode=rwc".to_string(),
