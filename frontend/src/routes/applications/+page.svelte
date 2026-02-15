@@ -60,6 +60,12 @@
 	let appDomains = $state<any[]>([]);
 	let newDomain = $state('');
 
+	// Webhook modal state
+	let showWebhookModal = $state(false);
+	let webhook = $state<any>(null);
+	let webhookDeliveries = $state<any[]>([]);
+	let selectedProvider = $state<'github' | 'gitlab'>('github');
+
 	onMount(async () => {
 		await loadApplications();
 		await loadServers();
@@ -371,6 +377,54 @@
 		}
 	}
 
+	async function openWebhookModal(app: Application) {
+		selectedApp = app;
+		showWebhookModal = true;
+		await loadWebhook(app.id);
+		await loadWebhookDeliveries(app.id);
+	}
+
+	async function loadWebhook(appId: string) {
+		try {
+			webhook = await api.get(`/applications/${appId}/webhooks`);
+		} catch (e: any) {
+			webhook = null;
+		}
+	}
+
+	async function loadWebhookDeliveries(appId: string) {
+		try {
+			const deliveries = await api.get<any[]>(`/applications/${appId}/webhooks/deliveries`);
+			webhookDeliveries = deliveries;
+		} catch (e: any) {
+			webhookDeliveries = [];
+		}
+	}
+
+	async function createWebhook() {
+		if (!selectedApp) return;
+		error = '';
+		try {
+			webhook = await api.post(`/applications/${selectedApp.id}/webhooks`, {
+				provider: selectedProvider
+			});
+		} catch (e: any) {
+			error = e.message || 'Failed to create webhook';
+		}
+	}
+
+	async function deleteWebhook() {
+		if (!selectedApp || !confirm('Delete webhook configuration?')) return;
+		error = '';
+		try {
+			await api.delete(`/applications/${selectedApp.id}/webhooks`);
+			webhook = null;
+			webhookDeliveries = [];
+		} catch (e: any) {
+			error = e.message || 'Failed to delete webhook';
+		}
+	}
+
 	async function loadDeployments(appId: string) {
 		try {
 			const response = await api.get<{ deployments: any[] }>(
@@ -448,6 +502,7 @@
 							<button class="btn-sm" onclick={() => openEnvModal(app)}>Env Vars</button>
 							{#if app.git_url}
 								<button class="btn-sm" onclick={() => openDeployKeyModal(app)}>Deploy Key</button>
+								<button class="btn-sm" onclick={() => openWebhookModal(app)}>Webhooks</button>
 							{/if}
 							<button class="btn-sm btn-danger" onclick={() => deleteApplication(app.id)}>Delete</button>
 						</div>
@@ -839,6 +894,113 @@
 
 			<div class="modal-actions">
 				<button class="btn-secondary" onclick={() => (showDomainsModal = false)}>Close</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Webhook Modal -->
+{#if showWebhookModal && selectedApp}
+	<div class="modal-overlay" onclick={() => (showWebhookModal = false)}>
+		<div class="modal" onclick={(e) => e.stopPropagation()}>
+			<h2>Webhooks - {selectedApp.name}</h2>
+
+			{#if !webhook}
+				<div class="webhook-setup">
+					<p>Configure webhook to auto-deploy when you push to your repository.</p>
+
+					<div class="form-group">
+						<label>Git Provider</label>
+						<select bind:value={selectedProvider}>
+							<option value="github">GitHub</option>
+							<option value="gitlab">GitLab</option>
+						</select>
+					</div>
+
+					<button class="btn-primary" onclick={createWebhook}>Create Webhook</button>
+				</div>
+			{:else}
+				<div class="webhook-info">
+					<div class="info-section">
+						<h3>Webhook URL</h3>
+						<div class="code-box">
+							<code>{webhook.webhook_url}</code>
+						</div>
+						<p class="hint">Add this URL to your {webhook.provider} repository webhook settings</p>
+					</div>
+
+					<div class="info-section">
+						<h3>Secret Token</h3>
+						<div class="code-box">
+							<code>{webhook.secret}</code>
+						</div>
+						<p class="hint">Use this secret for webhook signature verification</p>
+					</div>
+
+					{#if webhook.provider === 'github'}
+						<div class="info-section">
+							<h3>GitHub Configuration</h3>
+							<ol>
+								<li>Go to your repository → Settings → Webhooks → Add webhook</li>
+								<li>Paste the Webhook URL above</li>
+								<li>Set Content type to: <code>application/json</code></li>
+								<li>Paste the Secret Token above</li>
+								<li>Select event: <code>Push events</code></li>
+								<li>Click "Add webhook"</li>
+							</ol>
+						</div>
+					{:else}
+						<div class="info-section">
+							<h3>GitLab Configuration</h3>
+							<ol>
+								<li>Go to your repository → Settings → Webhooks</li>
+								<li>Paste the Webhook URL above</li>
+								<li>Paste the Secret Token</li>
+								<li>Check "Push events"</li>
+								<li>Click "Add webhook"</li>
+							</ol>
+						</div>
+					{/if}
+
+					<div class="info-section">
+						<h3>Recent Deliveries</h3>
+						{#if webhookDeliveries.length === 0}
+							<p class="empty-message">No webhook deliveries yet</p>
+						{:else}
+							<div class="deliveries-list">
+								{#each webhookDeliveries as delivery (delivery.id)}
+									<div class="delivery-item">
+										<div class="delivery-header">
+											<span class="delivery-event">{delivery.event_type}</span>
+											<span class="delivery-status status-{delivery.status}">{delivery.status}</span>
+										</div>
+										{#if delivery.branch}
+											<div class="delivery-details">
+												<span><strong>Branch:</strong> {delivery.branch}</span>
+												{#if delivery.commit_sha}
+													<span><strong>Commit:</strong> {delivery.commit_sha.substring(0, 7)}</span>
+												{/if}
+												{#if delivery.author}
+													<span><strong>Author:</strong> {delivery.author}</span>
+												{/if}
+											</div>
+										{/if}
+										{#if delivery.commit_message}
+											<div class="delivery-message">{delivery.commit_message}</div>
+										{/if}
+										<div class="delivery-time">{new Date(delivery.delivered_at).toLocaleString()}</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+
+					<button class="btn-danger" onclick={deleteWebhook}>Delete Webhook</button>
+				</div>
+			{/if}
+
+			<div class="modal-actions">
+				<button class="btn-secondary" onclick={() => (showWebhookModal = false)}>Close</button>
 			</div>
 		</div>
 	</div>
@@ -1382,5 +1544,144 @@
 		font-family: 'Courier New', monospace;
 		font-size: 0.75rem;
 		line-height: 1.5;
+	}
+
+	.webhook-setup {
+		padding: 1rem 0;
+	}
+
+	.webhook-setup p {
+		color: #4b5563;
+		margin-bottom: 1.5rem;
+	}
+
+	.webhook-info {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.info-section h3 {
+		margin: 0 0 0.75rem 0;
+		color: #1f2937;
+		font-size: 1rem;
+		font-weight: 600;
+	}
+
+	.code-box {
+		background: #1f2937;
+		padding: 0.75rem;
+		border-radius: 4px;
+		margin-bottom: 0.5rem;
+	}
+
+	.code-box code {
+		color: #f3f4f6;
+		font-family: 'Courier New', monospace;
+		font-size: 0.875rem;
+		word-break: break-all;
+	}
+
+	.hint {
+		color: #6b7280;
+		font-size: 0.875rem;
+		margin: 0;
+	}
+
+	.info-section ol {
+		margin: 0.5rem 0;
+		padding-left: 1.5rem;
+		color: #4b5563;
+	}
+
+	.info-section ol li {
+		margin: 0.5rem 0;
+		font-size: 0.875rem;
+	}
+
+	.info-section ol code {
+		background: #f3f4f6;
+		padding: 0.125rem 0.375rem;
+		border-radius: 3px;
+		font-family: 'Courier New', monospace;
+		font-size: 0.8125rem;
+		color: #1f2937;
+	}
+
+	.deliveries-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		max-height: 300px;
+		overflow-y: auto;
+	}
+
+	.delivery-item {
+		background: #f9fafb;
+		padding: 0.75rem;
+		border-radius: 4px;
+		border-left: 3px solid #d1d5db;
+	}
+
+	.delivery-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 0.5rem;
+	}
+
+	.delivery-event {
+		font-weight: 600;
+		color: #1f2937;
+		font-size: 0.875rem;
+	}
+
+	.delivery-status {
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+
+	.delivery-status.status-success {
+		background: #d1fae5;
+		color: #065f46;
+	}
+
+	.delivery-status.status-failed {
+		background: #fee2e2;
+		color: #991b1b;
+	}
+
+	.delivery-status.status-skipped {
+		background: #fef3c7;
+		color: #92400e;
+	}
+
+	.delivery-details {
+		display: flex;
+		gap: 1rem;
+		margin-bottom: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.delivery-details span {
+		font-size: 0.8125rem;
+		color: #4b5563;
+	}
+
+	.delivery-message {
+		background: #fff;
+		padding: 0.5rem;
+		border-radius: 3px;
+		font-size: 0.8125rem;
+		color: #1f2937;
+		margin-bottom: 0.5rem;
+		font-family: 'Courier New', monospace;
+	}
+
+	.delivery-time {
+		font-size: 0.75rem;
+		color: #9ca3af;
 	}
 </style>
