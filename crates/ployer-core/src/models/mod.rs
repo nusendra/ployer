@@ -4,6 +4,7 @@ pub mod application;
 pub mod deployment;
 pub mod domain;
 pub mod webhook;
+pub mod health_check;
 
 pub use user::*;
 pub use server::*;
@@ -11,6 +12,7 @@ pub use application::*;
 pub use deployment::*;
 pub use domain::*;
 pub use webhook::*;
+pub use health_check::*;
 
 use serde::{Deserialize, Serialize};
 
@@ -35,5 +37,9 @@ pub enum WsEvent {
     ServerHealth {
         server_id: String,
         status: ServerStatus,
+    },
+    AppHealth {
+        app_id: String,
+        status: HealthCheckStatus,
     },
 }

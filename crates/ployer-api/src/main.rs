@@ -121,8 +121,9 @@ async fn start_server(config: AppConfig) -> Result<()> {
     // Build shared state
     let state = app_state::AppState::new(pool.clone(), docker, caddy, config);
 
-    // Start health monitor
-    services::health_monitor::spawn_health_monitor(pool, state.ws_broadcast.clone());
+    // Start health monitors
+    services::health_monitor::spawn_health_monitor(pool.clone(), state.ws_broadcast.clone());
+    services::app_health_monitor::spawn_app_health_monitor(pool, state.docker.clone(), state.ws_broadcast.clone());
 
     // Build router
     let app = Router::new()
