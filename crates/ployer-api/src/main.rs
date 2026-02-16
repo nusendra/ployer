@@ -123,7 +123,10 @@ async fn start_server(config: AppConfig) -> Result<()> {
 
     // Start health monitors
     services::health_monitor::spawn_health_monitor(pool.clone(), state.ws_broadcast.clone());
-    services::app_health_monitor::spawn_app_health_monitor(pool, state.docker.clone(), state.ws_broadcast.clone());
+    services::app_health_monitor::spawn_app_health_monitor(pool.clone(), state.docker.clone(), state.ws_broadcast.clone());
+
+    // Start stats aggregator
+    services::stats_aggregator::spawn_stats_aggregator(pool, state.docker.clone());
 
     // Build router
     let app = Router::new()

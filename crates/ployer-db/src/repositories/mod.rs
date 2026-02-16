@@ -8,6 +8,7 @@ pub mod deployment;
 pub mod domain;
 pub mod webhook;
 pub mod health_check;
+pub mod container_stats;
 
 pub use user::UserRepository;
 pub use api_key::ApiKeyRepository;
@@ -19,3 +20,4 @@ pub use deployment::DeploymentRepository;
 pub use domain::DomainRepository;
 pub use webhook::WebhookRepository;
 pub use health_check::HealthCheckRepository;
+pub use container_stats::ContainerStatsRepository;

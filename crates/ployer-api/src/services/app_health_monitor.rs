@@ -95,8 +95,48 @@ async fn check_application_health(
 
             let _ = ws_broadcast.send(WsEvent::AppHealth {
                 app_id: app.id.clone(),
-                status: new_status,
+                status: new_status.clone(),
             });
+        }
+
+        // Auto-restart logic: check if we need to restart the container
+        if new_status == HealthCheckStatus::Unhealthy {
+            // Get recent results to count consecutive failures
+            let recent_results = health_repo
+                .get_recent_results(&app.id, health_check.unhealthy_threshold as i64)
+                .await?;
+
+            // Count consecutive unhealthy checks
+            let consecutive_unhealthy = recent_results
+                .iter()
+                .take_while(|r| r.status == HealthCheckStatus::Unhealthy)
+                .count();
+
+            // If threshold exceeded, restart container
+            if consecutive_unhealthy >= health_check.unhealthy_threshold as usize {
+                warn!(
+                    "App {} has {} consecutive unhealthy checks, restarting container {}",
+                    app.name, consecutive_unhealthy, container_id
+                );
+
+                match docker.restart_container(container_id, Some(10)).await {
+                    Ok(_) => {
+                        info!("Successfully restarted container {} for app {}", container_id, app.name);
+
+                        // Broadcast restart event
+                        let _ = ws_broadcast.send(WsEvent::AppHealth {
+                            app_id: app.id.clone(),
+                            status: HealthCheckStatus::Unknown,
+                        });
+                    }
+                    Err(e) => {
+                        warn!(
+                            "Failed to restart container {} for app {}: {}",
+                            container_id, app.name, e
+                        );
+                    }
+                }
+            }
         }
     }
 
