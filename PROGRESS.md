@@ -52,7 +52,7 @@ ployer/
 
 ## Database Schema
 
-11 tables defined in `migrations/`:
+13 tables defined in `migrations/`:
 
 | Table | Purpose | Migration |
 |-------|---------|-----------|
@@ -67,6 +67,8 @@ ployer/
 | `health_checks` | Health check config per application | 001_initial.sql |
 | `webhooks` | Webhook config per application (provider, secret, enabled) | 002_webhooks.sql |
 | `webhook_deliveries` | Webhook delivery history with status and commit metadata | 002_webhooks.sql |
+| `health_check_results` | Health check history with status, response time, errors | 003_health_check_results.sql |
+| `container_stats` | Container metrics (CPU, memory, network I/O) | 003_health_check_results.sql |
 
 SQLite WAL mode enabled for concurrent reads.
 
@@ -129,6 +131,10 @@ SQLite WAL mode enabled for concurrent reads.
 | GET | `/api/v1/applications/:id/webhooks/deliveries` | Done |
 | POST | `/api/v1/webhooks/github` | Done |
 | POST | `/api/v1/webhooks/gitlab` | Done |
+| POST | `/api/v1/applications/:id/health-check` | Done |
+| GET | `/api/v1/applications/:id/health-check` | Done |
+| GET | `/api/v1/applications/:id/health-check/results` | Done |
+| GET | `/api/v1/applications/:id/stats` | Done |
 
 ---
 
@@ -395,12 +401,49 @@ SQLite WAL mode enabled for concurrent reads.
 
 ---
 
-### Phase 8: Monitoring + Health Checks — PENDING
+### Phase 8: Monitoring + Health Checks — COMPLETE
 
-**Scope:**
-- Per-app health check polling, auto-restart
-- Container stats aggregation
-- Frontend: dashboard charts, health indicators
+**Completed:**
+- Health check models and repository with configurable settings
+  - HealthCheck model with path, intervals, timeout, thresholds
+  - HealthCheckResult model for tracking check history
+  - HealthCheckStatus enum (Healthy, Unhealthy, Unknown)
+  - HealthCheckRepository with CRUD and result tracking
+- Background health monitoring service (app_health_monitor)
+  - Runs every 15 seconds polling all configured health checks
+  - Makes HTTP requests to container health endpoints
+  - Records results with response time, status code, errors
+  - Broadcasts WebSocket AppHealth events on status changes
+- Auto-restart on health check failure
+  - Tracks consecutive unhealthy checks
+  - Auto-restarts containers when unhealthy_threshold exceeded
+  - Logs restart actions for debugging
+- Container stats aggregation service (stats_aggregator)
+  - Collects CPU, memory, network I/O metrics every 60 seconds
+  - Calculates CPU percentage from Docker stats delta
+  - Stores stats with application_id for historical tracking
+  - Automatic cleanup of stats older than 24 hours
+- Monitoring API endpoints:
+  - POST/GET /applications/:app_id/health-check - Configure health checks
+  - GET /applications/:app_id/health-check/results - Health check history
+  - GET /applications/:app_id/stats - Container stats with time range
+- Enhanced dashboard with real-time monitoring:
+  - Stat cards showing application, server, deployment counts
+  - Applications status overview with health indicators
+  - Recent deployments list with status badges
+  - Server status monitoring with online/offline indicators
+  - Responsive grid layout and loading states
+
+**Database Tables:**
+- health_check_results - Health check history with status tracking
+- container_stats - Aggregated container metrics (CPU, memory, network)
+
+**Verified:**
+- Health checks poll running containers every 15 seconds
+- Auto-restart triggers on consecutive failures
+- Stats collected and stored every 60 seconds
+- Dashboard displays real-time system overview
+- API endpoints return health and stats data correctly
 
 ---
 

@@ -1033,6 +1033,104 @@ Content-Type: application/json
 - Records delivery status (success/failed/skipped)
 - Links delivery to the triggered deployment
 
+### Monitoring
+
+**Configure health check**
+
+```bash
+POST /api/v1/applications/:app_id/health-check
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "path": "/health",
+  "interval_seconds": 30,
+  "timeout_seconds": 5,
+  "healthy_threshold": 2,
+  "unhealthy_threshold": 3
+}
+```
+
+Response:
+
+```json
+{
+  "id": "health-check-uuid",
+  "application_id": "app-uuid",
+  "path": "/health",
+  "interval_seconds": 30,
+  "timeout_seconds": 5,
+  "healthy_threshold": 2,
+  "unhealthy_threshold": 3,
+  "created_at": "2024-01-15T10:00:00Z"
+}
+```
+
+**Get health check configuration**
+
+```bash
+GET /api/v1/applications/:app_id/health-check
+Authorization: Bearer <token>
+```
+
+Response: Same as configure health check, or 404 if not configured.
+
+**Get health check results**
+
+```bash
+GET /api/v1/applications/:app_id/health-check/results
+Authorization: Bearer <token>
+```
+
+Response:
+
+```json
+[
+  {
+    "id": "result-uuid",
+    "container_id": "abc123",
+    "status": "healthy",
+    "response_time_ms": 45,
+    "status_code": 200,
+    "error_message": null,
+    "checked_at": "2024-01-15T10:30:00Z"
+  }
+]
+```
+
+**Get container stats**
+
+```bash
+GET /api/v1/applications/:app_id/stats?hours=1
+Authorization: Bearer <token>
+```
+
+Query parameters:
+- `hours` (optional, default: 1) - Number of hours of historical data to retrieve
+
+Response:
+
+```json
+[
+  {
+    "container_id": "abc123",
+    "cpu_percent": 5.2,
+    "memory_mb": 128.5,
+    "memory_limit_mb": 512.0,
+    "network_rx_mb": 10.5,
+    "network_tx_mb": 5.2,
+    "recorded_at": "2024-01-15T10:30:00Z"
+  }
+]
+```
+
+**Monitoring Features:**
+- Health checks run automatically every 15 seconds for all configured applications
+- Auto-restart triggered when consecutive unhealthy checks exceed threshold
+- Container stats collected every 60 seconds
+- Stats retained for 24 hours, then automatically cleaned up
+- WebSocket events broadcast on health status changes
+
 ### Health Check
 
 ```bash
