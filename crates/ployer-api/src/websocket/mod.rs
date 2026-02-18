@@ -39,6 +39,7 @@ enum WsServerMessage {
         timestamp: String,
     },
     #[serde(rename = "container_logs")]
+    #[allow(dead_code)]
     ContainerLogs {
         container_id: String,
         line: String,
@@ -61,6 +62,12 @@ enum WsServerMessage {
     DeploymentLogs {
         deployment_id: String,
         line: String,
+        timestamp: String,
+    },
+    #[serde(rename = "app_health")]
+    AppHealth {
+        app_id: String,
+        status: String,
         timestamp: String,
     },
     #[serde(rename = "pong")]
@@ -190,6 +197,13 @@ async fn handle_socket(socket: WebSocket, user_id: String, state: SharedState) {
                         cpu_usage: cpu_percent,
                         memory_usage_mb: memory_mb,
                         memory_limit_mb: 0.0, // Not available in this event
+                    })
+                }
+                WsEvent::AppHealth { app_id, status } => {
+                    Some(WsServerMessage::AppHealth {
+                        app_id,
+                        status: status.as_str().to_string(),
+                        timestamp: chrono::Utc::now().to_rfc3339(),
                     })
                 }
             };

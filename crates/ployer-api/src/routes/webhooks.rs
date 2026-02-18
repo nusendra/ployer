@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
-    routing::{delete, get, post},
+    routing::{get, post},
     Json, Router,
 };
 use ployer_core::models::{WebhookProvider, WebhookDeliveryStatus};
@@ -11,11 +11,12 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::app_state::SharedState;
-use crate::auth::AuthUser;
+use crate::auth::extract_user_id;
 use crate::services::webhook::{
     parse_github_push, parse_gitlab_push, verify_github_signature, verify_gitlab_signature,
 };
 use crate::services::DeploymentService;
+use ployer_core::crypto;
 
 pub fn router() -> Router<SharedState> {
     Router::new()
@@ -67,17 +68,19 @@ struct DeliveryResponse {
 
 /// Create or update webhook for an application
 async fn create_webhook(
-    _auth: AuthUser,
+    headers: HeaderMap,
     State(state): State<SharedState>,
     Path(app_id): Path<String>,
     Json(req): Json<CreateWebhookRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    extract_user_id(&headers, &state.config.auth.jwt_secret)?;
+
     let webhook_repo = ployer_db::repositories::WebhookRepository::new(state.db.clone());
     let app_repo = ployer_db::repositories::ApplicationRepository::new(state.db.clone());
 
     // Verify application exists
     app_repo
-        .get(&app_id)
+        .find_by_id(&app_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Application not found".to_string()))?;
@@ -131,10 +134,12 @@ async fn create_webhook(
 
 /// Get webhook details for an application
 async fn get_webhook(
-    _auth: AuthUser,
+    headers: HeaderMap,
     State(state): State<SharedState>,
     Path(app_id): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    extract_user_id(&headers, &state.config.auth.jwt_secret)?;
+
     let webhook_repo = ployer_db::repositories::WebhookRepository::new(state.db.clone());
 
     let webhook = webhook_repo
@@ -162,10 +167,12 @@ async fn get_webhook(
 
 /// Delete webhook for an application
 async fn delete_webhook(
-    _auth: AuthUser,
+    headers: HeaderMap,
     State(state): State<SharedState>,
     Path(app_id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    extract_user_id(&headers, &state.config.auth.jwt_secret)?;
+
     let webhook_repo = ployer_db::repositories::WebhookRepository::new(state.db.clone());
 
     webhook_repo
@@ -178,10 +185,12 @@ async fn delete_webhook(
 
 /// List webhook deliveries for an application
 async fn list_deliveries(
-    _auth: AuthUser,
+    headers: HeaderMap,
     State(state): State<SharedState>,
     Path(app_id): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    extract_user_id(&headers, &state.config.auth.jwt_secret)?;
+
     let webhook_repo = ployer_db::repositories::WebhookRepository::new(state.db.clone());
 
     let deliveries = webhook_repo
@@ -246,13 +255,13 @@ async fn handle_github_webhook(
 
     // Get application to check auto-deploy branch
     let application = app_repo
-        .get(app_id)
+        .find_by_id(app_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Application not found".to_string()))?;
 
     // Check if this is the branch we should auto-deploy
-    let should_deploy = application.branch == payload.branch;
+    let should_deploy = application.git_branch == payload.branch;
 
     let (status, deployment_id) = if should_deploy {
         // Ensure Docker client is available
@@ -266,9 +275,11 @@ async fn handle_github_webhook(
 
         // Get deploy key if exists
         let deploy_key_repo = ployer_db::repositories::DeployKeyRepository::new(state.db.clone());
-        let private_key = match deploy_key_repo.get(&application.id).await {
-            Ok(Some(key)) => Some(key.private_key),
-            _ => None,
+        let private_key = if let Ok(Some(key)) = deploy_key_repo.find_by_application(&application.id).await {
+            let secret_key = state.config.get_secret_key();
+            crypto::decrypt(&key.private_key_encrypted, &secret_key).ok()
+        } else {
+            None
         };
 
         // Trigger deployment
@@ -354,13 +365,13 @@ async fn handle_gitlab_webhook(
 
     // Get application to check auto-deploy branch
     let application = app_repo
-        .get(app_id)
+        .find_by_id(app_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Application not found".to_string()))?;
 
     // Check if this is the branch we should auto-deploy
-    let should_deploy = application.branch == payload.branch;
+    let should_deploy = application.git_branch == payload.branch;
 
     let (status, deployment_id) = if should_deploy {
         // Ensure Docker client is available
@@ -374,9 +385,11 @@ async fn handle_gitlab_webhook(
 
         // Get deploy key if exists
         let deploy_key_repo = ployer_db::repositories::DeployKeyRepository::new(state.db.clone());
-        let private_key = match deploy_key_repo.get(&application.id).await {
-            Ok(Some(key)) => Some(key.private_key),
-            _ => None,
+        let private_key = if let Ok(Some(key)) = deploy_key_repo.find_by_application(&application.id).await {
+            let secret_key = state.config.get_secret_key();
+            crypto::decrypt(&key.private_key_encrypted, &secret_key).ok()
+        } else {
+            None
         };
 
         // Trigger deployment

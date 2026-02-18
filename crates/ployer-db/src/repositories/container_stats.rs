@@ -68,6 +68,7 @@ impl ContainerStatsRepository {
         container_id: &str,
         hours_ago: i64,
     ) -> Result<Vec<ContainerStats>> {
+        let time_filter = format!("-{} hours", hours_ago);
         let rows = sqlx::query!(
             r#"
             SELECT id, container_id, application_id, cpu_percent, memory_mb,
@@ -78,7 +79,7 @@ impl ContainerStatsRepository {
             ORDER BY recorded_at ASC
             "#,
             container_id,
-            format!("-{} hours", hours_ago)
+            time_filter
         )
         .fetch_all(&self.pool)
         .await?;
@@ -105,6 +106,7 @@ impl ContainerStatsRepository {
         application_id: &str,
         hours_ago: i64,
     ) -> Result<Vec<ContainerStats>> {
+        let time_filter = format!("-{} hours", hours_ago);
         let rows = sqlx::query!(
             r#"
             SELECT id, container_id, application_id, cpu_percent, memory_mb,
@@ -115,7 +117,7 @@ impl ContainerStatsRepository {
             ORDER BY recorded_at ASC
             "#,
             application_id,
-            format!("-{} hours", hours_ago)
+            time_filter
         )
         .fetch_all(&self.pool)
         .await?;
@@ -138,12 +140,13 @@ impl ContainerStatsRepository {
 
     /// Clean up old stats (keep only last N hours)
     pub async fn cleanup_old_stats(&self, hours: i64) -> Result<u64> {
+        let time_filter = format!("-{} hours", hours);
         let result = sqlx::query!(
             r#"
             DELETE FROM container_stats
             WHERE recorded_at < datetime('now', ?)
             "#,
-            format!("-{} hours", hours)
+            time_filter
         )
         .execute(&self.pool)
         .await?;

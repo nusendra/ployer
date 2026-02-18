@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::Utc;
-use ployer_core::models::{HealthCheck, HealthCheckResult, HealthCheckStatus};
+use ployer_core::models::deployment::{HealthCheck, HealthCheckResult, HealthCheckStatus};
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -26,7 +26,7 @@ impl HealthCheckRepository {
         // Check if health check exists
         let existing = self.get(application_id).await?;
 
-        if let Some(existing) = existing {
+        if let Some(_existing) = existing {
             // Update existing
             sqlx::query!(
                 r#"
@@ -248,12 +248,13 @@ impl HealthCheckRepository {
 
     /// Clean up old health check results (keep only last N days)
     pub async fn cleanup_old_results(&self, days: i64) -> Result<u64> {
+        let time_filter = format!("-{} days", days);
         let result = sqlx::query!(
             r#"
             DELETE FROM health_check_results
             WHERE checked_at < datetime('now', ?)
             "#,
-            format!("-{} days", days)
+            time_filter
         )
         .execute(&self.pool)
         .await?;

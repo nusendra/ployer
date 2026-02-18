@@ -1,3 +1,6 @@
+import { clearAuth } from '$lib/stores/auth';
+import { goto } from '$app/navigation';
+
 const BASE_URL = '/api/v1';
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -15,6 +18,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 		...options,
 		headers
 	});
+
+	if (res.status === 401) {
+		clearAuth();
+		goto('/login');
+		throw new Error('Session expired. Please log in again.');
+	}
 
 	if (!res.ok) {
 		const body = await res.json().catch(() => ({}));

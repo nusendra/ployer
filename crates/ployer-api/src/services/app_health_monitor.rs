@@ -43,7 +43,7 @@ async fn check_application_health(
 
     for health_check in health_checks {
         // Get the application
-        let app = match app_repo.get(&health_check.application_id).await? {
+        let app = match app_repo.find_by_id(&health_check.application_id).await? {
             Some(app) => app,
             None => continue,
         };
@@ -119,7 +119,7 @@ async fn check_application_health(
                     app.name, consecutive_unhealthy, container_id
                 );
 
-                match docker.restart_container(container_id, Some(10)).await {
+                match docker.restart_container(container_id).await {
                     Ok(_) => {
                         info!("Successfully restarted container {} for app {}", container_id, app.name);
 

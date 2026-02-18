@@ -4,7 +4,6 @@ pub mod application;
 pub mod deployment;
 pub mod domain;
 pub mod webhook;
-pub mod health_check;
 pub mod container_stats;
 
 pub use user::*;
@@ -13,7 +12,6 @@ pub use application::*;
 pub use deployment::*;
 pub use domain::*;
 pub use webhook::*;
-pub use health_check::*;
 pub use container_stats::*;
 
 use serde::{Deserialize, Serialize};

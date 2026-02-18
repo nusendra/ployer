@@ -8,6 +8,7 @@ use crate::app_state::SharedState;
 use super::jwt::validate_token;
 
 /// Middleware to validate JWT tokens from Authorization header
+#[allow(dead_code)]
 pub async fn auth_middleware(
     State(state): State<SharedState>,
     mut req: Request,

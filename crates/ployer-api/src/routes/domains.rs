@@ -10,7 +10,6 @@ use crate::app_state::SharedState;
 use crate::auth::extract_user_id;
 use ployer_core::models::Domain;
 use ployer_db::repositories::DomainRepository;
-use ployer_proxy::ReverseProxyConfig;
 
 pub fn router() -> Router<SharedState> {
     Router::new()

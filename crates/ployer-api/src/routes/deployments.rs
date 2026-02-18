@@ -10,7 +10,7 @@ use std::sync::Arc;
 use crate::app_state::SharedState;
 use crate::auth::extract_user_id;
 use crate::services::DeploymentService;
-use ployer_core::models::{Deployment, DeploymentStatus};
+use ployer_core::models::Deployment;
 use ployer_core::crypto;
 use ployer_db::repositories::{ApplicationRepository, DeployKeyRepository, DeploymentRepository};
 

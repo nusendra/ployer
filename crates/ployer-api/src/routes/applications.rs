@@ -1,7 +1,7 @@
 use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
-    routing::{delete, get, post, put},
+    routing::{get, put},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use crate::app_state::SharedState;
 use crate::auth::extract_user_id;
 use ployer_core::crypto;
-use ployer_core::models::{Application, AppStatus, BuildStrategy, DeployKey, EnvironmentVariable};
+use ployer_core::models::{Application, BuildStrategy};
 use ployer_db::repositories::{ApplicationRepository, DeployKeyRepository, EnvVarRepository};
 use ployer_git::GitService;
 

@@ -38,7 +38,6 @@ async fn collect_container_stats(db: &SqlitePool, docker: &DockerClient) -> anyh
     let deployment_repo = DeploymentRepository::new(db.clone());
     let app_repo = ApplicationRepository::new(db.clone());
 
-    // Get all applications
     let applications = app_repo.list().await?;
 
     for app in applications {
@@ -53,37 +52,30 @@ async fn collect_container_stats(db: &SqlitePool, docker: &DockerClient) -> anyh
             None => continue,
         };
 
-        // Get container stats from Docker
+        // Get container stats from Docker (uses ployer-docker's ContainerStats type)
         match docker.get_container_stats(container_id).await {
             Ok(stats) => {
-                // Extract CPU percentage
-                let cpu_percent = calculate_cpu_percent(&stats);
+                // Network I/O in MB
+                let network_rx_mb = stats.network_rx_bytes as f64 / 1_048_576.0;
+                let network_tx_mb = stats.network_tx_bytes as f64 / 1_048_576.0;
 
-                // Extract memory usage
-                let memory_mb = stats.memory_stats.usage.unwrap_or(0) as f64 / 1_048_576.0; // bytes to MB
-                let memory_limit_mb = stats.memory_stats.limit.map(|l| l as f64 / 1_048_576.0);
-
-                // Extract network I/O
-                let (network_rx_mb, network_tx_mb) = calculate_network_io(&stats);
-
-                // Record stats
                 stats_repo
                     .record(
                         container_id,
                         Some(&app.id),
-                        cpu_percent,
-                        memory_mb,
-                        memory_limit_mb,
-                        network_rx_mb,
-                        network_tx_mb,
+                        stats.cpu_usage,
+                        stats.memory_usage_mb,
+                        Some(stats.memory_limit_mb),
+                        Some(network_rx_mb),
+                        Some(network_tx_mb),
                     )
                     .await?;
 
                 debug!(
-                    "Recorded stats for container {}: CPU={:.2}%, Mem={:.2}MB",
-                    &container_id[..12],
-                    cpu_percent,
-                    memory_mb
+                    "Recorded stats for app {}: CPU={:.2}%, Mem={:.2}MB",
+                    app.name,
+                    stats.cpu_usage,
+                    stats.memory_usage_mb
                 );
             }
             Err(e) => {
@@ -93,36 +85,6 @@ async fn collect_container_stats(db: &SqlitePool, docker: &DockerClient) -> anyh
     }
 
     Ok(())
-}
-
-fn calculate_cpu_percent(stats: &bollard::container::Stats) -> f64 {
-    let cpu_delta = stats.cpu_stats.cpu_usage.total_usage as f64
-        - stats.precpu_stats.cpu_usage.total_usage as f64;
-
-    let system_delta = stats.cpu_stats.system_cpu_usage.unwrap_or(0) as f64
-        - stats.precpu_stats.system_cpu_usage.unwrap_or(0) as f64;
-
-    let num_cpus = stats.cpu_stats.online_cpus.unwrap_or(1) as f64;
-
-    if system_delta > 0.0 && cpu_delta > 0.0 {
-        (cpu_delta / system_delta) * num_cpus * 100.0
-    } else {
-        0.0
-    }
-}
-
-fn calculate_network_io(stats: &bollard::container::Stats) -> (Option<f64>, Option<f64>) {
-    if let Some(networks) = &stats.networks {
-        let total_rx: u64 = networks.values().map(|n| n.rx_bytes).sum();
-        let total_tx: u64 = networks.values().map(|n| n.tx_bytes).sum();
-
-        (
-            Some(total_rx as f64 / 1_048_576.0), // bytes to MB
-            Some(total_tx as f64 / 1_048_576.0),
-        )
-    } else {
-        (None, None)
-    }
 }
 
 async fn cleanup_old_stats(db: &SqlitePool) -> anyhow::Result<()> {

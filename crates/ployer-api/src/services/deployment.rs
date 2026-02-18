@@ -9,11 +9,12 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use tracing::{error, info, warn};
+use tracing::{error, warn};
 
 pub struct DeploymentService {
     db: SqlitePool,
     docker: Arc<DockerClient>,
+    #[allow(dead_code)]
     git: GitService,
     caddy: Option<Arc<CaddyClient>>,
     base_domain: String,

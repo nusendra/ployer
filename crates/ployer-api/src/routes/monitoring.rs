@@ -1,15 +1,15 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
-use ployer_core::models::{HealthCheckStatus, ContainerStats};
+use ployer_core::models::HealthCheckStatus;
 use serde::{Deserialize, Serialize};
 
 use crate::app_state::SharedState;
-use crate::auth::AuthUser;
+use crate::auth::extract_user_id;
 
 pub fn router() -> Router<SharedState> {
     Router::new()
@@ -66,17 +66,19 @@ struct StatsQuery {
 
 /// Configure health check for an application
 async fn configure_health_check(
-    _auth: AuthUser,
+    headers: HeaderMap,
     State(state): State<SharedState>,
     Path(app_id): Path<String>,
     Json(req): Json<ConfigureHealthCheckRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    extract_user_id(&headers, &state.config.auth.jwt_secret)?;
+
     let health_repo = ployer_db::repositories::HealthCheckRepository::new(state.db.clone());
     let app_repo = ployer_db::repositories::ApplicationRepository::new(state.db.clone());
 
     // Verify application exists
     app_repo
-        .get(&app_id)
+        .find_by_id(&app_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Application not found".to_string()))?;
@@ -108,10 +110,12 @@ async fn configure_health_check(
 
 /// Get health check configuration for an application
 async fn get_health_check(
-    _auth: AuthUser,
+    headers: HeaderMap,
     State(state): State<SharedState>,
     Path(app_id): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    extract_user_id(&headers, &state.config.auth.jwt_secret)?;
+
     let health_repo = ployer_db::repositories::HealthCheckRepository::new(state.db.clone());
 
     let health_check = health_repo
@@ -134,10 +138,12 @@ async fn get_health_check(
 
 /// Get health check results for an application
 async fn get_health_check_results(
-    _auth: AuthUser,
+    headers: HeaderMap,
     State(state): State<SharedState>,
     Path(app_id): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    extract_user_id(&headers, &state.config.auth.jwt_secret)?;
+
     let health_repo = ployer_db::repositories::HealthCheckRepository::new(state.db.clone());
 
     let results = health_repo
@@ -163,11 +169,12 @@ async fn get_health_check_results(
 
 /// Get container stats for an application
 async fn get_application_stats(
-    _auth: AuthUser,
+    headers: HeaderMap,
     State(state): State<SharedState>,
     Path(app_id): Path<String>,
     Query(query): Query<StatsQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    extract_user_id(&headers, &state.config.auth.jwt_secret)?;
     let stats_repo = ployer_db::repositories::ContainerStatsRepository::new(state.db.clone());
 
     let hours = query.hours.unwrap_or(1); // Default to last 1 hour
