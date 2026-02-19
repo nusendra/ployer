@@ -1,6 +1,8 @@
 services:
   ployer:
-    build: .
+    build:
+      context: .
+      network: host
     restart: unless-stopped
     volumes:
       # Persist SQLite database

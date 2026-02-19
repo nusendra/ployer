@@ -36,7 +36,7 @@ RUN sqlite3 ployer.db "" && \
 # Copy compiled frontend (needed if we ever switch to rust-embed)
 COPY --from=frontend /frontend/build ./frontend/build
 
-RUN DATABASE_URL="sqlite://ployer.db" cargo build --release --bin ployer
+RUN --network=host DATABASE_URL="sqlite://ployer.db" cargo build --release --bin ployer
 
 # ─────────────────────────────────────────────
 # Stage 3: Minimal runtime image
