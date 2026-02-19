@@ -41,6 +41,12 @@ Point your domain's DNS `A record` to your server IP first, then run:
 curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh | sudo bash
 ```
 
+> **Note:** `curl | bash` runs in non-interactive mode and will auto-detect your server IP. To use a custom domain with HTTPS, download and run the script directly instead:
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh -o install.sh
+> sudo bash install.sh
+> ```
+
 The installer will:
 1. Detect your OS and install Docker if needed
 2. Ask for your domain (or use server IP for quick testing)

@@ -194,7 +194,15 @@ prompt_domain() {
   echo -e "  ${YELLOW}→ Use a domain if you want HTTPS (e.g. ployer.yourdomain.com)${NC}"
   echo -e "  ${YELLOW}→ Use the server IP for quick testing (HTTP only)${NC}"
   echo ""
-  read -rp "  Enter domain or IP [default: ${server_ip}]: " DOMAIN
+
+  # When piped through curl | bash, stdin is not a terminal — skip prompt and use server IP
+  if [[ -t 0 ]]; then
+    read -rp "  Enter domain or IP [default: ${server_ip}]: " DOMAIN
+  else
+    warn "Non-interactive mode detected (curl | bash). Using server IP: ${server_ip}"
+    warn "To use a custom domain, run: bash install.sh"
+    DOMAIN=""
+  fi
   DOMAIN="${DOMAIN:-$server_ip}"
 
   # Determine if it looks like an IP address
