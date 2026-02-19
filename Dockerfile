@@ -13,14 +13,14 @@ RUN bun run build
 # ─────────────────────────────────────────────
 # Stage 2: Build Rust binary
 # ─────────────────────────────────────────────
-FROM rust:1.86-bookworm AS builder
+FROM rust:1.86-alpine AS builder
 
-RUN apt-get update && apt-get install -y \
-    sqlite3 \
-    libsqlite3-dev \
-    pkg-config \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache \
+    sqlite \
+    sqlite-dev \
+    pkgconfig \
+    openssl-dev \
+    musl-dev
 
 WORKDIR /app
 
@@ -41,14 +41,13 @@ RUN DATABASE_URL="sqlite://ployer.db" cargo build --release --bin ployer
 # ─────────────────────────────────────────────
 # Stage 3: Minimal runtime image
 # ─────────────────────────────────────────────
-FROM debian:bookworm-slim
+FROM alpine:3
 
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     ca-certificates \
-    libsqlite3-0 \
-    libssl3 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    sqlite-libs \
+    openssl \
+    curl
 
 WORKDIR /app
 
