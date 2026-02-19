@@ -312,32 +312,12 @@ EOF
   log "Caddyfile written to ${caddyfile}"
 }
 
-spinner() {
-  local pid=$1
-  local msg=$2
-  local frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
-  local i=0
-  while kill -0 "$pid" 2>/dev/null; do
-    printf "\r  ${BLUE}%s${NC} %s" "${frames[$((i % ${#frames[@]}))]}" "$msg"
-    sleep 0.1
-    ((i++))
-  done
-  printf "\r"
-}
-
 start_services() {
   step "Building and starting Ployer"
   cd "$PLOYER_DIR"
 
-  # Build in background and show spinner
   info "Building Docker image (this may take 5-15 minutes on first run)..."
-  docker compose build 2>&1 | while IFS= read -r line; do
-    # Show stage transitions so user knows progress
-    if [[ "$line" =~ ^"#"[0-9]+\ "[".*"]" ]] || [[ "$line" =~ "Step " ]] || [[ "$line" =~ "=>" ]]; then
-      stage=$(echo "$line" | sed 's/^#[0-9]* //' | cut -c1-70)
-      printf "\r  ${BLUE}→${NC} %-70s\n" "$stage"
-    fi
-  done || true
+  docker compose build --progress=plain 2>&1 | grep -E "^(#[0-9]+ |\[|Step |ERROR)" | sed 's/^#[0-9]* //' || true
 
   log "Image built"
 
