@@ -13,7 +13,7 @@ RUN bun run build
 # ─────────────────────────────────────────────
 # Stage 2: Build Rust binary
 # ─────────────────────────────────────────────
-FROM rust:1.86-alpine AS builder
+FROM rust:1.88-alpine AS builder
 
 RUN apk add --no-cache \
     sqlite \
