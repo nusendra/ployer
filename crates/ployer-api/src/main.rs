@@ -12,6 +12,7 @@ use ployer_core::config::AppConfig;
 use ployer_docker::DockerClient;
 use ployer_proxy::CaddyClient;
 use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer};
+use tower_http::services::{ServeDir, ServeFile};
 use tower_http::trace::TraceLayer;
 use tracing::info;
 use tracing_subscriber::{fmt, EnvFilter};
@@ -62,8 +63,8 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    // Load config (use defaults for now)
-    let config = AppConfig::default();
+    // Load config from env vars (falls back to defaults)
+    let config = AppConfig::from_env();
 
     match cli.command.unwrap_or(Commands::Start) {
         Commands::Start => start_server(config).await,
@@ -203,9 +204,27 @@ async fn start_server(config: AppConfig) -> Result<()> {
     // Start stats aggregator
     services::stats_aggregator::spawn_stats_aggregator(pool, state.docker.clone());
 
-    // Build router
-    let app = Router::new()
-        .nest("/api/v1", routes::api_router())
+    // Serve frontend static files if FRONTEND_DIR is set or ./frontend/build exists
+    let frontend_dir = std::env::var("FRONTEND_DIR")
+        .unwrap_or_else(|_| "frontend/build".to_string());
+    let serve_frontend = std::path::Path::new(&frontend_dir).exists();
+
+    // Build router — optionally with frontend static file fallback
+    let api = routes::api_router();
+    let app = if serve_frontend {
+        let index = format!("{}/index.html", frontend_dir);
+        info!("Serving frontend from {}", frontend_dir);
+        Router::new()
+            .nest("/api/v1", api)
+            .fallback_service(
+                ServeDir::new(&frontend_dir)
+                    .not_found_service(ServeFile::new(index)),
+            )
+    } else {
+        Router::new().nest("/api/v1", api)
+    };
+
+    let app = app
         .layer(axum_middleware::from_fn(
             middleware::rate_limit::rate_limit_middleware,
         ))

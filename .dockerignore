@@ -1,0 +1,30 @@
+# Build artifacts
+target/
+frontend/build/
+frontend/node_modules/
+
+# Database files (not baked into image)
+*.db
+*.db-shm
+*.db-wal
+
+# Dev / editor files
+.env
+.env.*
+*.env
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docs / misc
+README.md
+PROGRESS.md
+DOCUMENTATION.md
+
+# CI
+.github/

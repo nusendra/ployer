@@ -1,0 +1,47 @@
+services:
+  ployer:
+    build: .
+    restart: unless-stopped
+    volumes:
+      # Persist SQLite database
+      - ployer-data:/data
+      # Docker socket so Ployer can manage containers on this host
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      PLOYER_DATABASE_URL: "sqlite:///data/ployer.db?mode=rwc"
+      PLOYER_JWT_SECRET: "${PLOYER_JWT_SECRET:-change-me-in-production}"
+      PLOYER_BASE_DOMAIN: "${PLOYER_BASE_DOMAIN:-localhost}"
+      PLOYER_PUBLIC_URL: "${PLOYER_PUBLIC_URL:-http://localhost}"
+      PLOYER_CADDY_URL: "http://caddy:2019"
+      PLOYER_ALLOWED_ORIGINS: "${PLOYER_ALLOWED_ORIGINS:-*}"
+      FRONTEND_DIR: "/app/frontend/build"
+    # Not exposed directly — Caddy is the public entry point
+    expose:
+      - "3001"
+    depends_on:
+      - caddy
+    networks:
+      - ployer-net
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"   # Caddy Admin API (used by Ployer to configure routes)
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - ployer-net
+
+volumes:
+  ployer-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  ployer-net:
+    driver: bridge

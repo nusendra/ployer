@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────────
+# Ployer — Caddy reverse proxy configuration
+#
+# Replace "your-staging-domain.com" with your actual domain.
+# Caddy automatically provisions TLS via Let's Encrypt.
+# ─────────────────────────────────────────────────────────────────
+
+your-staging-domain.com {
+    # Proxy everything (API + frontend) to the Ployer container.
+    # Ployer serves its own static frontend on the same port.
+    reverse_proxy ployer:3001
+
+    # Pass real client IP to the backend
+    header_up X-Real-IP {remote_host}
+    header_up X-Forwarded-Proto {scheme}
+
+    # WebSocket upgrade support (for /api/v1/ws)
+    @websocket {
+        header Connection *Upgrade*
+        header Upgrade    websocket
+    }
+    reverse_proxy @websocket ployer:3001
+
+    # Access log
+    log {
+        output file /data/caddy/access.log
+        format json
+    }
+}
+
+# Caddy Admin API — keep internal only (bind to all so ployer container can reach it)
+:2019 {
+    bind 0.0.0.0
+}
