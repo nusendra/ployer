@@ -65,6 +65,19 @@ impl UserRepository {
         Ok(count)
     }
 
+    pub async fn update_password(&self, id: &str, password_hash: &str) -> Result<()> {
+        let now = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?"
+        )
+        .bind(password_hash)
+        .bind(&now)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn list(&self) -> Result<Vec<User>> {
         let rows = sqlx::query_as::<_, UserRow>(
             "SELECT id, email, password_hash, name, role, created_at, updated_at FROM users ORDER BY created_at DESC"

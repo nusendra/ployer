@@ -25,6 +25,9 @@ pub struct ServerConfig {
     pub port: u16,
     pub base_domain: String,
     pub public_url: String,
+    /// Comma-separated list of allowed CORS origins, e.g. "http://localhost:5173,https://app.example.com"
+    /// Use "*" to allow all origins (default, suitable for development).
+    pub allowed_origins: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,6 +59,7 @@ impl Default for AppConfig {
                 port: 3001,
                 base_domain: "localhost".to_string(),
                 public_url: "http://localhost:3001".to_string(),
+                allowed_origins: "*".to_string(),
             },
             database: DatabaseConfig {
                 url: "sqlite://ployer.db?mode=rwc".to_string(),

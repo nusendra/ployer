@@ -447,10 +447,46 @@ SQLite WAL mode enabled for concurrent reads.
 
 ---
 
-### Phase 9: Polish + Hardening — PENDING
+### Phase 9: Polish + Hardening — COMPLETE
 
-**Scope:**
-- Error handling audit, rate limiting, input validation
-- CORS, graceful shutdown, config file support
-- CLI: install, reset-password
-- Structured JSON logging, frontend dark mode polish
+**Completed:**
+- Rate limiting middleware (300 req/min global, using `governor` crate)
+  - Returns 429 Too Many Requests with descriptive JSON error
+  - Shared `Extension<SharedRateLimiter>` injected into the Axum router
+- Input validation module (`middleware/validation.rs`)
+  - `required(field, max_len)` — non-empty string with max length
+  - `email(value)` — format check (contains @, .)
+  - `password(value)` — min 8, max 128 chars
+  - `git_url(value)` — must start with http://, https://, git@, or ssh://
+  - `port(value)` — non-zero port check
+  - `env_key(value)` — alphanumeric + underscore only
+  - Applied to: register, create/update application, add env var
+- Configurable CORS (`allowed_origins` in ServerConfig)
+  - Default `"*"` allows all origins (dev-friendly)
+  - Production: comma-separated list of origins with credentials support
+- Graceful shutdown on SIGTERM and Ctrl-C
+  - `axum::serve(...).with_graceful_shutdown(shutdown_signal())`
+  - Handles both Unix SIGTERM and cross-platform Ctrl-C
+- Structured JSON logging
+  - Set `LOG_FORMAT=json` to enable JSON log output
+  - Uses `tracing-subscriber` JSON format (feature already included)
+  - Default format is human-readable
+- HTTP request tracing via `TraceLayer` (method, path, status, latency)
+- CLI `reset-password` command
+  - `ployer reset-password --email <email> --password <new>`
+  - Validates password length, hashes with Argon2, updates DB directly
+  - `UserRepository::update_password()` method added
+- Frontend toast notification system
+  - `$lib/stores/toast.ts` — typed store with `success`, `error`, `info`, `warning`
+  - `$lib/components/Toast.svelte` — slide-in toasts, bottom-right, auto-dismiss
+  - Mounted in `+layout.svelte` — available on every page
+  - 401 responses show toast before redirect to login
+
+**Verified:**
+- `cargo build --workspace` — clean, zero warnings
+- Rate limiter returns 429 after burst limit exceeded
+- Validation returns 400 with descriptive messages on bad input
+- Graceful shutdown logs "Server shut down gracefully" on SIGTERM
+- `LOG_FORMAT=json cargo run -- start` produces JSON log lines
+- `ployer reset-password --email admin@example.com --password newpass123` works
+- Toast notifications appear and auto-dismiss after configured duration

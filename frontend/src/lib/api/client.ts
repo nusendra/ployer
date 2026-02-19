@@ -1,5 +1,6 @@
 import { clearAuth } from '$lib/stores/auth';
 import { goto } from '$app/navigation';
+import { toast } from '$lib/stores/toast';
 
 const BASE_URL = '/api/v1';
 
@@ -21,13 +22,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 	if (res.status === 401) {
 		clearAuth();
+		toast.error('Session expired. Please log in again.');
 		goto('/login');
 		throw new Error('Session expired. Please log in again.');
 	}
 
 	if (!res.ok) {
 		const body = await res.json().catch(() => ({}));
-		throw new Error(body.error || `Request failed: ${res.status}`);
+		const message = body.error || `Request failed: ${res.status}`;
+		throw new Error(message);
 	}
 
 	// Handle 204 No Content responses (e.g., DELETE operations)

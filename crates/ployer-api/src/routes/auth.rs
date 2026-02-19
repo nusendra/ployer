@@ -10,6 +10,7 @@ use ployer_core::models::User;
 
 use crate::app_state::SharedState;
 use crate::auth::{validate_token, AuthService};
+use crate::middleware::validation;
 
 pub fn router() -> Router<SharedState> {
     Router::new()
@@ -37,20 +38,9 @@ async fn register(
 ) -> Result<Json<RegisterResponse>, (StatusCode, String)> {
     let auth_service = AuthService::new(state.db.clone());
 
-    // Validate input
-    if req.email.is_empty() || req.password.is_empty() || req.name.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Email, password, and name are required".to_string(),
-        ));
-    }
-
-    if req.password.len() < 8 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Password must be at least 8 characters".to_string(),
-        ));
-    }
+    validation::email(&req.email)?;
+    validation::password(&req.password)?;
+    validation::required(&req.name, "Name", 100)?;
 
     // Register user
     let user = auth_service

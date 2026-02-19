@@ -9,6 +9,7 @@ use std::collections::HashMap;
 
 use crate::app_state::SharedState;
 use crate::auth::extract_user_id;
+use crate::middleware::validation;
 use ployer_core::crypto;
 use ployer_core::models::{Application, BuildStrategy};
 use ployer_db::repositories::{ApplicationRepository, DeployKeyRepository, EnvVarRepository};
@@ -113,9 +114,13 @@ async fn create_application(
 ) -> Result<(StatusCode, Json<ApplicationResponse>), (StatusCode, String)> {
     extract_user_id(&headers, &state.config.auth.jwt_secret)?;
 
-    // Validate input
-    if req.name.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Application name is required".to_string()));
+    validation::required(&req.name, "Name", 100)?;
+    validation::required(&req.server_id, "Server ID", 36)?;
+    if let Some(ref url) = req.git_url {
+        validation::git_url(url)?;
+    }
+    if let Some(p) = req.port {
+        validation::port(p)?;
     }
 
     let repo = ApplicationRepository::new(state.db.clone());
@@ -181,6 +186,16 @@ async fn update_application(
     Json(req): Json<UpdateApplicationRequest>,
 ) -> Result<Json<ApplicationResponse>, (StatusCode, String)> {
     extract_user_id(&headers, &state.config.auth.jwt_secret)?;
+
+    if let Some(ref name) = req.name {
+        validation::required(name, "Name", 100)?;
+    }
+    if let Some(ref url) = req.git_url {
+        validation::git_url(url)?;
+    }
+    if let Some(p) = req.port {
+        validation::port(p)?;
+    }
 
     let repo = ApplicationRepository::new(state.db.clone());
 
@@ -263,9 +278,7 @@ async fn add_env_var(
 ) -> Result<StatusCode, (StatusCode, String)> {
     extract_user_id(&headers, &state.config.auth.jwt_secret)?;
 
-    if req.key.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Key is required".to_string()));
-    }
+    validation::env_key(&req.key)?;
 
     let secret_key = state.config.get_secret_key();
     let encrypted = crypto::encrypt(&req.value, &secret_key)

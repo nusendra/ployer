@@ -6,6 +6,7 @@
 	import { clearAuth } from '$lib/stores/auth';
 	import { wsClient } from '$lib/stores/websocket';
 	import { onDestroy } from 'svelte';
+	import Toast from '$lib/components/Toast.svelte';
 
 	let { children } = $props();
 	let isAuthenticated = $state(false);
@@ -53,6 +54,8 @@
 <svelte:head>
 	<title>Ployer</title>
 </svelte:head>
+
+<Toast />
 
 {#if isChecking}
 	<div class="loading-screen">

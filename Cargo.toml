@@ -22,7 +22,7 @@ futures-util = "0.3"
 
 # Web framework
 axum = { version = "0.7", features = ["ws"] }
-tower-http = { version = "0.5", features = ["cors", "compression-gzip", "fs"] }
+tower-http = { version = "0.5", features = ["cors", "compression-gzip", "fs", "trace"] }
 
 # Database
 sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "chrono", "uuid"] }
@@ -79,6 +79,7 @@ anyhow = "1"
 thiserror = "1"
 tar = "0.4"
 hex = "0.4"
+governor = "0.6"
 
 # Internal crates
 ployer-core = { path = "crates/ployer-core" }
