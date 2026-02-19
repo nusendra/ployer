@@ -317,7 +317,7 @@ start_services() {
   cd "$PLOYER_DIR"
 
   info "Building Docker image (this may take 5-15 minutes on first run)..."
-  docker compose build --progress=plain 2>&1 | grep -E "^(#[0-9]+ |\[|Step |ERROR)" | sed 's/^#[0-9]* //' || true
+  docker compose build --progress=plain 2>&1
 
   log "Image built"
 
