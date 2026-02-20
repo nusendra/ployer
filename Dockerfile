@@ -63,6 +63,7 @@ RUN apk add --no-cache \
     ca-certificates \
     sqlite-libs \
     openssl \
+    libgcc \
     curl
 
 WORKDIR /app
