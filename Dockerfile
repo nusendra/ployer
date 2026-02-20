@@ -49,6 +49,9 @@ RUN sqlite3 ployer.db "" && \
 
 COPY --from=frontend /frontend/build ./frontend/build
 
+# Use dynamic linking on musl/Alpine so shared OpenSSL libs are found
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+
 RUN --network=host DATABASE_URL="sqlite://ployer.db" cargo build --release --bin ployer
 
 # ─────────────────────────────────────────────
