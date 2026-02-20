@@ -266,16 +266,10 @@ write_caddyfile() {
   if [[ "$USE_HTTPS" == "true" ]]; then
     cat > "$caddyfile" <<EOF
 ${DOMAIN} {
-    reverse_proxy ployer:3001
-
-    header_up X-Real-IP {remote_host}
-    header_up X-Forwarded-Proto {scheme}
-
-    @websocket {
-        header Connection *Upgrade*
-        header Upgrade    websocket
+    reverse_proxy ployer:3001 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
     }
-    reverse_proxy @websocket ployer:3001
 
     log {
         output file /data/access.log
@@ -291,16 +285,10 @@ EOF
     # IP-based: HTTP only, no TLS
     cat > "$caddyfile" <<EOF
 :80 {
-    reverse_proxy ployer:3001
-
-    header_up X-Real-IP {remote_host}
-    header_up X-Forwarded-Proto http
-
-    @websocket {
-        header Connection *Upgrade*
-        header Upgrade    websocket
+    reverse_proxy ployer:3001 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto http
     }
-    reverse_proxy @websocket ployer:3001
 }
 
 :2019 {
