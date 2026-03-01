@@ -10,6 +10,7 @@
 
 	let { children } = $props();
 	let isAuthenticated = $state(false);
+	let isLoginPage = $state(false);
 	let isChecking = $state(true);
 
 	// Check auth on every route change
@@ -20,10 +21,13 @@
 
 		// Skip auth check for login page
 		if (currentPath === '/login') {
-			isAuthenticated = true;
+			isLoginPage = true;
+			isAuthenticated = false;
 			isChecking = false;
 			return;
 		}
+
+		isLoginPage = false;
 
 		// Check if user has a token
 		const token = localStorage.getItem('token');
@@ -61,6 +65,8 @@
 	<div class="loading-screen">
 		<p>Loading...</p>
 	</div>
+{:else if isLoginPage}
+	{@render children()}
 {:else if isAuthenticated}
 	<div class="app-shell">
 		<nav class="sidebar">
