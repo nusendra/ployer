@@ -1094,8 +1094,8 @@
 	}
 
 	.status-blue {
-		background: #dbeafe;
-		color: #1e40af;
+		background: #0F4C75;
+		color: #BBE1FA;
 	}
 
 	.status-gray {

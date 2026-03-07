@@ -68,13 +68,13 @@
 			{#if mode === 'register'}
 				<div class="form-group">
 					<label for="name">Name</label>
-					<input id="name" type="text" bind:value={name} placeholder="Your name" />
+					<input id="name" type="text" bind:value={name} placeholder="Your name" required />
 				</div>
 			{/if}
 
 			<div class="form-group">
 				<label for="email">Email</label>
-				<input id="email" type="email" bind:value={email} placeholder="you@example.com" />
+				<input id="email" type="email" bind:value={email} placeholder="you@example.com" required />
 			</div>
 
 			<div class="form-group">
@@ -84,6 +84,7 @@
 					type="password"
 					bind:value={password}
 					placeholder="••••••••"
+					required
 				/>
 			</div>
 

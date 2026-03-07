@@ -1,15 +1,15 @@
 :root {
-	--bg: #0f172a;
-	--bg-secondary: #1e293b;
-	--bg-tertiary: #334155;
-	--text: #f8fafc;
-	--text-muted: #94a3b8;
-	--primary: #3b82f6;
-	--primary-hover: #2563eb;
+	--bg: #081028;
+	--bg-secondary: #0d1b3e;
+	--bg-tertiary: #162040;
+	--text: #ffffff;
+	--text-muted: #3282B8;
+	--primary: #3282B8;
+	--primary-hover: #BBE1FA;
 	--success: #22c55e;
 	--warning: #f59e0b;
 	--danger: #ef4444;
-	--border: #334155;
+	--border: #1e2d4d;
 	--radius: 8px;
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -43,7 +43,7 @@ button {
 
 .btn-primary {
 	background: var(--primary);
-	color: white;
+	color: #081028;
 }
 
 .btn-primary:hover {

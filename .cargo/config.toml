@@ -1,0 +1,5 @@
+[env]
+DATABASE_URL = "sqlite://ployer.db?mode=rwc"
+
+[alias]
+dev = "run --bin ployer -- start"
