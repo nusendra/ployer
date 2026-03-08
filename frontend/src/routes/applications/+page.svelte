@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
 	import type { Application, BuildStrategy } from '$lib/types';
+	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 
 	let applications = $state<Application[]>([]);
 	let servers = $state<any[]>([]);
@@ -65,6 +66,22 @@
 	let webhook = $state<any>(null);
 	let webhookDeliveries = $state<any[]>([]);
 	let selectedProvider = $state<'github' | 'gitlab'>('github');
+
+	// Confirm modal
+	let confirmModal = $state<{ message: string; confirmLabel?: string; onConfirm: () => void } | null>(null);
+
+	function showConfirm(message: string, onConfirm: () => void, confirmLabel = 'Confirm') {
+		confirmModal = { message, confirmLabel, onConfirm };
+	}
+
+	function closeConfirm() {
+		confirmModal = null;
+	}
+
+	function handleConfirm() {
+		confirmModal?.onConfirm();
+		confirmModal = null;
+	}
 
 	onMount(async () => {
 		await loadApplications();
@@ -172,14 +189,15 @@
 	}
 
 	async function deleteApplication(id: string) {
-		if (!confirm('Are you sure you want to delete this application?')) return;
-		error = '';
-		try {
-			await api.delete(`/applications/${id}`);
-			await loadApplications();
-		} catch (e: any) {
-			error = e.message || 'Failed to delete application';
-		}
+		showConfirm('Delete this application? All deployments and configuration will be lost.', async () => {
+			error = '';
+			try {
+				await api.delete(`/applications/${id}`);
+				await loadApplications();
+			} catch (e: any) {
+				error = e.message || 'Failed to delete application';
+			}
+		});
 	}
 
 	async function openEnvModal(app: Application) {
@@ -217,14 +235,15 @@
 
 	async function deleteEnvVar(key: string) {
 		if (!selectedApp) return;
-		if (!confirm(`Delete environment variable ${key}?`)) return;
-		error = '';
-		try {
-			await api.delete(`/applications/${selectedApp.id}/envs/${key}`);
-			await loadEnvVars(selectedApp.id);
-		} catch (e: any) {
-			error = e.message || 'Failed to delete environment variable';
-		}
+		showConfirm(`Delete environment variable "${key}"?`, async () => {
+			error = '';
+			try {
+				await api.delete(`/applications/${selectedApp!.id}/envs/${key}`);
+				await loadEnvVars(selectedApp!.id);
+			} catch (e: any) {
+				error = e.message || 'Failed to delete environment variable';
+			}
+		});
 	}
 
 	async function openDeployKeyModal(app: Application) {
@@ -246,17 +265,18 @@
 
 	async function regenerateDeployKey() {
 		if (!selectedApp) return;
-		if (!confirm('Regenerate deploy key? The old key will be deleted.')) return;
-		error = '';
-		try {
-			const response = await api.post<{ public_key: string; created_at: string }>(
-				`/applications/${selectedApp.id}/deploy-key`,
-				{}
-			);
-			deployKey = response;
-		} catch (e: any) {
-			error = e.message || 'Failed to regenerate deploy key';
-		}
+		showConfirm('Regenerate deploy key? The old key will be invalidated.', async () => {
+			error = '';
+			try {
+				const response = await api.post<{ public_key: string; created_at: string }>(
+					`/applications/${selectedApp!.id}/deploy-key`,
+					{}
+				);
+				deployKey = response;
+			} catch (e: any) {
+				error = e.message || 'Failed to regenerate deploy key';
+			}
+		}, 'Regenerate');
 	}
 
 	function getStatusColor(status: string) {
@@ -288,18 +308,18 @@
 	}
 
 	async function triggerDeploy(app: Application) {
-		if (!confirm(`Deploy ${app.name}?`)) return;
-		deploying = true;
-		error = '';
-		try {
-			await api.post(`/applications/${app.id}/deploy`, {});
-			alert('Deployment started! Check deployment history to view progress.');
-			await loadApplications();
-		} catch (e: any) {
-			error = e.message || 'Failed to trigger deployment';
-		} finally {
-			deploying = false;
-		}
+		showConfirm(`Deploy "${app.name}"? A new deployment will be triggered.`, async () => {
+			deploying = true;
+			error = '';
+			try {
+				await api.post(`/applications/${app.id}/deploy`, {});
+				await loadApplications();
+			} catch (e: any) {
+				error = e.message || 'Failed to trigger deployment';
+			} finally {
+				deploying = false;
+			}
+		}, 'Deploy');
 	}
 
 	async function openDeploymentsModal(app: Application) {
@@ -341,14 +361,16 @@
 	}
 
 	async function removeDomain(domain: string) {
-		if (!selectedApp || !confirm(`Remove domain ${domain}?`)) return;
-		error = '';
-		try {
-			await api.delete(`/applications/${selectedApp.id}/domains/${domain}`);
-			await loadDomains(selectedApp.id);
-		} catch (e: any) {
-			error = e.message || 'Failed to remove domain';
-		}
+		if (!selectedApp) return;
+		showConfirm(`Remove domain "${domain}"?`, async () => {
+			error = '';
+			try {
+				await api.delete(`/applications/${selectedApp!.id}/domains/${domain}`);
+				await loadDomains(selectedApp!.id);
+			} catch (e: any) {
+				error = e.message || 'Failed to remove domain';
+			}
+		}, 'Remove');
 	}
 
 	async function setPrimaryDomain(domain: string) {
@@ -414,15 +436,17 @@
 	}
 
 	async function deleteWebhook() {
-		if (!selectedApp || !confirm('Delete webhook configuration?')) return;
-		error = '';
-		try {
-			await api.delete(`/applications/${selectedApp.id}/webhooks`);
-			webhook = null;
-			webhookDeliveries = [];
-		} catch (e: any) {
-			error = e.message || 'Failed to delete webhook';
-		}
+		if (!selectedApp) return;
+		showConfirm('Delete webhook configuration? Auto-deploys will stop working.', async () => {
+			error = '';
+			try {
+				await api.delete(`/applications/${selectedApp!.id}/webhooks`);
+				webhook = null;
+				webhookDeliveries = [];
+			} catch (e: any) {
+				error = e.message || 'Failed to delete webhook';
+			}
+		});
 	}
 
 	async function loadDeployments(appId: string) {
@@ -1019,6 +1043,15 @@
 			</div>
 		</div>
 	</div>
+{/if}
+
+{#if confirmModal}
+	<ConfirmModal
+		message={confirmModal.message}
+		confirmLabel={confirmModal.confirmLabel}
+		onConfirm={handleConfirm}
+		onCancel={closeConfirm}
+	/>
 {/if}
 
 <style>

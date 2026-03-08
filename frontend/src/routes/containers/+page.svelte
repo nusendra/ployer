@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
+	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 
 	interface Container {
 		id: string;
@@ -65,6 +66,22 @@
 	let containerStats = $state<ContainerStats | null>(null);
 	let logsLoading = $state(false);
 	let statsLoading = $state(false);
+
+	// Confirm modal
+	let confirmModal = $state<{ message: string; onConfirm: () => void } | null>(null);
+
+	function showConfirm(message: string, onConfirm: () => void) {
+		confirmModal = { message, onConfirm };
+	}
+
+	function closeConfirm() {
+		confirmModal = null;
+	}
+
+	function handleConfirm() {
+		confirmModal?.onConfirm();
+		confirmModal = null;
+	}
 
 	onMount(() => {
 		loadContainers();
@@ -210,18 +227,18 @@
 	}
 
 	async function deleteContainer(id: string, name: string) {
-		if (!confirm(`Delete container "${name}"?`)) return;
-
-		try {
-			actioningContainer = id;
-			error = '';
-			await api.delete(`/containers/${id}`);
-			await loadContainers();
-		} catch (e: any) {
-			error = e.message || 'Failed to delete container';
-		} finally {
-			actioningContainer = null;
-		}
+		showConfirm(`Delete container "${name}"? This action cannot be undone.`, async () => {
+			try {
+				actioningContainer = id;
+				error = '';
+				await api.delete(`/containers/${id}`);
+				await loadContainers();
+			} catch (e: any) {
+				error = e.message || 'Failed to delete container';
+			} finally {
+				actioningContainer = null;
+			}
+		});
 	}
 
 	async function viewLogs(id: string) {
@@ -378,58 +395,60 @@
 	{:else}
 		<div class="containers-grid">
 			{#each containers as container (container.id)}
-				<div class="card container-card">
-					<div class="container-header">
-						<div>
+				<div class="container-card">
+					<!-- Card top: avatar + name + status -->
+					<div class="container-card-top">
+						<div class="container-avatar">
+							<svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<path d="M8 2L14 5.5V10.5L8 14L2 10.5V5.5L8 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+								<path d="M8 2V14M2 5.5L8 9L14 5.5" stroke="currentColor" stroke-width="1.5"/>
+							</svg>
+						</div>
+						<div class="container-title">
 							<h3>{container.name || container.id.substring(0, 12)}</h3>
-							<span class="status {getStatusColor(container.state)}">{container.state}</span>
+							<span class="status-chip {getStatusColor(container.state)}">{container.state}</span>
 						</div>
 					</div>
 
-					<div class="container-details">
-						<p><strong>Image:</strong> {container.image}</p>
-						<p><strong>Ports:</strong> {formatPorts(container.ports)}</p>
-						<p><strong>Status:</strong> {container.status}</p>
-						<p><strong>Created:</strong> {formatDate(container.created)}</p>
+					<!-- Meta info grid -->
+					<div class="container-meta">
+						<div class="meta-item">
+							<span class="meta-label">Image</span>
+							<span class="meta-value image-value">{container.image}</span>
+						</div>
+						<div class="meta-item">
+							<span class="meta-label">Ports</span>
+							<span class="meta-value">{formatPorts(container.ports)}</span>
+						</div>
+						<div class="meta-item">
+							<span class="meta-label">Status</span>
+							<span class="meta-value">{container.status}</span>
+						</div>
+						<div class="meta-item">
+							<span class="meta-label">Created</span>
+							<span class="meta-value">{formatDate(container.created)}</span>
+						</div>
 					</div>
 
-					<div class="container-actions">
-						{#if container.state.toLowerCase() === 'running'}
-							<button
-								class="btn-secondary"
-								onclick={() => stopContainer(container.id)}
-								disabled={actioningContainer === container.id}
-							>
-								{actioningContainer === container.id ? 'Stopping...' : 'Stop'}
-							</button>
-							<button
-								class="btn-secondary"
-								onclick={() => restartContainer(container.id)}
-								disabled={actioningContainer === container.id}
-							>
-								{actioningContainer === container.id ? 'Restarting...' : 'Restart'}
-							</button>
-						{:else}
-							<button
-								class="btn-secondary"
-								onclick={() => startContainer(container.id)}
-								disabled={actioningContainer === container.id}
-							>
-								{actioningContainer === container.id ? 'Starting...' : 'Start'}
-							</button>
-						{/if}
-
-						<button class="btn-secondary" onclick={() => viewLogs(container.id)}>
-							View Logs
-						</button>
-						<button class="btn-secondary" onclick={() => viewStats(container.id)}>
-							View Stats
-						</button>
-						<button
-							class="btn-danger"
-							onclick={() => deleteContainer(container.id, container.name || container.id)}
-							disabled={actioningContainer === container.id}
-						>
+					<!-- Action footer -->
+					<div class="container-card-footer">
+						<div class="container-actions-left">
+							{#if container.state.toLowerCase() === 'running'}
+								<button class="btn-action" onclick={() => stopContainer(container.id)} disabled={actioningContainer === container.id}>
+									{actioningContainer === container.id ? 'Stopping…' : 'Stop'}
+								</button>
+								<button class="btn-action" onclick={() => restartContainer(container.id)} disabled={actioningContainer === container.id}>
+									{actioningContainer === container.id ? 'Restarting…' : 'Restart'}
+								</button>
+							{:else}
+								<button class="btn-action btn-start" onclick={() => startContainer(container.id)} disabled={actioningContainer === container.id}>
+									{actioningContainer === container.id ? 'Starting…' : 'Start'}
+								</button>
+							{/if}
+							<button class="btn-action" onclick={() => viewLogs(container.id)}>Logs</button>
+							<button class="btn-action" onclick={() => viewStats(container.id)}>Stats</button>
+						</div>
+						<button class="btn-action btn-delete" onclick={() => deleteContainer(container.id, container.name || container.id)} disabled={actioningContainer === container.id}>
 							Delete
 						</button>
 					</div>
@@ -461,6 +480,14 @@
 				{/if}
 			</div>
 		</div>
+	{/if}
+
+	{#if confirmModal}
+		<ConfirmModal
+			message={confirmModal.message}
+			onConfirm={handleConfirm}
+			onCancel={closeConfirm}
+		/>
 	{/if}
 
 	<!-- Stats Modal -->
@@ -619,65 +646,192 @@
 
 	.containers-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-		gap: 1rem;
+		grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+		gap: 1.25rem;
 	}
 
+	/* ── Container Card ── */
 	.container-card {
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 1.25rem;
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		transition: border-color 0.15s;
 	}
 
-	.container-header {
+	.container-card:hover {
+		border-color: var(--primary);
+	}
+
+	.container-card-top {
 		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
+		align-items: center;
+		gap: 0.875rem;
 	}
 
-	.container-header h3 {
-		margin-bottom: 0.5rem;
+	.container-avatar {
+		width: 40px;
+		height: 40px;
+		border-radius: 10px;
+		background: rgba(50, 130, 184, 0.15);
+		color: var(--primary);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.container-title {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.container-title h3 {
+		margin: 0;
 		font-size: 1rem;
-		word-break: break-all;
+		font-weight: 600;
+		color: var(--text);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
-	.status {
-		padding: 0.25rem 0.75rem;
-		font-size: 0.75rem;
+	/* Status chip */
+	.status-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.15rem 0.6rem;
+		border-radius: 20px;
+		font-size: 0.6875rem;
 		font-weight: 600;
-		text-transform: uppercase;
-		border-radius: var(--radius);
+		text-transform: capitalize;
+		width: fit-content;
+	}
+
+	.status-chip::before {
+		content: '';
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: currentColor;
 	}
 
 	.status-running {
-		background: rgba(34, 197, 94, 0.2);
-		color: #22c55e;
+		background: rgba(34, 197, 94, 0.15);
+		color: var(--success);
 	}
 
 	.status-stopped {
-		background: rgba(239, 68, 68, 0.2);
+		background: rgba(239, 68, 68, 0.15);
 		color: var(--danger);
 	}
 
 	.status-unknown {
-		background: var(--bg-tertiary);
+		background: rgba(126, 137, 172, 0.15);
 		color: var(--text-muted);
 	}
 
-	.container-details p {
-		margin: 0.5rem 0;
-		font-size: 0.875rem;
-		color: var(--text-muted);
+	/* Meta grid */
+	.container-meta {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.625rem 1rem;
 	}
 
-	.container-details strong {
-		color: var(--text);
-	}
-
-	.container-actions {
+	.meta-item {
 		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+	}
+
+	.meta-label {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.meta-value {
+		font-size: 0.8125rem;
+		color: var(--text);
+		font-weight: 500;
+	}
+
+	.meta-value.image-value {
+		font-family: 'Courier New', monospace;
+		font-size: 0.75rem;
+		color: var(--primary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	/* Card footer actions */
+	.container-card-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		gap: 0.5rem;
+		padding-top: 0.875rem;
+		border-top: 1px solid var(--border);
+	}
+
+	.container-actions-left {
+		display: flex;
+		gap: 0.375rem;
 		flex-wrap: wrap;
+	}
+
+	.btn-action {
+		padding: 0.3125rem 0.625rem;
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 500;
+		background: var(--bg-tertiary);
+		color: var(--text);
+		border: 1px solid var(--border);
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s;
+	}
+
+	.btn-action:hover:not(:disabled) {
+		background: rgba(50, 130, 184, 0.15);
+		border-color: var(--primary);
+		color: var(--primary);
+	}
+
+	.btn-action:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-action.btn-start {
+		background: var(--primary);
+		color: var(--bg);
+		border-color: var(--primary);
+	}
+
+	.btn-action.btn-start:hover:not(:disabled) {
+		background: var(--primary-hover);
+		border-color: var(--primary-hover);
+		color: var(--bg);
+	}
+
+	.btn-action.btn-delete {
+		color: var(--danger);
+		border-color: rgba(239, 68, 68, 0.3);
+	}
+
+	.btn-action.btn-delete:hover:not(:disabled) {
+		background: rgba(239, 68, 68, 0.15);
+		border-color: var(--danger);
 	}
 
 	.btn-secondary {
@@ -696,6 +850,7 @@
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
+
 
 	.modal-overlay {
 		position: fixed;

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
+	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 
 	interface Server {
 		id: string;
@@ -29,6 +30,22 @@
 	let selectedServerId = $state<string | null>(null);
 	let serverStats = $state<ServerStats | null>(null);
 	let testingServer = $state<string | null>(null);
+
+	// Confirm modal
+	let confirmModal = $state<{ message: string; onConfirm: () => void } | null>(null);
+
+	function showConfirm(message: string, onConfirm: () => void) {
+		confirmModal = { message, onConfirm };
+	}
+
+	function closeConfirm() {
+		confirmModal = null;
+	}
+
+	function handleConfirm() {
+		confirmModal?.onConfirm();
+		confirmModal = null;
+	}
 
 	// Form fields
 	let formName = $state('');
@@ -126,14 +143,14 @@
 	}
 
 	async function deleteServer(id: string, name: string) {
-		if (!confirm(`Delete server "${name}"?`)) return;
-
-		try {
-			await api.delete(`/servers/${id}`);
-			await loadServers();
-		} catch (e: any) {
-			error = e.message || 'Failed to delete server';
-		}
+		showConfirm(`Delete server "${name}"? This action cannot be undone.`, async () => {
+			try {
+				await api.delete(`/servers/${id}`);
+				await loadServers();
+			} catch (e: any) {
+				error = e.message || 'Failed to delete server';
+			}
+		});
 	}
 
 	async function testConnection(id: string) {
@@ -304,6 +321,14 @@
 				</div>
 			{/each}
 		</div>
+	{/if}
+
+	{#if confirmModal}
+		<ConfirmModal
+			message={confirmModal.message}
+			onConfirm={handleConfirm}
+			onCancel={closeConfirm}
+		/>
 	{/if}
 
 	{#if selectedServerId && serverStats}
