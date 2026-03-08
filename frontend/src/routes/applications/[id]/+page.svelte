@@ -5,6 +5,7 @@
 	import { api } from '$lib/api/client';
 	import type { Application, BuildStrategy } from '$lib/types';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
+	import { wsClient } from '$lib/stores/websocket';
 
 	const appId = $page.params.id;
 
@@ -45,6 +46,9 @@
 	let deploymentLogs = $state<string[]>([]);
 	let showDeploymentLogs = $state(false);
 	let loadingDeployments = $state(false);
+	let wsCleanup = $state<(() => void) | null>(null);
+	let logsContainer = $state<HTMLElement | null>(null);
+	let liveDeploymentActive = $state(false);
 
 	// Domains
 	let appDomains = $state<any[]>([]);
@@ -139,8 +143,13 @@
 			deploying = true;
 			error = '';
 			try {
-				await api.post(`/applications/${appId}/deploy`, {});
-				await loadApp();
+				const response = await api.post<{ deployment: any }>(`/applications/${appId}/deploy`, {});
+				const newDeployment = response.deployment;
+				// Load deployments list and switch to the tab
+				await loadDeployments();
+				activeTab = 'deployments';
+				// Open the new deployment's log view with live streaming
+				openDeploymentLogs(newDeployment, true);
 			} catch (e: any) {
 				error = e.message || 'Failed to trigger deployment';
 			} finally {
@@ -204,10 +213,67 @@
 		}
 	}
 
-	function openDeploymentLogs(deployment: any) {
-		selectedDeployment = deployment;
+	function openDeploymentLogs(deployment: any, live = false) {
+		// Clean up any existing WS subscription
+		closeWsSubscription();
+
+		selectedDeployment = { ...deployment };
 		deploymentLogs = deployment.build_log ? deployment.build_log.split('\n').filter((l: string) => l) : [];
 		showDeploymentLogs = true;
+		liveDeploymentActive = false;
+
+		const terminalStatuses = ['running', 'failed', 'cancelled', 'rolled_back'];
+		if (live || !terminalStatuses.includes(deployment.status)) {
+			// Subscribe to live updates for this deployment
+			liveDeploymentActive = true;
+			const channel = `deployment:${deployment.id}`;
+			wsClient.subscribe(channel);
+
+			const cleanup = wsClient.onMessage((msg) => {
+				if (msg.deployment_id !== deployment.id) return;
+				if (msg.type === 'deployment_logs') {
+					const line = (msg.line as string).trim();
+					if (line) deploymentLogs = [...deploymentLogs, line];
+					// Auto-scroll to bottom
+					if (logsContainer) {
+						setTimeout(() => { logsContainer!.scrollTop = logsContainer!.scrollHeight; }, 0);
+					}
+				} else if (msg.type === 'deployment_status') {
+					selectedDeployment = { ...selectedDeployment, status: msg.status };
+					// Update the deployment in the list too
+					deployments = deployments.map((d) =>
+						d.id === deployment.id ? { ...d, status: msg.status } : d
+					);
+					if (terminalStatuses.includes(msg.status)) {
+						liveDeploymentActive = false;
+						closeWsSubscription();
+						// Reload deployments to get final data (commit sha, etc.)
+						loadDeployments();
+					}
+				}
+			});
+
+			wsCleanup = () => {
+				cleanup();
+				wsClient.unsubscribe(channel);
+			};
+		}
+	}
+
+	function closeWsSubscription() {
+		if (wsCleanup) {
+			wsCleanup();
+			wsCleanup = null;
+		}
+	}
+
+	function closeDeploymentLogs() {
+		closeWsSubscription();
+		showDeploymentLogs = false;
+		selectedDeployment = null;
+		deploymentLogs = [];
+		liveDeploymentActive = false;
+		loadDeployments();
 	}
 
 	function getDeploymentStatusColor(status: string) {
@@ -559,16 +625,22 @@
 						{:else if deployments.length === 0}
 							<div class="empty-vars">No deployments yet.</div>
 						{:else if showDeploymentLogs && selectedDeployment}
-							<button class="btn-back-inline" onclick={() => showDeploymentLogs = false}>
+							<button class="btn-back-inline" onclick={closeDeploymentLogs}>
 								← Back to deployments
 							</button>
 							<div class="deploy-log-header">
 								<span class="status-chip status-{getDeploymentStatusColor(selectedDeployment.status)}">{selectedDeployment.status}</span>
 								<span class="deploy-id-text">{selectedDeployment.id}</span>
+								{#if liveDeploymentActive}
+									<span class="live-indicator">
+										<span class="live-dot"></span>
+										LIVE
+									</span>
+								{/if}
 							</div>
-							<div class="log-viewer">
+							<div class="log-viewer" bind:this={logsContainer}>
 								{#if deploymentLogs.length === 0}
-									<div class="log-line">No logs available yet...</div>
+									<div class="log-line log-waiting">Waiting for logs...</div>
 								{:else}
 									{#each deploymentLogs as line}
 										<div class="log-line">{line}</div>
@@ -1325,6 +1397,34 @@
 		color: #c9d1d9;
 		white-space: pre-wrap;
 		word-break: break-all;
+	}
+
+	.log-waiting {
+		color: var(--text-muted);
+		font-style: italic;
+	}
+
+	.live-indicator {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-size: 0.6875rem;
+		font-weight: 700;
+		color: var(--success);
+		letter-spacing: 0.05em;
+	}
+
+	.live-dot {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: var(--success);
+		animation: pulse-dot 1.2s ease-in-out infinite;
+	}
+
+	@keyframes pulse-dot {
+		0%, 100% { opacity: 1; transform: scale(1); }
+		50% { opacity: 0.4; transform: scale(0.75); }
 	}
 
 	/* ── Domains ── */
