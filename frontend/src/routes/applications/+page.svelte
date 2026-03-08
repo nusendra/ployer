@@ -200,7 +200,14 @@
 							<h3>{app.name}</h3>
 							<span class="status-chip status-{getStatusColor(app.status)}">{app.status}</span>
 						</div>
-						<a class="btn-view" href="/applications/{app.id}">View</a>
+						<div class="card-top-actions">
+							{#if app.git_url}
+								<button class="btn-deploy-sm" onclick={() => triggerDeploy(app)} disabled={deploying}>
+									{deploying ? '…' : 'Deploy'}
+								</button>
+							{/if}
+							<a class="btn-view" href="/applications/{app.id}">View</a>
+						</div>
 					</div>
 
 					<!-- Meta info grid -->
@@ -240,13 +247,6 @@
 
 					<!-- Action footer -->
 					<div class="app-card-footer">
-						<div class="app-actions-left">
-							{#if app.git_url}
-								<button class="btn-action btn-deploy" onclick={() => triggerDeploy(app)} disabled={deploying}>
-									{deploying ? 'Deploying…' : 'Deploy'}
-								</button>
-							{/if}
-						</div>
 						<button class="btn-action btn-delete" onclick={() => deleteApplication(app.id)}>Delete</button>
 					</div>
 				</div>
@@ -433,6 +433,35 @@
 		align-items: center;
 		gap: 0.875rem;
 		justify-content: space-between;
+	}
+
+	.card-top-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		flex-shrink: 0;
+	}
+
+	.btn-deploy-sm {
+		padding: 0.3125rem 0.875rem;
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 600;
+		background: transparent;
+		color: var(--primary);
+		border: 1px solid var(--primary);
+		cursor: pointer;
+		transition: background 0.15s, color 0.15s;
+	}
+
+	.btn-deploy-sm:hover:not(:disabled) {
+		background: var(--primary);
+		color: var(--bg);
+	}
+
+	.btn-deploy-sm:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 
 	.btn-view {
