@@ -246,38 +246,60 @@
 	{:else}
 		<div class="servers-grid">
 			{#each servers as server (server.id)}
-				<div class="card server-card">
-					<div class="server-header">
-						<div>
-							<h3>{server.name}</h3>
+				<div class="server-card">
+					<!-- Card top: avatar + name + status -->
+					<div class="server-card-top">
+						<div class="server-avatar">
+							<svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+								<rect x="2" y="2" width="12" height="5" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+								<rect x="2" y="9" width="12" height="5" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+								<circle cx="11.5" cy="4.5" r="1" fill="currentColor"/>
+								<circle cx="11.5" cy="11.5" r="1" fill="currentColor"/>
+							</svg>
+						</div>
+						<div class="server-title">
+							<div class="server-name-row">
+								<h3>{server.name}</h3>
+								{#if server.is_local}
+									<span class="badge-local">Local</span>
+								{/if}
+							</div>
+							<span class="status-chip status-chip-{server.status}">{server.status}</span>
+						</div>
+					</div>
+
+					<!-- Meta info grid -->
+					<div class="server-meta">
+						<div class="meta-item">
+							<span class="meta-label">Host</span>
+							<span class="meta-value">{server.host}</span>
+						</div>
+						<div class="meta-item">
+							<span class="meta-label">Port</span>
+							<span class="meta-value">{server.port}</span>
+						</div>
+						<div class="meta-item">
+							<span class="meta-label">Username</span>
+							<span class="meta-value">{server.username}</span>
+						</div>
+						<div class="meta-item">
+							<span class="meta-label">Last Seen</span>
+							<span class="meta-value">{formatDate(server.last_seen_at)}</span>
+						</div>
+					</div>
+
+					<!-- Action footer -->
+					<div class="server-card-footer">
+						<div class="server-actions-left">
+							<button class="btn-action" onclick={() => editServer(server)}>Edit</button>
+							<button class="btn-action" onclick={() => testConnection(server.id)} disabled={testingServer === server.id}>
+								{testingServer === server.id ? 'Testing…' : 'Test'}
+							</button>
 							{#if server.is_local}
-								<span class="badge badge-local">Local</span>
+								<button class="btn-action" onclick={() => viewResources(server.id)}>Resources</button>
 							{/if}
 						</div>
-						<span class="status status-{server.status}">{server.status}</span>
-					</div>
-
-					<div class="server-details">
-						<p><strong>Host:</strong> {server.host}:{server.port}</p>
-						<p><strong>Username:</strong> {server.username}</p>
-						<p><strong>Last seen:</strong> {formatDate(server.last_seen_at)}</p>
-					</div>
-
-					<div class="server-actions">
-						<button class="btn-secondary" onclick={() => editServer(server)}>
-							Edit
-						</button>
-						<button class="btn-secondary" onclick={() => testConnection(server.id)} disabled={testingServer === server.id}>
-							{testingServer === server.id ? 'Testing...' : 'Test Connection'}
-						</button>
-						{#if server.is_local}
-							<button class="btn-secondary" onclick={() => viewResources(server.id)}>
-								View Resources
-							</button>
-						{/if}
-						<button class="btn-danger" onclick={() => deleteServer(server.id, server.name)}>
-							Delete
-						</button>
+						<button class="btn-action btn-delete" onclick={() => deleteServer(server.id, server.name)}>Delete</button>
 					</div>
 				</div>
 			{/each}
@@ -392,60 +414,188 @@
 
 	.servers-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-		gap: 1rem;
+		grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+		gap: 1.25rem;
 	}
 
+	/* ── Server Card ── */
 	.server-card {
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 1.25rem;
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		transition: border-color 0.15s;
 	}
 
-	.server-header {
+	.server-card:hover {
+		border-color: var(--primary);
+	}
+
+	.server-card-top {
 		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
+		align-items: center;
+		gap: 0.875rem;
 	}
 
-	.server-header h3 {
-		margin-bottom: 0.25rem;
+	.server-avatar {
+		width: 40px;
+		height: 40px;
+		border-radius: 10px;
+		background: rgba(34, 197, 94, 0.15);
+		color: var(--success);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
 	}
 
-	.badge {
-		display: inline-block;
-		padding: 0.25rem 0.5rem;
-		font-size: 0.75rem;
-		border-radius: var(--radius);
-		background: var(--bg-tertiary);
-		color: var(--text-muted);
+	.server-title {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.server-name-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.server-name-row h3 {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--text);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.badge-local {
-		background: var(--primary);
-		color: white;
-	}
-
-	.status {
+		display: inline-block;
+		padding: 0.1rem 0.45rem;
+		font-size: 0.6875rem;
 		font-weight: 600;
-		text-transform: uppercase;
-		font-size: 0.75rem;
+		border-radius: 20px;
+		background: rgba(50, 130, 184, 0.2);
+		color: var(--primary);
+		flex-shrink: 0;
 	}
 
-	.server-details p {
-		margin: 0.5rem 0;
-		font-size: 0.875rem;
+	/* Status chip */
+	.status-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.15rem 0.6rem;
+		border-radius: 20px;
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: capitalize;
+		width: fit-content;
+	}
+
+	.status-chip::before {
+		content: '';
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: currentColor;
+	}
+
+	.status-chip-online {
+		background: rgba(34, 197, 94, 0.15);
+		color: var(--success);
+	}
+
+	.status-chip-offline {
+		background: rgba(239, 68, 68, 0.15);
+		color: var(--danger);
+	}
+
+	.status-chip-unknown {
+		background: rgba(126, 137, 172, 0.15);
 		color: var(--text-muted);
 	}
 
-	.server-details strong {
-		color: var(--text);
+	/* Meta grid */
+	.server-meta {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.625rem 1rem;
 	}
 
-	.server-actions {
+	.meta-item {
 		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+	}
+
+	.meta-label {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.meta-value {
+		font-size: 0.8125rem;
+		color: var(--text);
+		font-weight: 500;
+	}
+
+	/* Card footer actions */
+	.server-card-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		gap: 0.5rem;
+		padding-top: 0.875rem;
+		border-top: 1px solid var(--border);
+	}
+
+	.server-actions-left {
+		display: flex;
+		gap: 0.375rem;
 		flex-wrap: wrap;
+	}
+
+	.btn-action {
+		padding: 0.3125rem 0.625rem;
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 500;
+		background: var(--bg-tertiary);
+		color: var(--text);
+		border: 1px solid var(--border);
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s;
+	}
+
+	.btn-action:hover:not(:disabled) {
+		background: rgba(50, 130, 184, 0.15);
+		border-color: var(--primary);
+		color: var(--primary);
+	}
+
+	.btn-action:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-action.btn-delete {
+		color: var(--danger);
+		border-color: rgba(239, 68, 68, 0.3);
+	}
+
+	.btn-action.btn-delete:hover {
+		background: rgba(239, 68, 68, 0.15);
+		border-color: var(--danger);
 	}
 
 	.btn-secondary {

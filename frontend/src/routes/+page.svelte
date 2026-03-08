@@ -41,7 +41,7 @@
 
 	function getRecentDeploymentsCount() {
 		const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-		return deployments.filter((d) => new Date(d.created_at) > oneDayAgo).length;
+		return deployments.filter((d) => new Date(d.started_at) > oneDayAgo).length;
 	}
 
 	function getDeploymentStatusColor(status: string) {
@@ -189,7 +189,7 @@
 								{#each deployments as deployment (deployment.id)}
 									<tr>
 										<td class="cell-name">{deployment.application_id.slice(0, 8)}...</td>
-										<td class="cell-time">{timeAgo(deployment.created_at)}</td>
+										<td class="cell-time">{timeAgo(deployment.started_at)}</td>
 										<td>
 											<span class="status-pill status-{getDeploymentStatusColor(deployment.status)}">
 												{deployment.status}

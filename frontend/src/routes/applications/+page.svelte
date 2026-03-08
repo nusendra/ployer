@@ -485,53 +485,68 @@
 		<div class="applications-grid">
 			{#each applications as app (app.id)}
 				<div class="app-card">
-					<div class="app-header">
-						<div>
+					<!-- Card top: avatar + name + status -->
+					<div class="app-card-top">
+						<div class="app-avatar">{app.name[0].toUpperCase()}</div>
+						<div class="app-title">
 							<h3>{app.name}</h3>
-							<span class="status status-{getStatusColor(app.status)}">{app.status}</span>
-						</div>
-						<div class="app-actions">
-							{#if app.git_url}
-								<button class="btn-sm btn-primary" onclick={() => triggerDeploy(app)} disabled={deploying}>
-									{deploying ? 'Deploying...' : 'Deploy'}
-								</button>
-							{/if}
-							<button class="btn-sm" onclick={() => openDeploymentsModal(app)}>Deployments</button>
-							<button class="btn-sm" onclick={() => openDomainsModal(app)}>Domains</button>
-							<button class="btn-sm" onclick={() => openDetailModal(app)}>Edit</button>
-							<button class="btn-sm" onclick={() => openEnvModal(app)}>Env Vars</button>
-							{#if app.git_url}
-								<button class="btn-sm" onclick={() => openDeployKeyModal(app)}>Deploy Key</button>
-								<button class="btn-sm" onclick={() => openWebhookModal(app)}>Webhooks</button>
-							{/if}
-							<button class="btn-sm btn-danger" onclick={() => deleteApplication(app.id)}>Delete</button>
+							<span class="status-chip status-{getStatusColor(app.status)}">{app.status}</span>
 						</div>
 					</div>
-					<div class="app-details">
-						<div class="detail-row">
-							<span class="label">Server:</span>
-							<span>{servers.find((s) => s.id === app.server_id)?.name || app.server_id}</span>
+
+					<!-- Meta info grid -->
+					<div class="app-meta">
+						<div class="meta-item">
+							<span class="meta-label">Server</span>
+							<span class="meta-value">{servers.find((s) => s.id === app.server_id)?.name || '—'}</span>
+						</div>
+						<div class="meta-item">
+							<span class="meta-label">Build</span>
+							<span class="meta-value">{getStrategyLabel(app.build_strategy)}</span>
 						</div>
 						{#if app.git_url}
-							<div class="detail-row">
-								<span class="label">Git:</span>
-								<span class="git-url">{app.git_url} ({app.git_branch})</span>
+							<div class="meta-item">
+								<span class="meta-label">Branch</span>
+								<span class="meta-value branch">{app.git_branch}</span>
 							</div>
 						{/if}
-						<div class="detail-row">
-							<span class="label">Build:</span>
-							<span>{getStrategyLabel(app.build_strategy)}</span>
-						</div>
 						{#if app.port}
-							<div class="detail-row">
-								<span class="label">Port:</span>
-								<span>{app.port}</span>
+							<div class="meta-item">
+								<span class="meta-label">Port</span>
+								<span class="meta-value">{app.port}</span>
 							</div>
 						{/if}
-						<div class="detail-row">
-							<span class="label">Auto Deploy:</span>
-							<span>{app.auto_deploy ? 'Yes' : 'No'}</span>
+						<div class="meta-item">
+							<span class="meta-label">Auto Deploy</span>
+							<span class="meta-value">{app.auto_deploy ? 'On' : 'Off'}</span>
 						</div>
+					</div>
+
+					{#if app.git_url}
+						<div class="app-git-url">
+							<svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0 2.5 2.5 0 0 1 7 2.5a2.5 2.5 0 0 1-1.5 2.29v1.27l3 1.5 3-1.5V4.79A2.5 2.5 0 0 1 13.5 0 2.5 2.5 0 0 1 16 2.5a2.5 2.5 0 0 1-2.5 2.5 2.49 2.49 0 0 1-1-.21v1.75l-4 2-4-2V4.79A2.49 2.49 0 0 1 3.5 5 2.5 2.5 0 0 1 1 2.5H2z" fill="currentColor"/><path d="M5.5 12.21A2.5 2.5 0 0 0 4.5 12a2.5 2.5 0 0 0-2.5 2.5A2.5 2.5 0 0 0 4.5 17a2.5 2.5 0 0 0 2.5-2.5v-1.75l-1-.54z" fill="currentColor"/></svg>
+							<span>{app.git_url}</span>
+						</div>
+					{/if}
+
+					<!-- Action footer -->
+					<div class="app-card-footer">
+						<div class="app-actions-left">
+							{#if app.git_url}
+								<button class="btn-action btn-deploy" onclick={() => triggerDeploy(app)} disabled={deploying}>
+									{deploying ? 'Deploying…' : 'Deploy'}
+								</button>
+							{/if}
+							<button class="btn-action" onclick={() => openDeploymentsModal(app)}>History</button>
+							<button class="btn-action" onclick={() => openDomainsModal(app)}>Domains</button>
+							<button class="btn-action" onclick={() => openDetailModal(app)}>Edit</button>
+							<button class="btn-action" onclick={() => openEnvModal(app)}>Env</button>
+							{#if app.git_url}
+								<button class="btn-action" onclick={() => openDeployKeyModal(app)}>Key</button>
+								<button class="btn-action" onclick={() => openWebhookModal(app)}>Webhook</button>
+							{/if}
+						</div>
+						<button class="btn-action btn-delete" onclick={() => deleteApplication(app.id)}>Delete</button>
 					</div>
 				</div>
 			{/each}
@@ -1008,11 +1023,11 @@
 
 <style>
 	.applications-page {
-		padding: 2rem;
 		max-width: 1400px;
 		margin: 0 auto;
 	}
 
+	/* ── Header ── */
 	.header {
 		display: flex;
 		justify-content: space-between;
@@ -1021,118 +1036,257 @@
 	}
 
 	.header h1 {
-		margin: 0 0 0.5rem 0;
-		font-size: 2rem;
+		margin: 0 0 0.25rem 0;
+		font-size: 1.5rem;
 		font-weight: 600;
-	}
-
-	p {
-		color: #4b5563;
+		color: var(--text);
 	}
 
 	.header p {
 		margin: 0;
-		color: #4b5563;
+		font-size: 0.875rem;
+		color: var(--text-muted);
 	}
 
+	/* ── State messages ── */
 	.loading,
 	.empty-state {
 		text-align: center;
-		padding: 3rem;
-		color: #6b7280;
+		padding: 4rem 2rem;
+		color: var(--text-muted);
+		font-size: 0.875rem;
 	}
 
 	.empty-state button {
 		margin-top: 1rem;
 	}
 
+	.error-banner {
+		background: rgba(239, 68, 68, 0.15);
+		border: 1px solid rgba(239, 68, 68, 0.3);
+		color: var(--danger);
+		padding: 0.75rem 1rem;
+		border-radius: var(--radius);
+		margin-bottom: 1.25rem;
+		font-size: 0.875rem;
+	}
+
+	/* ── Grid ── */
 	.applications-grid {
 		display: grid;
-		gap: 1.5rem;
-		grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+		gap: 1.25rem;
+		grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
 	}
 
+	/* ── App Card ── */
 	.app-card {
-		background: white;
-		border: 1px solid #e5e7eb;
-		border-radius: 8px;
-		padding: 1.5rem;
-	}
-
-	.app-header {
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 1.25rem;
 		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		margin-bottom: 1rem;
+		flex-direction: column;
 		gap: 1rem;
+		transition: border-color 0.15s;
 	}
 
-	.app-header h3 {
-		margin: 0 0 0.5rem 0;
-		font-size: 1.25rem;
-		font-weight: 600;
-		color: #111827;
+	.app-card:hover {
+		border-color: var(--primary);
 	}
 
-	.app-actions {
+	.app-card-top {
 		display: flex;
-		gap: 0.5rem;
-		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.875rem;
 	}
 
-	.status {
-		display: inline-block;
-		padding: 0.25rem 0.75rem;
-		border-radius: 12px;
-		font-size: 0.75rem;
-		font-weight: 500;
+	.app-avatar {
+		width: 40px;
+		height: 40px;
+		border-radius: 10px;
+		background: var(--primary);
+		color: var(--bg);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.125rem;
+		font-weight: 700;
+		flex-shrink: 0;
+	}
+
+	.app-title {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.app-title h3 {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--text);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	/* Status chips on card */
+	.status-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.15rem 0.6rem;
+		border-radius: 20px;
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: capitalize;
+		width: fit-content;
+	}
+
+	.status-chip::before {
+		content: '';
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: currentColor;
 	}
 
 	.status-green {
-		background: #d1fae5;
-		color: #065f46;
+		background: rgba(34, 197, 94, 0.15);
+		color: var(--success);
 	}
 
 	.status-blue {
-		background: #0F4C75;
-		color: #BBE1FA;
+		background: rgba(50, 130, 184, 0.2);
+		color: var(--primary);
 	}
 
 	.status-gray {
-		background: #f3f4f6;
-		color: #374151;
+		background: rgba(126, 137, 172, 0.15);
+		color: var(--text-muted);
 	}
 
 	.status-red {
-		background: #fee2e2;
-		color: #991b1b;
+		background: rgba(239, 68, 68, 0.15);
+		color: var(--danger);
 	}
 
-	.app-details {
+	/* ── Meta grid ── */
+	.app-meta {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.625rem 1rem;
+	}
+
+	.meta-item {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.125rem;
 	}
 
-	.detail-row {
-		display: flex;
-		gap: 0.5rem;
-		font-size: 0.875rem;
-		color: #374151;
-	}
-
-	.detail-row .label {
+	.meta-label {
+		font-size: 0.6875rem;
 		font-weight: 600;
-		color: #6b7280;
-		min-width: 100px;
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 	}
 
-	.git-url {
+	.meta-value {
+		font-size: 0.8125rem;
+		color: var(--text);
+		font-weight: 500;
+	}
+
+	.meta-value.branch {
 		font-family: 'Courier New', monospace;
 		font-size: 0.75rem;
-		color: #4b5563;
+		color: var(--primary);
 	}
 
+	/* ── Git URL strip ── */
+	.app-git-url {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.4rem 0.625rem;
+		background: var(--bg-tertiary);
+		border-radius: 6px;
+		color: var(--text-muted);
+		font-size: 0.6875rem;
+		font-family: 'Courier New', monospace;
+		overflow: hidden;
+	}
+
+	.app-git-url span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* ── Card footer actions ── */
+	.app-card-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+		padding-top: 0.875rem;
+		border-top: 1px solid var(--border);
+	}
+
+	.app-actions-left {
+		display: flex;
+		gap: 0.375rem;
+		flex-wrap: wrap;
+	}
+
+	.btn-action {
+		padding: 0.3125rem 0.625rem;
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 500;
+		background: var(--bg-tertiary);
+		color: var(--text);
+		border: 1px solid var(--border);
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s;
+	}
+
+	.btn-action:hover {
+		background: rgba(50, 130, 184, 0.15);
+		border-color: var(--primary);
+		color: var(--primary);
+	}
+
+	.btn-action.btn-deploy {
+		background: var(--primary);
+		color: var(--bg);
+		border-color: var(--primary);
+	}
+
+	.btn-action.btn-deploy:hover:not(:disabled) {
+		background: var(--primary-hover);
+		border-color: var(--primary-hover);
+		color: var(--bg);
+	}
+
+	.btn-action.btn-deploy:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-action.btn-delete {
+		color: var(--danger);
+		border-color: rgba(239, 68, 68, 0.3);
+	}
+
+	.btn-action.btn-delete:hover {
+		background: rgba(239, 68, 68, 0.15);
+		border-color: var(--danger);
+	}
+
+	/* ── Modals ── */
 	.modal-overlay {
 		position: fixed;
 		inset: 0;
@@ -1146,9 +1300,10 @@
 	}
 
 	.modal {
-		background: white;
-		border-radius: 8px;
-		padding: 2rem;
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 1.75rem;
 		max-width: 600px;
 		width: 100%;
 		max-height: 90vh;
@@ -1157,14 +1312,15 @@
 
 	.modal h2 {
 		margin: 0 0 1.5rem 0;
-		font-size: 1.5rem;
+		font-size: 1.25rem;
 		font-weight: 600;
-		color: #111827;
+		color: var(--text);
 	}
 
 	.modal p {
-		color: #4b5563;
-		margin: 1rem 0;
+		color: var(--text-muted);
+		margin: 0.75rem 0;
+		font-size: 0.875rem;
 	}
 
 	.form-group {
@@ -1173,18 +1329,10 @@
 
 	.form-group label {
 		display: block;
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.375rem;
+		font-size: 0.8125rem;
 		font-weight: 500;
-		color: #374151;
-	}
-
-	.form-group input,
-	.form-group select {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid #d1d5db;
-		border-radius: 4px;
-		font-size: 0.875rem;
+		color: var(--text-muted);
 	}
 
 	.form-group-checkbox {
@@ -1192,96 +1340,12 @@
 		align-items: center;
 		gap: 0.5rem;
 		margin-bottom: 1rem;
+		font-size: 0.875rem;
+		color: var(--text);
 	}
 
 	.form-group-checkbox input {
 		width: auto;
-	}
-
-	.env-vars-section {
-		margin-bottom: 1.5rem;
-	}
-
-	.env-vars-input {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
-	}
-
-	.env-vars-input input {
-		flex: 1;
-		padding: 0.5rem;
-		border: 1px solid #d1d5db;
-		border-radius: 4px;
-		font-size: 0.875rem;
-	}
-
-	.env-vars-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		max-height: 300px;
-		overflow-y: auto;
-	}
-
-	.env-var-item {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem;
-		background: #f9fafb;
-		border-radius: 4px;
-	}
-
-	.env-key {
-		font-weight: 600;
-		color: #374151;
-		min-width: 120px;
-	}
-
-	.env-value {
-		flex: 1;
-		font-family: 'Courier New', monospace;
-		font-size: 0.75rem;
-		color: #6b7280;
-	}
-
-	.deploy-key-section {
-		margin-bottom: 1.5rem;
-	}
-
-	.deploy-key-section p {
-		color: #4b5563;
-	}
-
-	.deploy-key-info {
-		margin-bottom: 1rem;
-		color: #6b7280;
-	}
-
-	.deploy-key-box {
-		background: #f9fafb;
-		border: 1px solid #e5e7eb;
-		border-radius: 4px;
-		padding: 1rem;
-		margin-bottom: 1rem;
-		overflow-x: auto;
-	}
-
-	.deploy-key-box pre {
-		margin: 0;
-		font-family: 'Courier New', monospace;
-		font-size: 0.75rem;
-		white-space: pre-wrap;
-		word-break: break-all;
-		color: #1f2937;
-	}
-
-	.deploy-key-date {
-		font-size: 0.875rem;
-		color: #6b7280;
-		color: #6b7280;
-		margin-bottom: 1rem;
 	}
 
 	.modal-actions {
@@ -1289,43 +1353,52 @@
 		justify-content: flex-end;
 		gap: 0.5rem;
 		margin-top: 1.5rem;
-		padding-top: 1.5rem;
-		border-top: 1px solid #e5e7eb;
-	}
-
-	.btn-primary,
-	.btn-secondary,
-	.btn-danger,
-	.btn-sm {
-		padding: 0.5rem 1rem;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
-		font-weight: 500;
-		transition: all 0.2s;
+		padding-top: 1.25rem;
+		border-top: 1px solid var(--border);
 	}
 
 	.btn-primary {
-		background: #3b82f6;
-		color: white;
+		background: var(--primary);
+		color: var(--bg);
+		padding: 0.5rem 1rem;
+		border: none;
+		border-radius: var(--radius);
+		cursor: pointer;
+		font-size: 0.875rem;
+		font-weight: 500;
+		transition: background 0.15s;
 	}
 
 	.btn-primary:hover {
-		background: #2563eb;
+		background: var(--primary-hover);
 	}
 
 	.btn-secondary {
-		background: #f3f4f6;
-		color: #374151;
+		background: var(--bg-tertiary);
+		color: var(--text);
+		padding: 0.5rem 1rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		cursor: pointer;
+		font-size: 0.875rem;
+		font-weight: 500;
+		transition: background 0.15s;
 	}
 
 	.btn-secondary:hover {
-		background: #e5e7eb;
+		background: rgba(50, 130, 184, 0.1);
 	}
 
 	.btn-danger {
-		background: #ef4444;
+		background: var(--danger);
 		color: white;
+		padding: 0.5rem 1rem;
+		border: none;
+		border-radius: var(--radius);
+		cursor: pointer;
+		font-size: 0.875rem;
+		font-weight: 500;
+		transition: background 0.15s;
 	}
 
 	.btn-danger:hover {
@@ -1334,39 +1407,38 @@
 
 	.btn-sm {
 		padding: 0.375rem 0.75rem;
-		font-size: 0.875rem;
-		background: #f3f4f6;
-		color: #374151;
+		border-radius: 6px;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		background: var(--bg-tertiary);
+		color: var(--text);
+		border: 1px solid var(--border);
+		cursor: pointer;
+		transition: background 0.15s;
 	}
 
 	.btn-sm:hover {
-		background: #e5e7eb;
+		background: rgba(50, 130, 184, 0.1);
 	}
 
 	.btn-sm.btn-danger {
-		background: #fee2e2;
-		color: #991b1b;
+		background: rgba(239, 68, 68, 0.15);
+		color: var(--danger);
+		border-color: rgba(239, 68, 68, 0.3);
 	}
 
 	.btn-sm.btn-danger:hover {
-		background: #fecaca;
-	}
-
-	.error-banner {
-		background: #fee2e2;
-		color: #991b1b;
-		padding: 1rem;
-		border-radius: 4px;
-		margin-bottom: 1rem;
+		background: rgba(239, 68, 68, 0.25);
 	}
 
 	.btn-sm.btn-primary {
-		background: #3b82f6;
-		color: white;
+		background: var(--primary);
+		color: var(--bg);
+		border-color: var(--primary);
 	}
 
 	.btn-sm.btn-primary:hover:not(:disabled) {
-		background: #2563eb;
+		background: var(--primary-hover);
 	}
 
 	.btn-sm:disabled {
@@ -1374,19 +1446,103 @@
 		cursor: not-allowed;
 	}
 
+	/* ── Env vars ── */
+	.env-vars-section {
+		margin-bottom: 1.5rem;
+	}
+
+	.env-vars-input {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.env-vars-input input {
+		flex: 1;
+	}
+
+	.env-vars-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		max-height: 300px;
+		overflow-y: auto;
+	}
+
+	.env-var-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: 6px;
+	}
+
+	.env-key {
+		font-weight: 600;
+		font-size: 0.8125rem;
+		color: var(--primary);
+		min-width: 120px;
+		font-family: 'Courier New', monospace;
+	}
+
+	.env-value {
+		flex: 1;
+		font-family: 'Courier New', monospace;
+		font-size: 0.75rem;
+		color: var(--text-muted);
+	}
+
+	/* ── Deploy key ── */
+	.deploy-key-section {
+		margin-bottom: 1.5rem;
+	}
+
+	.deploy-key-info {
+		margin-bottom: 1rem;
+		color: var(--text-muted);
+		font-size: 0.875rem;
+	}
+
+	.deploy-key-box {
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 1rem;
+		margin-bottom: 0.75rem;
+		overflow-x: auto;
+	}
+
+	.deploy-key-box pre {
+		margin: 0;
+		font-family: 'Courier New', monospace;
+		font-size: 0.6875rem;
+		white-space: pre-wrap;
+		word-break: break-all;
+		color: var(--text);
+	}
+
+	.deploy-key-date {
+		font-size: 0.8125rem;
+		color: var(--text-muted);
+		margin-bottom: 1rem;
+	}
+
+	/* ── Deployments ── */
 	.deployments-list {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.625rem;
 		max-height: 400px;
 		overflow-y: auto;
 	}
 
 	.deployment-item {
-		padding: 1rem;
-		background: #f9fafb;
-		border-radius: 4px;
-		border: 1px solid #e5e7eb;
+		padding: 0.875rem;
+		background: var(--bg-tertiary);
+		border-radius: var(--radius);
+		border: 1px solid var(--border);
 	}
 
 	.deployment-header {
@@ -1399,21 +1555,38 @@
 	.deployment-id {
 		font-family: 'Courier New', monospace;
 		font-size: 0.75rem;
-		color: #6b7280;
+		color: var(--text-muted);
 	}
 
 	.deployment-details {
-		font-size: 0.875rem;
-		color: #4b5563;
+		font-size: 0.8125rem;
+		color: var(--text-muted);
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
 	}
 
+	/* ── Status on modals (reuse from cards via class) ── */
+	.status {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.15rem 0.6rem;
+		border-radius: 20px;
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: capitalize;
+	}
+
+	/* ── Log viewer ── */
 	.log-viewer {
-		background: #1f2937;
-		color: #f3f4f6;
+		background: var(--bg);
+		border: 1px solid var(--border);
+		color: var(--text);
 		font-family: 'Courier New', monospace;
-		font-size: 0.75rem;
+		font-size: 0.6875rem;
 		padding: 1rem;
-		border-radius: 4px;
+		border-radius: var(--radius);
 		max-height: 500px;
 		overflow-y: auto;
 		white-space: pre-wrap;
@@ -1421,14 +1594,15 @@
 	}
 
 	.log-line {
-		margin-bottom: 0.25rem;
+		margin-bottom: 0.2rem;
+		line-height: 1.4;
 	}
 
-	/* Domain Management Styles */
+	/* ── Domains ── */
 	.domains-section {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
+		gap: 1.25rem;
 	}
 
 	.domain-input {
@@ -1443,116 +1617,116 @@
 	.domains-list {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.625rem;
 	}
 
 	.domain-item {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 1rem;
-		background: #f9fafb;
-		border-radius: 4px;
-		border: 1px solid #e5e7eb;
+		padding: 0.875rem;
+		background: var(--bg-tertiary);
+		border-radius: var(--radius);
+		border: 1px solid var(--border);
+		gap: 0.5rem;
 	}
 
 	.domain-info {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		flex-wrap: wrap;
 	}
 
 	.domain-name {
 		font-family: 'Courier New', monospace;
 		font-size: 0.875rem;
-		color: #1f2937;
+		color: var(--text);
 		font-weight: 600;
 	}
 
 	.domain-actions {
 		display: flex;
-		gap: 0.5rem;
+		gap: 0.375rem;
+		flex-shrink: 0;
 	}
 
 	.badge {
-		padding: 0.25rem 0.5rem;
+		padding: 0.15rem 0.5rem;
 		border-radius: 12px;
-		font-size: 0.75rem;
-		font-weight: 500;
+		font-size: 0.6875rem;
+		font-weight: 600;
 	}
 
 	.badge-primary {
-		background: #3b82f6;
-		color: white;
+		background: rgba(50, 130, 184, 0.2);
+		color: var(--primary);
 	}
 
 	.badge-success {
-		background: #10b981;
-		color: white;
+		background: rgba(34, 197, 94, 0.15);
+		color: var(--success);
 	}
 
 	.badge-warning {
-		background: #f59e0b;
-		color: white;
+		background: rgba(245, 158, 11, 0.15);
+		color: var(--warning);
 	}
 
 	.empty-message {
-		color: #6b7280;
+		color: var(--text-muted);
 		text-align: center;
+		font-size: 0.875rem;
 		margin: 1rem 0;
 	}
 
 	.domain-hint {
-		color: #4b5563;
+		color: var(--text-muted);
 		text-align: center;
-		font-size: 0.875rem;
+		font-size: 0.8125rem;
 	}
 
 	.domain-hint strong {
-		color: #1f2937;
+		color: var(--text);
 		font-family: 'Courier New', monospace;
 	}
 
 	.dns-instructions {
-		background: #f3f4f6;
+		background: var(--bg-tertiary);
 		padding: 1rem;
-		border-radius: 4px;
-		border-left: 4px solid #3b82f6;
+		border-radius: var(--radius);
+		border-left: 3px solid var(--primary);
 	}
 
 	.dns-instructions h4 {
 		margin: 0 0 0.5rem 0;
-		color: #1f2937;
+		color: var(--text);
 		font-size: 0.875rem;
 		font-weight: 600;
 	}
 
 	.dns-instructions p {
 		margin: 0 0 0.5rem 0;
-		font-size: 0.875rem;
-		color: #4b5563;
+		font-size: 0.8125rem;
 	}
 
 	.dns-record {
-		background: #1f2937;
+		background: var(--bg);
 		padding: 0.75rem;
-		border-radius: 4px;
+		border-radius: 6px;
+		border: 1px solid var(--border);
 	}
 
 	.dns-record code {
-		color: #f3f4f6;
+		color: var(--text);
 		font-family: 'Courier New', monospace;
 		font-size: 0.75rem;
-		line-height: 1.5;
+		line-height: 1.6;
 	}
 
+	/* ── Webhooks ── */
 	.webhook-setup {
-		padding: 1rem 0;
-	}
-
-	.webhook-setup p {
-		color: #4b5563;
-		margin-bottom: 1.5rem;
+		padding: 0.5rem 0;
 	}
 
 	.webhook-info {
@@ -1562,65 +1736,69 @@
 	}
 
 	.info-section h3 {
-		margin: 0 0 0.75rem 0;
-		color: #1f2937;
-		font-size: 1rem;
+		margin: 0 0 0.625rem 0;
+		color: var(--text);
+		font-size: 0.9375rem;
 		font-weight: 600;
 	}
 
 	.code-box {
-		background: #1f2937;
+		background: var(--bg);
+		border: 1px solid var(--border);
 		padding: 0.75rem;
-		border-radius: 4px;
-		margin-bottom: 0.5rem;
+		border-radius: var(--radius);
+		margin-bottom: 0.375rem;
 	}
 
 	.code-box code {
-		color: #f3f4f6;
+		color: var(--text);
 		font-family: 'Courier New', monospace;
-		font-size: 0.875rem;
+		font-size: 0.8125rem;
 		word-break: break-all;
 	}
 
 	.hint {
-		color: #6b7280;
-		font-size: 0.875rem;
+		color: var(--text-muted);
+		font-size: 0.8125rem;
 		margin: 0;
 	}
 
 	.info-section ol {
 		margin: 0.5rem 0;
 		padding-left: 1.5rem;
-		color: #4b5563;
+		color: var(--text-muted);
 	}
 
 	.info-section ol li {
-		margin: 0.5rem 0;
+		margin: 0.375rem 0;
 		font-size: 0.875rem;
 	}
 
 	.info-section ol code {
-		background: #f3f4f6;
+		background: var(--bg-tertiary);
 		padding: 0.125rem 0.375rem;
 		border-radius: 3px;
 		font-family: 'Courier New', monospace;
 		font-size: 0.8125rem;
-		color: #1f2937;
+		color: var(--primary);
+		border: 1px solid var(--border);
 	}
 
+	/* ── Deliveries ── */
 	.deliveries-list {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.625rem;
 		max-height: 300px;
 		overflow-y: auto;
 	}
 
 	.delivery-item {
-		background: #f9fafb;
+		background: var(--bg-tertiary);
 		padding: 0.75rem;
-		border-radius: 4px;
-		border-left: 3px solid #d1d5db;
+		border-radius: var(--radius);
+		border-left: 3px solid var(--border);
+		border: 1px solid var(--border);
 	}
 
 	.delivery-header {
@@ -1632,30 +1810,30 @@
 
 	.delivery-event {
 		font-weight: 600;
-		color: #1f2937;
+		color: var(--text);
 		font-size: 0.875rem;
 	}
 
 	.delivery-status {
-		padding: 0.25rem 0.5rem;
-		border-radius: 4px;
-		font-size: 0.75rem;
+		padding: 0.125rem 0.5rem;
+		border-radius: 12px;
+		font-size: 0.6875rem;
 		font-weight: 600;
 	}
 
 	.delivery-status.status-success {
-		background: #d1fae5;
-		color: #065f46;
+		background: rgba(34, 197, 94, 0.15);
+		color: var(--success);
 	}
 
 	.delivery-status.status-failed {
-		background: #fee2e2;
-		color: #991b1b;
+		background: rgba(239, 68, 68, 0.15);
+		color: var(--danger);
 	}
 
 	.delivery-status.status-skipped {
-		background: #fef3c7;
-		color: #92400e;
+		background: rgba(245, 158, 11, 0.15);
+		color: var(--warning);
 	}
 
 	.delivery-details {
@@ -1667,21 +1845,22 @@
 
 	.delivery-details span {
 		font-size: 0.8125rem;
-		color: #4b5563;
+		color: var(--text-muted);
 	}
 
 	.delivery-message {
-		background: #fff;
-		padding: 0.5rem;
-		border-radius: 3px;
-		font-size: 0.8125rem;
-		color: #1f2937;
+		background: var(--bg);
+		padding: 0.375rem 0.625rem;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		color: var(--text-muted);
 		margin-bottom: 0.5rem;
 		font-family: 'Courier New', monospace;
+		border: 1px solid var(--border);
 	}
 
 	.delivery-time {
 		font-size: 0.75rem;
-		color: #9ca3af;
+		color: var(--text-muted);
 	}
 </style>
