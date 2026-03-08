@@ -8,7 +8,7 @@
 
 	const appId = $page.params.id;
 
-	type Tab = 'configuration' | 'env_vars' | 'deploy_key' | 'webhooks';
+	type Tab = 'configuration' | 'env_vars' | 'deployments' | 'domains' | 'deploy_key' | 'webhooks';
 	let activeTab = $state<Tab>('configuration');
 
 	let app = $state<Application | null>(null);
@@ -38,6 +38,18 @@
 	// Deploy key
 	let deployKey = $state<{ public_key: string; created_at: string } | null>(null);
 	let loadingDeployKey = $state(false);
+
+	// Deployments
+	let deployments = $state<any[]>([]);
+	let selectedDeployment = $state<any>(null);
+	let deploymentLogs = $state<string[]>([]);
+	let showDeploymentLogs = $state(false);
+	let loadingDeployments = $state(false);
+
+	// Domains
+	let appDomains = $state<any[]>([]);
+	let newDomain = $state('');
+	let loadingDomains = $state(false);
 
 	// Webhooks
 	let webhook = $state<any>(null);
@@ -90,6 +102,8 @@
 	async function switchTab(tab: Tab) {
 		activeTab = tab;
 		if (tab === 'env_vars' && appEnvVars.length === 0) await loadEnvVars();
+		if (tab === 'deployments' && deployments.length === 0) await loadDeployments();
+		if (tab === 'domains' && appDomains.length === 0) await loadDomains();
 		if (tab === 'deploy_key' && !deployKey) await loadDeployKey();
 		if (tab === 'webhooks' && !webhook) await loadWebhook();
 	}
@@ -174,6 +188,103 @@
 				error = e.message || 'Failed to delete environment variable';
 			}
 		}, 'Delete');
+	}
+
+	// ── Deployments ────────────────────────────────────────────────────────────
+
+	async function loadDeployments() {
+		loadingDeployments = true;
+		try {
+			const response = await api.get<{ deployments: any[] }>(`/deployments?application_id=${appId}`);
+			deployments = response.deployments;
+		} catch (e: any) {
+			error = e.message || 'Failed to load deployments';
+		} finally {
+			loadingDeployments = false;
+		}
+	}
+
+	function openDeploymentLogs(deployment: any) {
+		selectedDeployment = deployment;
+		deploymentLogs = deployment.build_log ? deployment.build_log.split('\n').filter((l: string) => l) : [];
+		showDeploymentLogs = true;
+	}
+
+	function getDeploymentStatusColor(status: string) {
+		switch (status) {
+			case 'running': return 'green';
+			case 'queued':
+			case 'cloning':
+			case 'building':
+			case 'deploying': return 'blue';
+			case 'failed': return 'red';
+			case 'cancelled': return 'gray';
+			default: return 'gray';
+		}
+	}
+
+	// ── Domains ────────────────────────────────────────────────────────────────
+
+	async function loadDomains() {
+		loadingDomains = true;
+		try {
+			const response = await api.get<{ domains: any[] }>(`/applications/${appId}/domains`);
+			appDomains = response.domains;
+		} catch (e: any) {
+			error = e.message || 'Failed to load domains';
+		} finally {
+			loadingDomains = false;
+		}
+	}
+
+	async function addDomain() {
+		if (!newDomain.trim()) return;
+		error = '';
+		try {
+			await api.post(`/applications/${appId}/domains`, {
+				domain: newDomain.trim(),
+				is_primary: appDomains.length === 0
+			});
+			newDomain = '';
+			await loadDomains();
+		} catch (e: any) {
+			error = e.message || 'Failed to add domain';
+		}
+	}
+
+	async function removeDomain(domain: string) {
+		showConfirm(`Remove domain "${domain}"?`, async () => {
+			error = '';
+			try {
+				await api.delete(`/applications/${appId}/domains/${domain}`);
+				await loadDomains();
+			} catch (e: any) {
+				error = e.message || 'Failed to remove domain';
+			}
+		}, 'Remove');
+	}
+
+	async function setPrimaryDomain(domain: string) {
+		error = '';
+		try {
+			await api.post(`/applications/${appId}/domains/${domain}/primary`, {});
+			await loadDomains();
+		} catch (e: any) {
+			error = e.message || 'Failed to set primary domain';
+		}
+	}
+
+	async function verifyDomain(domain: string) {
+		error = '';
+		try {
+			const response = await api.post<{ success: boolean; message: string }>(
+				`/applications/${appId}/domains/${domain}/verify`, {}
+			);
+			alert(response.message);
+			await loadDomains();
+		} catch (e: any) {
+			error = e.message || 'Failed to verify domain';
+		}
 	}
 
 	// ── Deploy Key ─────────────────────────────────────────────────────────────
@@ -268,6 +379,8 @@
 	const tabs: { id: Tab; label: string; icon: string }[] = [
 		{ id: 'configuration', label: 'Configuration', icon: '⚙️' },
 		{ id: 'env_vars', label: 'Environment Variables', icon: '🔑' },
+		{ id: 'deployments', label: 'Deployments', icon: '🚀' },
+		{ id: 'domains', label: 'Domains', icon: '🌐' },
 		{ id: 'deploy_key', label: 'Deploy Key', icon: '🗝️' },
 		{ id: 'webhooks', label: 'Webhooks', icon: '🔗' }
 	];
@@ -430,6 +543,124 @@
 								{/each}
 							</div>
 						{/if}
+					</div>
+				{/if}
+
+				<!-- Deployments -->
+				{#if activeTab === 'deployments'}
+					<div class="content-section">
+						<div class="section-header">
+							<h2>Deployments</h2>
+							<p>History of all deployments for this application.</p>
+						</div>
+
+						{#if loadingDeployments}
+							<div class="loading-inline">Loading deployments...</div>
+						{:else if deployments.length === 0}
+							<div class="empty-vars">No deployments yet.</div>
+						{:else if showDeploymentLogs && selectedDeployment}
+							<button class="btn-back-inline" onclick={() => showDeploymentLogs = false}>
+								← Back to deployments
+							</button>
+							<div class="deploy-log-header">
+								<span class="status-chip status-{getDeploymentStatusColor(selectedDeployment.status)}">{selectedDeployment.status}</span>
+								<span class="deploy-id-text">{selectedDeployment.id}</span>
+							</div>
+							<div class="log-viewer">
+								{#if deploymentLogs.length === 0}
+									<div class="log-line">No logs available yet...</div>
+								{:else}
+									{#each deploymentLogs as line}
+										<div class="log-line">{line}</div>
+									{/each}
+								{/if}
+							</div>
+						{:else}
+							<div class="deployments-list">
+								{#each deployments as deployment (deployment.id)}
+									<div class="deployment-item">
+										<div class="deployment-row">
+											<div class="deployment-row-left">
+												<span class="status-chip status-{getDeploymentStatusColor(deployment.status)}">{deployment.status}</span>
+												<span class="deploy-id-text">{deployment.id.substring(0, 8)}</span>
+												{#if deployment.commit_sha}
+													<span class="deploy-meta-text mono">{deployment.commit_sha.substring(0, 7)}</span>
+												{/if}
+											</div>
+											<button class="btn-sm-ghost" onclick={() => openDeploymentLogs(deployment)}>View Logs</button>
+										</div>
+										{#if deployment.commit_message}
+											<div class="deploy-commit-msg">{deployment.commit_message}</div>
+										{/if}
+										<div class="deploy-times">
+											<span>Started: {new Date(deployment.started_at).toLocaleString()}</span>
+											{#if deployment.finished_at}
+												<span>Finished: {new Date(deployment.finished_at).toLocaleString()}</span>
+											{/if}
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
+
+				<!-- Domains -->
+				{#if activeTab === 'domains'}
+					<div class="content-section">
+						<div class="section-header">
+							<h2>Domains</h2>
+							<p>Manage custom domains for this application.</p>
+						</div>
+
+						<div class="domain-add-row">
+							<input type="text" placeholder="example.com" bind:value={newDomain} class="domain-input-field" />
+							<button class="btn-primary btn-sm" onclick={addDomain}>Add Domain</button>
+						</div>
+
+						{#if loadingDomains}
+							<div class="loading-inline">Loading domains...</div>
+						{:else if appDomains.length === 0}
+							<div class="empty-vars">No custom domains added yet.</div>
+							{#if app}
+								<p class="hint">Your app is available at: <strong>{app.name}.{servers.find(s => s.id === app!.server_id)?.host || 'localhost'}</strong></p>
+							{/if}
+						{:else}
+							<div class="domains-list">
+								{#each appDomains as domain (domain.id)}
+									<div class="domain-item">
+										<div class="domain-item-left">
+											<span class="domain-name">{domain.domain}</span>
+											<div class="domain-badges">
+												{#if domain.is_primary}<span class="badge badge-primary">Primary</span>{/if}
+												{#if domain.ssl_active}
+													<span class="badge badge-success">SSL Active</span>
+												{:else}
+													<span class="badge badge-warning">SSL Pending</span>
+												{/if}
+											</div>
+										</div>
+										<div class="domain-item-actions">
+											{#if !domain.is_primary}
+												<button class="btn-sm-ghost" onclick={() => setPrimaryDomain(domain.domain)}>Set Primary</button>
+											{/if}
+											{#if !domain.ssl_active}
+												<button class="btn-sm-ghost" onclick={() => verifyDomain(domain.domain)}>Verify</button>
+											{/if}
+											<button class="btn-sm-ghost btn-sm-danger" onclick={() => removeDomain(domain.domain)}>Remove</button>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
+						<div class="dns-instructions">
+							<h4>DNS Configuration</h4>
+							<p class="hint">Point your domain to this server by adding an A record:</p>
+							<div class="code-box" style="margin-top: 0.5rem;">
+								<code>Type: A &nbsp;·&nbsp; Name: @ &nbsp;·&nbsp; Value: {servers.find(s => s.id === app?.server_id)?.host || 'server-ip'}</code>
+							</div>
+						</div>
 					</div>
 				{/if}
 
@@ -971,6 +1202,232 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	/* ── Deployments ── */
+	.deployments-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.625rem;
+	}
+
+	.deployment-item {
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 0.875rem 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+	}
+
+	.deployment-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
+	}
+
+	.deployment-row-left {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.deploy-id-text {
+		font-family: 'Courier New', monospace;
+		font-size: 0.8125rem;
+		color: var(--text-muted);
+	}
+
+	.deploy-meta-text {
+		font-size: 0.75rem;
+		color: var(--text-muted);
+	}
+
+	.deploy-meta-text.mono {
+		font-family: 'Courier New', monospace;
+	}
+
+	.deploy-commit-msg {
+		font-size: 0.8125rem;
+		color: var(--text);
+		padding-left: 0.125rem;
+	}
+
+	.deploy-times {
+		display: flex;
+		gap: 1.25rem;
+		font-size: 0.75rem;
+		color: var(--text-muted);
+		flex-wrap: wrap;
+	}
+
+	.btn-sm-ghost {
+		padding: 0.25rem 0.625rem;
+		border-radius: 5px;
+		font-size: 0.75rem;
+		font-weight: 500;
+		background: transparent;
+		color: var(--text-muted);
+		border: 1px solid var(--border);
+		cursor: pointer;
+		transition: background 0.15s, color 0.15s, border-color 0.15s;
+		white-space: nowrap;
+	}
+
+	.btn-sm-ghost:hover {
+		background: rgba(50, 130, 184, 0.1);
+		color: var(--primary);
+		border-color: var(--primary);
+	}
+
+	.btn-sm-ghost.btn-sm-danger:hover {
+		background: rgba(239, 68, 68, 0.1);
+		color: var(--danger);
+		border-color: var(--danger);
+	}
+
+	.btn-back-inline {
+		background: transparent;
+		border: none;
+		color: var(--primary);
+		font-size: 0.8125rem;
+		cursor: pointer;
+		padding: 0;
+		margin-bottom: 1rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.deploy-log-header {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.log-viewer {
+		background: #0d1117;
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 1rem;
+		max-height: 480px;
+		overflow-y: auto;
+		font-family: 'Courier New', monospace;
+		font-size: 0.75rem;
+		line-height: 1.6;
+	}
+
+	.log-line {
+		color: #c9d1d9;
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+
+	/* ── Domains ── */
+	.domain-add-row {
+		display: flex;
+		gap: 0.625rem;
+		margin-bottom: 1.5rem;
+		align-items: center;
+	}
+
+	.domain-input-field {
+		flex: 1;
+		max-width: 320px;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 0.5rem 0.75rem;
+		font-size: 0.875rem;
+		color: var(--text);
+		outline: none;
+		transition: border-color 0.15s;
+	}
+
+	.domain-input-field:focus {
+		border-color: var(--primary);
+	}
+
+	.domains-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin-bottom: 1.75rem;
+	}
+
+	.domain-item {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 0.75rem 1rem;
+	}
+
+	.domain-item-left {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		flex-wrap: wrap;
+		min-width: 0;
+	}
+
+	.domain-name {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--text);
+	}
+
+	.domain-badges {
+		display: flex;
+		gap: 0.375rem;
+	}
+
+	.domain-item-actions {
+		display: flex;
+		gap: 0.375rem;
+		flex-shrink: 0;
+	}
+
+	.badge {
+		padding: 0.1rem 0.5rem;
+		border-radius: 20px;
+		font-size: 0.6875rem;
+		font-weight: 600;
+	}
+
+	.badge-primary {
+		background: rgba(50, 130, 184, 0.15);
+		color: var(--primary);
+	}
+
+	.badge-success {
+		background: rgba(34, 197, 94, 0.15);
+		color: var(--success);
+	}
+
+	.badge-warning {
+		background: rgba(234, 179, 8, 0.15);
+		color: #ca8a04;
+	}
+
+	.dns-instructions {
+		margin-top: 1.75rem;
+		padding-top: 1.25rem;
+		border-top: 1px solid var(--border);
+	}
+
+	.dns-instructions h4 {
+		margin: 0 0 0.375rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--text);
 	}
 
 	/* ── Deploy key ── */
