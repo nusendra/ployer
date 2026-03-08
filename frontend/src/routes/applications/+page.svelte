@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { api } from '$lib/api/client';
 	import type { Application, BuildStrategy } from '$lib/types';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
@@ -25,31 +26,9 @@
 	let envVarKey = $state('');
 	let envVarValue = $state('');
 
-	// Detail/Edit modal state
-	let showDetailModal = $state(false);
-	let selectedApp = $state<Application | null>(null);
-	let editForm = $state({
-		name: '',
-		git_url: '',
-		git_branch: '',
-		build_strategy: 'dockerfile' as BuildStrategy,
-		dockerfile_path: '',
-		port: undefined as number | undefined,
-		auto_deploy: false
-	});
-
-	// Environment variables modal state
-	let showEnvModal = $state(false);
-	let appEnvVars = $state<Array<{ key: string; value: string }>>([]);
-	let newEnvKey = $state('');
-	let newEnvValue = $state('');
-
-	// Deploy key modal state
-	let showDeployKeyModal = $state(false);
-	let deployKey = $state<{ public_key: string; created_at: string } | null>(null);
-
 	// Deployment modal state
 	let showDeploymentsModal = $state(false);
+	let selectedApp = $state<Application | null>(null);
 	let deployments = $state<any[]>([]);
 	let showDeploymentLogsModal = $state(false);
 	let selectedDeployment = $state<any>(null);
@@ -60,12 +39,6 @@
 	let showDomainsModal = $state(false);
 	let appDomains = $state<any[]>([]);
 	let newDomain = $state('');
-
-	// Webhook modal state
-	let showWebhookModal = $state(false);
-	let webhook = $state<any>(null);
-	let webhookDeliveries = $state<any[]>([]);
-	let selectedProvider = $state<'github' | 'gitlab'>('github');
 
 	// Confirm modal
 	let confirmModal = $state<{ message: string; confirmLabel?: string; onConfirm: () => void } | null>(null);
@@ -151,43 +124,6 @@
 		createForm.env_vars = { ...createForm.env_vars };
 	}
 
-	async function openDetailModal(app: Application) {
-		selectedApp = app;
-		editForm = {
-			name: app.name,
-			git_url: app.git_url || '',
-			git_branch: app.git_branch,
-			build_strategy: app.build_strategy,
-			dockerfile_path: app.dockerfile_path || '',
-			port: app.port,
-			auto_deploy: app.auto_deploy
-		};
-		showDetailModal = true;
-	}
-
-	async function updateApplication() {
-		if (!selectedApp) return;
-		error = '';
-		try {
-			const payload: any = {};
-			if (editForm.name !== selectedApp.name) payload.name = editForm.name;
-			if (editForm.git_url !== (selectedApp.git_url || '')) payload.git_url = editForm.git_url || null;
-			if (editForm.git_branch !== selectedApp.git_branch) payload.git_branch = editForm.git_branch;
-			if (editForm.build_strategy !== selectedApp.build_strategy)
-				payload.build_strategy = editForm.build_strategy;
-			if (editForm.dockerfile_path !== (selectedApp.dockerfile_path || ''))
-				payload.dockerfile_path = editForm.dockerfile_path || null;
-			if (editForm.port !== selectedApp.port) payload.port = editForm.port;
-			if (editForm.auto_deploy !== selectedApp.auto_deploy) payload.auto_deploy = editForm.auto_deploy;
-
-			await api.put(`/applications/${selectedApp.id}`, payload);
-			showDetailModal = false;
-			await loadApplications();
-		} catch (e: any) {
-			error = e.message || 'Failed to update application';
-		}
-	}
-
 	async function deleteApplication(id: string) {
 		showConfirm('Delete this application? All deployments and configuration will be lost.', async () => {
 			error = '';
@@ -198,85 +134,6 @@
 				error = e.message || 'Failed to delete application';
 			}
 		});
-	}
-
-	async function openEnvModal(app: Application) {
-		selectedApp = app;
-		showEnvModal = true;
-		await loadEnvVars(app.id);
-	}
-
-	async function loadEnvVars(appId: string) {
-		try {
-			const response = await api.get<{ env_vars: Array<{ key: string; value: string }> }>(
-				`/applications/${appId}/envs`
-			);
-			appEnvVars = response.env_vars;
-		} catch (e: any) {
-			error = e.message || 'Failed to load environment variables';
-		}
-	}
-
-	async function addEnvVar() {
-		if (!selectedApp || !newEnvKey) return;
-		error = '';
-		try {
-			await api.post(`/applications/${selectedApp.id}/envs`, {
-				key: newEnvKey,
-				value: newEnvValue
-			});
-			newEnvKey = '';
-			newEnvValue = '';
-			await loadEnvVars(selectedApp.id);
-		} catch (e: any) {
-			error = e.message || 'Failed to add environment variable';
-		}
-	}
-
-	async function deleteEnvVar(key: string) {
-		if (!selectedApp) return;
-		showConfirm(`Delete environment variable "${key}"?`, async () => {
-			error = '';
-			try {
-				await api.delete(`/applications/${selectedApp!.id}/envs/${key}`);
-				await loadEnvVars(selectedApp!.id);
-			} catch (e: any) {
-				error = e.message || 'Failed to delete environment variable';
-			}
-		});
-	}
-
-	async function openDeployKeyModal(app: Application) {
-		selectedApp = app;
-		showDeployKeyModal = true;
-		await loadDeployKey(app.id);
-	}
-
-	async function loadDeployKey(appId: string) {
-		try {
-			const response = await api.get<{ public_key: string; created_at: string }>(
-				`/applications/${appId}/deploy-key`
-			);
-			deployKey = response;
-		} catch (e: any) {
-			deployKey = null;
-		}
-	}
-
-	async function regenerateDeployKey() {
-		if (!selectedApp) return;
-		showConfirm('Regenerate deploy key? The old key will be invalidated.', async () => {
-			error = '';
-			try {
-				const response = await api.post<{ public_key: string; created_at: string }>(
-					`/applications/${selectedApp!.id}/deploy-key`,
-					{}
-				);
-				deployKey = response;
-			} catch (e: any) {
-				error = e.message || 'Failed to regenerate deploy key';
-			}
-		}, 'Regenerate');
 	}
 
 	function getStatusColor(status: string) {
@@ -399,56 +256,6 @@
 		}
 	}
 
-	async function openWebhookModal(app: Application) {
-		selectedApp = app;
-		showWebhookModal = true;
-		await loadWebhook(app.id);
-		await loadWebhookDeliveries(app.id);
-	}
-
-	async function loadWebhook(appId: string) {
-		try {
-			webhook = await api.get(`/applications/${appId}/webhooks`);
-		} catch (e: any) {
-			webhook = null;
-		}
-	}
-
-	async function loadWebhookDeliveries(appId: string) {
-		try {
-			const deliveries = await api.get<any[]>(`/applications/${appId}/webhooks/deliveries`);
-			webhookDeliveries = deliveries;
-		} catch (e: any) {
-			webhookDeliveries = [];
-		}
-	}
-
-	async function createWebhook() {
-		if (!selectedApp) return;
-		error = '';
-		try {
-			webhook = await api.post(`/applications/${selectedApp.id}/webhooks`, {
-				provider: selectedProvider
-			});
-		} catch (e: any) {
-			error = e.message || 'Failed to create webhook';
-		}
-	}
-
-	async function deleteWebhook() {
-		if (!selectedApp) return;
-		showConfirm('Delete webhook configuration? Auto-deploys will stop working.', async () => {
-			error = '';
-			try {
-				await api.delete(`/applications/${selectedApp!.id}/webhooks`);
-				webhook = null;
-				webhookDeliveries = [];
-			} catch (e: any) {
-				error = e.message || 'Failed to delete webhook';
-			}
-		});
-	}
-
 	async function loadDeployments(appId: string) {
 		try {
 			const response = await api.get<{ deployments: any[] }>(
@@ -516,6 +323,7 @@
 							<h3>{app.name}</h3>
 							<span class="status-chip status-{getStatusColor(app.status)}">{app.status}</span>
 						</div>
+						<a class="btn-view" href="/applications/{app.id}">View</a>
 					</div>
 
 					<!-- Meta info grid -->
@@ -563,12 +371,6 @@
 							{/if}
 							<button class="btn-action" onclick={() => openDeploymentsModal(app)}>History</button>
 							<button class="btn-action" onclick={() => openDomainsModal(app)}>Domains</button>
-							<button class="btn-action" onclick={() => openDetailModal(app)}>Edit</button>
-							<button class="btn-action" onclick={() => openEnvModal(app)}>Env</button>
-							{#if app.git_url}
-								<button class="btn-action" onclick={() => openDeployKeyModal(app)}>Key</button>
-								<button class="btn-action" onclick={() => openWebhookModal(app)}>Webhook</button>
-							{/if}
 						</div>
 						<button class="btn-action btn-delete" onclick={() => deleteApplication(app.id)}>Delete</button>
 					</div>
@@ -669,127 +471,6 @@
 	</div>
 {/if}
 
-<!-- Edit Application Modal -->
-{#if showDetailModal && selectedApp}
-	<div class="modal-overlay" onclick={() => (showDetailModal = false)}>
-		<div class="modal" onclick={(e) => e.stopPropagation()}>
-			<h2>Edit Application</h2>
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					updateApplication();
-				}}
-			>
-				<div class="form-group">
-					<label for="edit_name">Application Name</label>
-					<input id="edit_name" type="text" bind:value={editForm.name} required />
-				</div>
-
-				<div class="form-group">
-					<label for="edit_git_url">Git Repository URL</label>
-					<input id="edit_git_url" type="text" bind:value={editForm.git_url} />
-				</div>
-
-				<div class="form-group">
-					<label for="edit_git_branch">Git Branch</label>
-					<input id="edit_git_branch" type="text" bind:value={editForm.git_branch} />
-				</div>
-
-				<div class="form-group">
-					<label for="edit_build_strategy">Build Strategy</label>
-					<select id="edit_build_strategy" bind:value={editForm.build_strategy}>
-						<option value="dockerfile">Dockerfile</option>
-						<option value="nixpacks">Nixpacks</option>
-						<option value="docker_compose">Docker Compose</option>
-					</select>
-				</div>
-
-				{#if editForm.build_strategy === 'dockerfile'}
-					<div class="form-group">
-						<label for="edit_dockerfile_path">Dockerfile Path</label>
-						<input id="edit_dockerfile_path" type="text" bind:value={editForm.dockerfile_path} />
-					</div>
-				{/if}
-
-				<div class="form-group">
-					<label for="edit_port">Port</label>
-					<input id="edit_port" type="number" bind:value={editForm.port} />
-				</div>
-
-				<div class="form-group-checkbox">
-					<input id="edit_auto_deploy" type="checkbox" bind:checked={editForm.auto_deploy} />
-					<label for="edit_auto_deploy">Enable auto-deploy on git push</label>
-				</div>
-
-				<div class="modal-actions">
-					<button type="button" class="btn-secondary" onclick={() => (showDetailModal = false)}>Cancel</button>
-					<button type="submit" class="btn-primary">Update</button>
-				</div>
-			</form>
-		</div>
-	</div>
-{/if}
-
-<!-- Environment Variables Modal -->
-{#if showEnvModal && selectedApp}
-	<div class="modal-overlay" onclick={() => (showEnvModal = false)}>
-		<div class="modal" onclick={(e) => e.stopPropagation()}>
-			<h2>Environment Variables - {selectedApp.name}</h2>
-
-			<div class="env-vars-section">
-				<div class="env-vars-input">
-					<input type="text" placeholder="KEY" bind:value={newEnvKey} />
-					<input type="text" placeholder="Value" bind:value={newEnvValue} />
-					<button class="btn-primary" onclick={addEnvVar}>Add</button>
-				</div>
-
-				<div class="env-vars-list">
-					{#each appEnvVars as envVar (envVar.key)}
-						<div class="env-var-item">
-							<span class="env-key">{envVar.key}</span>
-							<span class="env-value">{envVar.value}</span>
-							<button class="btn-sm btn-danger" onclick={() => deleteEnvVar(envVar.key)}>Delete</button>
-						</div>
-					{/each}
-				</div>
-			</div>
-
-			<div class="modal-actions">
-				<button class="btn-secondary" onclick={() => (showEnvModal = false)}>Close</button>
-			</div>
-		</div>
-	</div>
-{/if}
-
-<!-- Deploy Key Modal -->
-{#if showDeployKeyModal && selectedApp}
-	<div class="modal-overlay" onclick={() => (showDeployKeyModal = false)}>
-		<div class="modal" onclick={(e) => e.stopPropagation()}>
-			<h2>Deploy Key - {selectedApp.name}</h2>
-
-			{#if deployKey}
-				<div class="deploy-key-section">
-					<p class="deploy-key-info">Add this public key to your Git repository's deploy keys.</p>
-					<div class="deploy-key-box">
-						<pre>{deployKey.public_key}</pre>
-					</div>
-					<p class="deploy-key-date">Created: {new Date(deployKey.created_at).toLocaleString()}</p>
-					<button class="btn-danger" onclick={regenerateDeployKey}>Regenerate Key</button>
-				</div>
-			{:else}
-				<div class="deploy-key-section">
-					<p>No deploy key found. A deploy key should have been generated when you created this application.</p>
-					<button class="btn-primary" onclick={regenerateDeployKey}>Generate Deploy Key</button>
-				</div>
-			{/if}
-
-			<div class="modal-actions">
-				<button class="btn-secondary" onclick={() => (showDeployKeyModal = false)}>Close</button>
-			</div>
-		</div>
-	</div>
-{/if}
-
 <!-- Deployments Modal -->
 {#if showDeploymentsModal && selectedApp}
 	<div class="modal-overlay" onclick={() => (showDeploymentsModal = false)}>
@@ -881,7 +562,7 @@
 				{#if appDomains.length === 0}
 					<p class="empty-message">No custom domains added yet.</p>
 					<p class="domain-hint">
-						Your app will be available at: <strong>{selectedApp.name}.{servers.find((s) => s.id === selectedApp.server_id)?.host || 'localhost'}</strong>
+						Your app will be available at: <strong>{selectedApp!.name}.{servers.find((s) => s.id === selectedApp!.server_id)?.host || 'localhost'}</strong>
 					</p>
 				{:else}
 					<div class="domains-list">
@@ -933,113 +614,6 @@
 
 			<div class="modal-actions">
 				<button class="btn-secondary" onclick={() => (showDomainsModal = false)}>Close</button>
-			</div>
-		</div>
-	</div>
-{/if}
-
-<!-- Webhook Modal -->
-{#if showWebhookModal && selectedApp}
-	<div class="modal-overlay" onclick={() => (showWebhookModal = false)}>
-		<div class="modal" onclick={(e) => e.stopPropagation()}>
-			<h2>Webhooks - {selectedApp.name}</h2>
-
-			{#if !webhook}
-				<div class="webhook-setup">
-					<p>Configure webhook to auto-deploy when you push to your repository.</p>
-
-					<div class="form-group">
-						<label>Git Provider</label>
-						<select bind:value={selectedProvider}>
-							<option value="github">GitHub</option>
-							<option value="gitlab">GitLab</option>
-						</select>
-					</div>
-
-					<button class="btn-primary" onclick={createWebhook}>Create Webhook</button>
-				</div>
-			{:else}
-				<div class="webhook-info">
-					<div class="info-section">
-						<h3>Webhook URL</h3>
-						<div class="code-box">
-							<code>{webhook.webhook_url}</code>
-						</div>
-						<p class="hint">Add this URL to your {webhook.provider} repository webhook settings</p>
-					</div>
-
-					<div class="info-section">
-						<h3>Secret Token</h3>
-						<div class="code-box">
-							<code>{webhook.secret}</code>
-						</div>
-						<p class="hint">Use this secret for webhook signature verification</p>
-					</div>
-
-					{#if webhook.provider === 'github'}
-						<div class="info-section">
-							<h3>GitHub Configuration</h3>
-							<ol>
-								<li>Go to your repository → Settings → Webhooks → Add webhook</li>
-								<li>Paste the Webhook URL above</li>
-								<li>Set Content type to: <code>application/json</code></li>
-								<li>Paste the Secret Token above</li>
-								<li>Select event: <code>Push events</code></li>
-								<li>Click "Add webhook"</li>
-							</ol>
-						</div>
-					{:else}
-						<div class="info-section">
-							<h3>GitLab Configuration</h3>
-							<ol>
-								<li>Go to your repository → Settings → Webhooks</li>
-								<li>Paste the Webhook URL above</li>
-								<li>Paste the Secret Token</li>
-								<li>Check "Push events"</li>
-								<li>Click "Add webhook"</li>
-							</ol>
-						</div>
-					{/if}
-
-					<div class="info-section">
-						<h3>Recent Deliveries</h3>
-						{#if webhookDeliveries.length === 0}
-							<p class="empty-message">No webhook deliveries yet</p>
-						{:else}
-							<div class="deliveries-list">
-								{#each webhookDeliveries as delivery (delivery.id)}
-									<div class="delivery-item">
-										<div class="delivery-header">
-											<span class="delivery-event">{delivery.event_type}</span>
-											<span class="delivery-status status-{delivery.status}">{delivery.status}</span>
-										</div>
-										{#if delivery.branch}
-											<div class="delivery-details">
-												<span><strong>Branch:</strong> {delivery.branch}</span>
-												{#if delivery.commit_sha}
-													<span><strong>Commit:</strong> {delivery.commit_sha.substring(0, 7)}</span>
-												{/if}
-												{#if delivery.author}
-													<span><strong>Author:</strong> {delivery.author}</span>
-												{/if}
-											</div>
-										{/if}
-										{#if delivery.commit_message}
-											<div class="delivery-message">{delivery.commit_message}</div>
-										{/if}
-										<div class="delivery-time">{new Date(delivery.delivered_at).toLocaleString()}</div>
-									</div>
-								{/each}
-							</div>
-						{/if}
-					</div>
-
-					<button class="btn-danger" onclick={deleteWebhook}>Delete Webhook</button>
-				</div>
-			{/if}
-
-			<div class="modal-actions">
-				<button class="btn-secondary" onclick={() => (showWebhookModal = false)}>Close</button>
 			</div>
 		</div>
 	</div>
@@ -1131,6 +705,27 @@
 		display: flex;
 		align-items: center;
 		gap: 0.875rem;
+		justify-content: space-between;
+	}
+
+	.btn-view {
+		padding: 0.3125rem 0.875rem;
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 600;
+		background: var(--primary);
+		color: var(--bg);
+		border: none;
+		cursor: pointer;
+		text-decoration: none;
+		display: inline-flex;
+		align-items: center;
+		flex-shrink: 0;
+		transition: opacity 0.15s;
+	}
+
+	.btn-view:hover {
+		opacity: 0.85;
 	}
 
 	.app-avatar {
@@ -1152,6 +747,7 @@
 		flex-direction: column;
 		gap: 0.25rem;
 		min-width: 0;
+		flex: 1;
 	}
 
 	.app-title h3 {
@@ -1284,6 +880,9 @@
 		border: 1px solid var(--border);
 		cursor: pointer;
 		transition: background 0.15s, border-color 0.15s;
+		text-decoration: none;
+		display: inline-flex;
+		align-items: center;
 	}
 
 	.btn-action:hover {
