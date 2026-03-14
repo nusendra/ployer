@@ -179,8 +179,32 @@ impl DeploymentService {
 
         send_log("Build completed successfully".to_string()).await;
 
-        // Step 3: Create and start new container
+        // Step 3: Stop old container before starting new one (avoids port conflicts)
         deployment_repo.update_status(&deployment_id, DeploymentStatus::Deploying).await?;
+
+        if let Ok(Some(prev_deployment)) = deployment_repo.get_latest_running(&application.id).await {
+            if let Some(prev_container_id) = prev_deployment.container_id {
+                send_log(format!("Stopping old container: {}", prev_container_id)).await;
+
+                if let Err(e) = docker.stop_container(&prev_container_id, Some(10)).await {
+                    warn!("Failed to stop old container {}: {}", prev_container_id, e);
+                    send_log(format!("Warning: Failed to stop old container: {}", e)).await;
+                } else {
+                    send_log(format!("Old container stopped: {}", prev_container_id)).await;
+                }
+
+                if let Err(e) = docker.remove_container(&prev_container_id, true).await {
+                    warn!("Failed to remove old container {}: {}", prev_container_id, e);
+                    send_log(format!("Warning: Failed to remove old container: {}", e)).await;
+                } else {
+                    send_log(format!("Old container removed: {}", prev_container_id)).await;
+                }
+
+                let _ = deployment_repo.update_status(&prev_deployment.id, DeploymentStatus::RolledBack).await;
+            }
+        }
+
+        // Step 4: Create and start new container
         send_log("Creating container...".to_string()).await;
 
         let container_config = ContainerConfig {
@@ -204,40 +228,9 @@ impl DeploymentService {
         docker.start_container(&container_id).await?;
         send_log("Container started".to_string()).await;
 
-        // Step 4: Health check (simple wait for now)
+        // Step 5: Health check (simple wait)
         send_log("Waiting for health check...".to_string()).await;
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-
-        // Step 5: Stop old container (rolling update)
-        send_log("Performing rolling update...".to_string()).await;
-
-        // Get the previous running deployment
-        if let Ok(Some(prev_deployment)) = deployment_repo.get_latest_running(&application.id).await {
-            if let Some(prev_container_id) = prev_deployment.container_id {
-                if prev_container_id != container_id {
-                    send_log(format!("Stopping old container: {}", prev_container_id)).await;
-
-                    // Stop the old container (10 second timeout)
-                    if let Err(e) = docker.stop_container(&prev_container_id, Some(10)).await {
-                        warn!("Failed to stop old container {}: {}", prev_container_id, e);
-                        send_log(format!("Warning: Failed to stop old container: {}", e)).await;
-                    } else {
-                        send_log(format!("Old container stopped: {}", prev_container_id)).await;
-                    }
-
-                    // Remove the old container (force=true to remove even if running)
-                    if let Err(e) = docker.remove_container(&prev_container_id, true).await {
-                        warn!("Failed to remove old container {}: {}", prev_container_id, e);
-                        send_log(format!("Warning: Failed to remove old container: {}", e)).await;
-                    } else {
-                        send_log(format!("Old container removed: {}", prev_container_id)).await;
-                    }
-
-                    // Update old deployment status to rolled_back
-                    let _ = deployment_repo.update_status(&prev_deployment.id, DeploymentStatus::RolledBack).await;
-                }
-            }
-        }
 
         // Step 5.5: Create subdomain and configure Caddy
         // For MVP, skip actual Caddy configuration (would need Caddy running)
