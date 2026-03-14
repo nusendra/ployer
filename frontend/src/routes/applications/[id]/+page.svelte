@@ -75,6 +75,27 @@
 
 	onMount(async () => {
 		await Promise.all([loadApp(), loadServers()]);
+
+		const tabParam = $page.url.searchParams.get('tab') as Tab | null;
+		const liveParam = $page.url.searchParams.get('live');
+
+		if (tabParam === 'deployments' && liveParam) {
+			await switchTab('deployments');
+			const target = deployments.find((d) => d.id === liveParam);
+			if (target) {
+				openDeploymentLogs(target, true);
+			} else {
+				// Deployment not loaded yet — fetch it directly
+				try {
+					const res = await api.get<{ deployments: any[] }>(`/deployments?application_id=${appId}`);
+					deployments = res.deployments;
+					const found = deployments.find((d) => d.id === liveParam);
+					if (found) openDeploymentLogs(found, true);
+				} catch {}
+			}
+		} else if (tabParam) {
+			await switchTab(tabParam);
+		}
 	});
 
 	async function loadApp() {

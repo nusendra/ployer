@@ -157,11 +157,11 @@
 			deploying = true;
 			error = '';
 			try {
-				await api.post(`/applications/${app.id}/deploy`, {});
-				await loadApplications();
+				const response = await api.post<{ deployment: any }>(`/applications/${app.id}/deploy`, {});
+				const deployment = response.deployment;
+				goto(`/applications/${app.id}?tab=deployments&live=${deployment.id}`);
 			} catch (e: any) {
 				error = e.message || 'Failed to trigger deployment';
-			} finally {
 				deploying = false;
 			}
 		}, 'Deploy');
