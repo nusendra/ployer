@@ -202,6 +202,16 @@ impl DeploymentService {
             Err(_) => {} // doesn't exist — that's fine
         }
 
+        // Kill any remaining containers still bound to the app's port
+        if let Some(port) = application.port {
+            match docker.remove_containers_by_port(port).await {
+                Ok(removed) if !removed.is_empty() => {
+                    send_log(format!("Freed port {} (removed: {})", port, removed.join(", "))).await;
+                }
+                _ => {}
+            }
+        }
+
         // Step 4: Create and start new container with fixed name
         send_log("Creating container...".to_string()).await;
 

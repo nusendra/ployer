@@ -163,6 +163,37 @@ impl DockerClient {
         Ok(tar_data)
     }
 
+    /// Force-remove all containers bound to a given host port
+    pub async fn remove_containers_by_port(&self, port: u16) -> Result<Vec<String>> {
+        let mut filters = HashMap::new();
+        filters.insert("publish".to_string(), vec![port.to_string()]);
+
+        let options = ListContainersOptions {
+            all: true,
+            filters,
+            ..Default::default()
+        };
+
+        let containers = self.client.list_containers(Some(options)).await?;
+        let mut removed = Vec::new();
+
+        for c in containers {
+            if let Some(id) = c.id {
+                let options = RemoveContainerOptions { force: true, v: true, ..Default::default() };
+                if self.client.remove_container(&id, Some(options)).await.is_ok() {
+                    let name = c.names
+                        .as_ref()
+                        .and_then(|n| n.first())
+                        .map(|n| n.trim_start_matches('/').to_string())
+                        .unwrap_or_else(|| id[..12].to_string());
+                    removed.push(name);
+                }
+            }
+        }
+
+        Ok(removed)
+    }
+
     // List containers
     pub async fn list_containers(&self, all: bool) -> Result<Vec<ContainerInfo>> {
         let options = ListContainersOptions::<String> {
