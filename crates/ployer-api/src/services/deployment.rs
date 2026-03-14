@@ -70,19 +70,28 @@ impl DeploymentService {
 
         tokio::spawn(async move {
             if let Err(e) = Self::execute_deployment(
-                db,
+                db.clone(),
                 docker,
                 caddy,
                 base_domain,
-                ws_broadcast,
-                deployment_id,
-                application,
+                ws_broadcast.clone(),
+                deployment_id.clone(),
+                application.clone(),
                 private_key,
                 image_tag,
             )
             .await
             {
                 error!("Deployment failed: {}", e);
+                // Mark deployment as failed so status doesn't stay stuck
+                let repo = DeploymentRepository::new(db);
+                let _ = repo.update_status(&deployment_id, DeploymentStatus::Failed).await;
+                let _ = repo.append_log(&deployment_id, &format!("ERROR: {}", e)).await;
+                let _ = ws_broadcast.send(WsEvent::DeploymentStatus {
+                    deployment_id,
+                    app_id: application.id,
+                    status: DeploymentStatus::Failed,
+                });
             }
         });
 
