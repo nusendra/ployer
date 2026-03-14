@@ -22,13 +22,19 @@ pub async fn create_pool(database_url: &str) -> Result<SqlitePool> {
 }
 
 pub async fn run_migrations(pool: &SqlitePool) -> Result<()> {
-    let migration_sql = include_str!("../../../migrations/001_initial.sql");
+    let migrations = [
+        include_str!("../../../migrations/001_initial.sql"),
+        include_str!("../../../migrations/002_webhooks.sql"),
+        include_str!("../../../migrations/003_health_check_results.sql"),
+        include_str!("../../../migrations/004_settings.sql"),
+    ];
 
-    // Split by statements and execute each
-    for statement in migration_sql.split(';') {
-        let stmt = statement.trim();
-        if !stmt.is_empty() {
-            sqlx::query(stmt).execute(pool).await?;
+    for migration_sql in &migrations {
+        for statement in migration_sql.split(';') {
+            let stmt = statement.trim();
+            if !stmt.is_empty() {
+                sqlx::query(stmt).execute(pool).await?;
+            }
         }
     }
 

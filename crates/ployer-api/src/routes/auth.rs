@@ -8,6 +8,8 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use ployer_core::models::User;
 
+use ployer_db::repositories::{SettingsRepository, UserRepository};
+
 use crate::app_state::SharedState;
 use crate::auth::{validate_token, AuthService};
 use crate::middleware::validation;
@@ -37,6 +39,21 @@ async fn register(
     Json(req): Json<RegisterRequest>,
 ) -> Result<Json<RegisterResponse>, (StatusCode, String)> {
     let auth_service = AuthService::new(state.db.clone());
+
+    // Check if registration is allowed (always allow if no users exist yet)
+    let user_count = UserRepository::new(state.db.clone())
+        .count()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    if user_count > 0 {
+        let allow = SettingsRepository::new(state.db.clone())
+            .allow_registration()
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        if !allow {
+            return Err((StatusCode::FORBIDDEN, "Registration is disabled".to_string()));
+        }
+    }
 
     validation::email(&req.email)?;
     validation::password(&req.password)?;

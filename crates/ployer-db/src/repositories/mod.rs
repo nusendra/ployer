@@ -9,6 +9,7 @@ pub mod domain;
 pub mod webhook;
 pub mod health_check;
 pub mod container_stats;
+pub mod settings;
 
 pub use user::UserRepository;
 pub use api_key::ApiKeyRepository;
@@ -21,3 +22,4 @@ pub use domain::DomainRepository;
 pub use webhook::WebhookRepository;
 pub use health_check::HealthCheckRepository;
 pub use container_stats::ContainerStatsRepository;
+pub use settings::SettingsRepository;
