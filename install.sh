@@ -6,10 +6,11 @@ set -euo pipefail
 # Usage: curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh | sudo bash
 # ─────────────────────────────────────────────
 
-PLOYER_VERSION="main"
-PLOYER_DIR="/data/ployer"
-GITHUB_REPO="https://github.com/nusendra/ployer.git"
-GITHUB_RAW="https://raw.githubusercontent.com/nusendra/ployer/${PLOYER_VERSION}"
+PLOYER_REPO="nusendra/ployer"
+PLOYER_DIR="/opt/ployer"
+PLOYER_DATA_DIR="/var/lib/ployer"
+PLOYER_BIN="/usr/local/bin/ployer"
+PLOYER_SERVICE="/etc/systemd/system/ployer.service"
 
 # ── Colors ────────────────────────────────────
 RED='\033[0;31m'
@@ -19,11 +20,11 @@ BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-log()     { echo -e "${GREEN}[✓]${NC} $*"; }
-info()    { echo -e "${BLUE}[→]${NC} $*"; }
-warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
-error()   { echo -e "${RED}[✗]${NC} $*" >&2; exit 1; }
-step()    { echo -e "\n${BOLD}${BLUE}── $* ${NC}"; }
+log()   { echo -e "${GREEN}[✓]${NC} $*"; }
+info()  { echo -e "${BLUE}[→]${NC} $*"; }
+warn()  { echo -e "${YELLOW}[!]${NC} $*"; }
+error() { echo -e "${RED}[✗]${NC} $*" >&2; exit 1; }
+step()  { echo -e "\n${BOLD}${BLUE}── $* ${NC}"; }
 
 banner() {
   echo -e "${BLUE}${BOLD}"
@@ -37,290 +38,303 @@ banner() {
 EOF
   echo -e "${NC}"
   echo -e "  ${BOLD}Lightweight self-hosting PaaS${NC}"
-  echo -e "  ${BLUE}https://github.com/nusendra/ployer${NC}"
+  echo -e "  ${BLUE}https://github.com/${PLOYER_REPO}${NC}"
   echo ""
 }
 
-# ── Preflight checks ──────────────────────────
+# ── Preflight ─────────────────────────────────
 
 check_root() {
-  if [[ $EUID -ne 0 ]]; then
-    error "This installer must be run as root. Try: sudo bash install.sh"
-  fi
+  [[ $EUID -eq 0 ]] || error "Run as root: sudo bash install.sh"
 }
 
 check_os() {
-  if [[ "$(uname -s)" != "Linux" ]]; then
-    error "Ployer installer only supports Linux. Got: $(uname -s)"
-  fi
+  [[ "$(uname -s)" == "Linux" ]] || error "Only Linux is supported."
 
   ARCH=$(uname -m)
-  if [[ "$ARCH" != "x86_64" && "$ARCH" != "aarch64" && "$ARCH" != "arm64" ]]; then
-    warn "Untested architecture: ${ARCH}. Proceeding anyway."
-  fi
+  case "$ARCH" in
+    x86_64)        BINARY_ARCH="x86_64" ;;
+    aarch64|arm64) BINARY_ARCH="arm64" ;;
+    *) error "Unsupported architecture: ${ARCH}" ;;
+  esac
 
-  # Detect distro
   if [[ -f /etc/os-release ]]; then
-    # shellcheck source=/dev/null
     source /etc/os-release
     OS_ID="${ID:-unknown}"
-    OS_VERSION="${VERSION_ID:-unknown}"
-    log "Detected OS: ${PRETTY_NAME:-$OS_ID $OS_VERSION}"
+    log "OS: ${PRETTY_NAME:-$OS_ID}"
   else
-    warn "Could not detect OS. Proceeding anyway."
     OS_ID="unknown"
   fi
 }
 
-check_requirements() {
-  local missing=()
-  for cmd in curl git; do
-    if ! command -v "$cmd" &>/dev/null; then
-      missing+=("$cmd")
-    fi
-  done
-
-  if [[ ${#missing[@]} -gt 0 ]]; then
-    info "Installing missing tools: ${missing[*]}"
-    install_packages "${missing[@]}"
-  fi
+check_docker() {
+  command -v docker &>/dev/null || error "Docker is not installed. Install it first: https://docs.docker.com/engine/install/"
+  docker info &>/dev/null || error "Docker is not running. Start it: systemctl start docker"
+  log "Docker: $(docker --version | awk '{print $3}' | tr -d ',')"
 }
 
-# ── Package manager helpers ───────────────────
+# ── Package helpers ───────────────────────────
 
 install_packages() {
   case "$OS_ID" in
     ubuntu|debian|linuxmint|pop)
-      apt-get update -qq
-      apt-get install -y -qq "$@"
-      ;;
-    centos|rhel|fedora|rocky|almalinux)
-      yum install -y -q "$@" 2>/dev/null || dnf install -y -q "$@"
-      ;;
-    alpine)
-      apk add --no-cache -q "$@"
-      ;;
-    *)
-      warn "Unknown distro '${OS_ID}'. Trying apt-get..."
-      apt-get update -qq && apt-get install -y -qq "$@" || true
-      ;;
-  esac
-}
-
-# ── Docker installation ───────────────────────
-
-install_docker() {
-  if command -v docker &>/dev/null; then
-    DOCKER_VERSION=$(docker --version | awk '{print $3}' | tr -d ',')
-    log "Docker already installed: ${DOCKER_VERSION}"
-    return
-  fi
-
-  step "Installing Docker"
-  case "$OS_ID" in
-    ubuntu|debian|linuxmint|pop)
-      install_packages ca-certificates gnupg lsb-release
-      install -m 0755 -d /etc/apt/keyrings
-      curl -fsSL https://download.docker.com/linux/${OS_ID}/gpg \
-        | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-      chmod a+r /etc/apt/keyrings/docker.gpg
-      echo \
-        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-        https://download.docker.com/linux/${OS_ID} \
-        $(lsb_release -cs) stable" \
-        > /etc/apt/sources.list.d/docker.list
-      apt-get update -qq
-      apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
-      ;;
+      apt-get update -qq && apt-get install -y -qq "$@" ;;
     centos|rhel|rocky|almalinux)
-      install_packages yum-utils
-      yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-      yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-      ;;
+      yum install -y -q "$@" 2>/dev/null || dnf install -y -q "$@" ;;
     fedora)
-      dnf install -y dnf-plugins-core
-      dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
-      dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-      ;;
+      dnf install -y -q "$@" ;;
+    alpine)
+      apk add --no-cache -q "$@" ;;
     *)
-      info "Trying generic Docker install script..."
-      curl -fsSL https://get.docker.com | bash
-      ;;
+      warn "Unknown distro. Trying apt-get..." && apt-get install -y -qq "$@" || true ;;
   esac
-
-  systemctl enable docker --now
-  log "Docker installed and started"
 }
 
-check_docker_running() {
-  if ! docker info &>/dev/null; then
-    info "Starting Docker daemon..."
-    systemctl start docker
-    sleep 2
-    docker info &>/dev/null || error "Docker is not running. Start it with: systemctl start docker"
-  fi
+# ── Fetch latest release ──────────────────────
+
+get_latest_version() {
+  curl -fsSL "https://api.github.com/repos/${PLOYER_REPO}/releases/latest" \
+    | grep '"tag_name"' | cut -d'"' -f4
 }
 
-# ── Generate secrets ──────────────────────────
+download_release() {
+  local version="$1"
+  local asset="ployer-${version}-ployer-linux-${BINARY_ARCH}.tar.gz"
+  local url="https://github.com/${PLOYER_REPO}/releases/download/${version}/${asset}"
+  local tmpdir
+  tmpdir=$(mktemp -d)
+
+  info "Downloading ${asset}..."
+  curl -fsSL --progress-bar "$url" -o "${tmpdir}/${asset}" \
+    || error "Failed to download release. Check: https://github.com/${PLOYER_REPO}/releases"
+
+  info "Extracting..."
+  tar -xzf "${tmpdir}/${asset}" -C "$tmpdir"
+
+  local extracted="${tmpdir}/ployer-${version}-ployer-linux-${BINARY_ARCH}"
+
+  install -m 755 "${extracted}/ployer" "$PLOYER_BIN"
+  log "Binary installed: ${PLOYER_BIN}"
+
+  mkdir -p "${PLOYER_DIR}/public" "${PLOYER_DIR}/migrations"
+  cp -r "${extracted}/public/." "${PLOYER_DIR}/public/"
+  cp -r "${extracted}/migrations/." "${PLOYER_DIR}/migrations/"
+
+  rm -rf "$tmpdir"
+  log "Release ${version} extracted to ${PLOYER_DIR}"
+}
+
+# ── Configure ─────────────────────────────────
 
 generate_secret() {
-  if command -v openssl &>/dev/null; then
-    openssl rand -hex 32
-  else
-    cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1
-  fi
+  command -v openssl &>/dev/null \
+    && openssl rand -hex 32 \
+    || cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1
 }
-
-# ── Get server IP ─────────────────────────────
 
 get_server_ip() {
-  # Try multiple methods to get the public IP
-  local ip=""
-  ip=$(curl -fsSL --max-time 3 https://api.ipify.org 2>/dev/null) \
-    || ip=$(curl -fsSL --max-time 3 https://ipecho.net/plain 2>/dev/null) \
-    || ip=$(hostname -I 2>/dev/null | awk '{print $1}') \
-    || ip="127.0.0.1"
-  echo "$ip"
+  curl -fsSL --max-time 3 https://api.ipify.org 2>/dev/null \
+    || curl -fsSL --max-time 3 https://ipecho.net/plain 2>/dev/null \
+    || hostname -I 2>/dev/null | awk '{print $1}' \
+    || echo "127.0.0.1"
 }
 
-# ── Interactive prompts ───────────────────────
-
-prompt_domain() {
+prompt_config() {
   local server_ip
   server_ip=$(get_server_ip)
 
   echo ""
-  echo -e "  ${BOLD}Domain / IP for Ployer dashboard:${NC}"
-  echo -e "  ${YELLOW}→ Use a domain if you want HTTPS (e.g. ployer.yourdomain.com)${NC}"
-  echo -e "  ${YELLOW}→ Use the server IP for quick testing (HTTP only)${NC}"
+  echo -e "  ${BOLD}Where will Ployer be accessible?${NC}"
+  echo -e "  ${YELLOW}→ Domain (e.g. ployer.yourdomain.com) — gets automatic HTTPS${NC}"
+  echo -e "  ${YELLOW}→ IP address — HTTP only, good for testing${NC}"
   echo ""
 
-  # When piped through curl | bash, stdin is not a terminal — skip prompt and use server IP
   if [[ -t 0 ]]; then
     read -rp "  Enter domain or IP [default: ${server_ip}]: " DOMAIN
   else
-    warn "Non-interactive mode detected (curl | bash). Using server IP: ${server_ip}"
-    warn "To use a custom domain, run: bash install.sh"
+    warn "Non-interactive mode (curl | bash). Using server IP: ${server_ip}"
+    warn "Re-run 'bash install.sh' to set a custom domain."
     DOMAIN=""
   fi
   DOMAIN="${DOMAIN:-$server_ip}"
 
-  # Determine if it looks like an IP address
   if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    USE_HTTPS=false
-    PLOYER_PUBLIC_URL="http://${DOMAIN}"
+    PUBLIC_URL="http://${DOMAIN}"
   else
-    USE_HTTPS=true
-    PLOYER_PUBLIC_URL="https://${DOMAIN}"
+    PUBLIC_URL="https://${DOMAIN}"
   fi
 
-  log "Dashboard will be available at: ${PLOYER_PUBLIC_URL}"
+  log "Dashboard will be at: ${PUBLIC_URL}"
 }
 
-# ── Install / upgrade ─────────────────────────
-
-clone_or_update() {
-  if [[ -d "${PLOYER_DIR}/.git" ]]; then
-    step "Updating existing Ployer installation"
-    git -C "$PLOYER_DIR" fetch --quiet origin
-    git -C "$PLOYER_DIR" reset --hard "origin/${PLOYER_VERSION}" --quiet
-    log "Updated to latest ${PLOYER_VERSION}"
-  else
-    step "Downloading Ployer"
-    mkdir -p "$(dirname "$PLOYER_DIR")"
-    git clone --quiet --depth 1 --branch "$PLOYER_VERSION" "$GITHUB_REPO" "$PLOYER_DIR" \
-      || git clone --quiet --depth 1 "$GITHUB_REPO" "$PLOYER_DIR"
-    log "Cloned to ${PLOYER_DIR}"
-  fi
-}
-
-write_env() {
-  local env_file="${PLOYER_DIR}/.env"
+write_config() {
+  local env_file="${PLOYER_DIR}/ployer.env"
 
   # Preserve existing JWT secret on upgrades
   local jwt_secret=""
   if [[ -f "$env_file" ]]; then
-    jwt_secret=$(grep "^PLOYER_JWT_SECRET=" "$env_file" 2>/dev/null | cut -d= -f2- || true)
+    jwt_secret=$(grep "^PLOYER_JWT_SECRET=" "$env_file" 2>/dev/null | cut -d'=' -f2- || true)
   fi
-  if [[ -z "$jwt_secret" ]]; then
-    jwt_secret=$(generate_secret)
-  fi
+  [[ -z "$jwt_secret" ]] && jwt_secret=$(generate_secret)
 
   cat > "$env_file" <<EOF
-# Generated by Ployer installer — $(date -u '+%Y-%m-%d %H:%M UTC')
-# Edit this file to change configuration, then run: docker compose up -d
-
-PLOYER_JWT_SECRET=${jwt_secret}
+PLOYER_HOST=0.0.0.0
+PLOYER_PORT=3001
 PLOYER_BASE_DOMAIN=${DOMAIN}
-PLOYER_PUBLIC_URL=${PLOYER_PUBLIC_URL}
-PLOYER_ALLOWED_ORIGINS=${PLOYER_PUBLIC_URL}
+PLOYER_PUBLIC_URL=${PUBLIC_URL}
+PLOYER_ALLOWED_ORIGINS=${PUBLIC_URL}
+PLOYER_DATABASE_URL=sqlite://${PLOYER_DATA_DIR}/ployer.db?mode=rwc
+PLOYER_JWT_SECRET=${jwt_secret}
+PLOYER_TOKEN_EXPIRY_HOURS=24
+PLOYER_DOCKER_SOCKET=/var/run/docker.sock
+PLOYER_CADDY_URL=http://localhost:2019
 EOF
 
   chmod 600 "$env_file"
-  log "Configuration written to ${env_file}"
+  log "Config written: ${env_file}"
+}
+
+# ── Caddy (reverse proxy) ─────────────────────
+
+install_caddy() {
+  if command -v caddy &>/dev/null; then
+    log "Caddy already installed: $(caddy version | head -1)"
+    return
+  fi
+
+  step "Installing Caddy"
+  case "$OS_ID" in
+    ubuntu|debian|linuxmint|pop)
+      install_packages debian-keyring debian-archive-keyring apt-transport-https curl
+      curl -fsSL 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+        | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+      echo "deb [signed-by=/usr/share/keyrings/caddy-stable-archive-keyring.gpg] \
+        https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main" \
+        > /etc/apt/sources.list.d/caddy-stable.list
+      apt-get update -qq && apt-get install -y -qq caddy
+      ;;
+    centos|rhel|rocky|almalinux|fedora)
+      yum install -y yum-plugin-copr 2>/dev/null || dnf install -y 'dnf-command(copr)'
+      yum copr enable -y @caddy/caddy 2>/dev/null || dnf copr enable -y @caddy/caddy
+      yum install -y caddy 2>/dev/null || dnf install -y caddy
+      ;;
+    *)
+      # Fallback: download caddy binary from GitHub
+      local caddy_arch="$BINARY_ARCH"
+      [[ "$BINARY_ARCH" == "x86_64" ]] && caddy_arch="amd64"
+      local caddy_url
+      caddy_url=$(curl -fsSL https://api.github.com/repos/caddyserver/caddy/releases/latest \
+        | grep "browser_download_url.*linux_${caddy_arch}\.tar\.gz" | cut -d'"' -f4 | head -1)
+      curl -fsSL "$caddy_url" | tar -xz -C /usr/local/bin caddy
+      chmod +x /usr/local/bin/caddy
+      ;;
+  esac
+  log "Caddy installed"
 }
 
 write_caddyfile() {
   local caddyfile="${PLOYER_DIR}/Caddyfile"
 
-  if [[ "$USE_HTTPS" == "true" ]]; then
+  if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     cat > "$caddyfile" <<EOF
-${DOMAIN} {
-    reverse_proxy ployer:3001 {
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
-
-    log {
-        output file /data/access.log
-        format json
-    }
+:80 {
+    reverse_proxy localhost:3001
 }
 
 :2019 {
-    bind 0.0.0.0
+    bind 127.0.0.1
 }
 EOF
   else
-    # IP-based: HTTP only, no TLS
     cat > "$caddyfile" <<EOF
-:80 {
-    reverse_proxy ployer:3001 {
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-Proto http
-    }
+${DOMAIN} {
+    reverse_proxy localhost:3001
 }
 
 :2019 {
-    bind 0.0.0.0
+    bind 127.0.0.1
 }
 EOF
   fi
 
-  log "Caddyfile written to ${caddyfile}"
+  log "Caddyfile written: ${caddyfile}"
+}
+
+# ── Systemd services ──────────────────────────
+
+write_ployer_service() {
+  cat > "$PLOYER_SERVICE" <<EOF
+[Unit]
+Description=Ployer — Self-hosting PaaS
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=${PLOYER_DIR}
+EnvironmentFile=${PLOYER_DIR}/ployer.env
+ExecStart=${PLOYER_BIN}
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ployer
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  log "Systemd service: ${PLOYER_SERVICE}"
+}
+
+write_caddy_service() {
+  # If caddy was installed via package manager it already has a service
+  if systemctl list-unit-files caddy.service &>/dev/null 2>&1 | grep -q caddy; then
+    mkdir -p /etc/caddy
+    cp "${PLOYER_DIR}/Caddyfile" /etc/caddy/Caddyfile
+  else
+    cat > /etc/systemd/system/caddy.service <<EOF
+[Unit]
+Description=Caddy
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/caddy run --config ${PLOYER_DIR}/Caddyfile
+ExecReload=/usr/local/bin/caddy reload --config ${PLOYER_DIR}/Caddyfile
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=caddy
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  fi
+  log "Caddy service configured"
 }
 
 start_services() {
-  step "Building and starting Ployer"
-  cd "$PLOYER_DIR"
+  step "Starting services"
+  systemctl daemon-reload
 
-  info "Building Docker image (this may take 5-15 minutes on first run)..."
-  docker compose build --progress=plain 2>&1
+  systemctl enable caddy --now
+  systemctl reload caddy 2>/dev/null || systemctl restart caddy
+  log "Caddy started"
 
-  log "Image built"
-
-  docker compose up -d --remove-orphans
-  log "Services started"
+  systemctl enable ployer --now
+  log "Ployer started"
 }
 
-wait_for_healthy() {
-  step "Waiting for Ployer to be ready"
-  local retries=30
-  local url="http://localhost:3001/api/v1/health"
+# ── Health check ──────────────────────────────
 
-  # Find the mapped port or use the container network
+wait_healthy() {
+  step "Waiting for Ployer to be ready"
+  local retries=20
   for i in $(seq 1 $retries); do
-    if docker compose exec -T ployer curl -sf http://localhost:3001/api/v1/health &>/dev/null; then
+    if curl -sf http://localhost:3001/api/v1/health &>/dev/null; then
       log "Ployer is healthy"
       return
     fi
@@ -328,8 +342,10 @@ wait_for_healthy() {
     sleep 2
   done
   echo ""
-  warn "Health check timed out — Ployer may still be starting. Check: docker compose logs ployer"
+  warn "Health check timed out. Check logs: journalctl -u ployer -f"
 }
+
+# ── Success ───────────────────────────────────
 
 print_success() {
   echo ""
@@ -337,19 +353,18 @@ print_success() {
   echo -e "${GREEN}${BOLD}  Ployer installed successfully!${NC}"
   echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo ""
-  echo -e "  ${BOLD}Dashboard:${NC}     ${BLUE}${PLOYER_PUBLIC_URL}${NC}"
-  echo -e "  ${BOLD}Install dir:${NC}   ${PLOYER_DIR}"
-  echo -e "  ${BOLD}Config:${NC}        ${PLOYER_DIR}/.env"
+  echo -e "  ${BOLD}Dashboard:${NC}  ${BLUE}${PUBLIC_URL}${NC}"
+  echo -e "  ${BOLD}Config:${NC}     ${PLOYER_DIR}/ployer.env"
+  echo -e "  ${BOLD}Data:${NC}       ${PLOYER_DATA_DIR}/"
   echo ""
-  echo -e "  ${BOLD}Useful commands:${NC}"
-  echo -e "    View logs:    ${YELLOW}docker compose -f ${PLOYER_DIR}/docker-compose.yml logs -f${NC}"
-  echo -e "    Stop:         ${YELLOW}docker compose -f ${PLOYER_DIR}/docker-compose.yml down${NC}"
-  echo -e "    Upgrade:      ${YELLOW}curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh | sudo bash${NC}"
-  echo -e "    Reset pass:   ${YELLOW}docker compose -f ${PLOYER_DIR}/docker-compose.yml exec ployer ./ployer reset-password --email you@example.com --password newpass${NC}"
+  echo -e "  ${BOLD}Commands:${NC}"
+  echo -e "    Logs:     ${YELLOW}journalctl -u ployer -f${NC}"
+  echo -e "    Stop:     ${YELLOW}systemctl stop ployer${NC}"
+  echo -e "    Restart:  ${YELLOW}systemctl restart ployer${NC}"
+  echo -e "    Upgrade:  ${YELLOW}curl -fsSL https://raw.githubusercontent.com/${PLOYER_REPO}/main/install.sh | sudo bash${NC}"
   echo ""
-  if [[ "$USE_HTTPS" == "false" ]]; then
-    echo -e "  ${YELLOW}Note: Running over HTTP. Point a domain to this server and re-run the${NC}"
-    echo -e "  ${YELLOW}installer to get automatic HTTPS via Let's Encrypt.${NC}"
+  if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo -e "  ${YELLOW}Tip: Point a domain to this server and re-run the installer for HTTPS.${NC}"
     echo ""
   fi
 }
@@ -360,15 +375,42 @@ main() {
   banner
   check_root
   check_os
-  check_requirements
-  install_docker
-  check_docker_running
-  prompt_domain
-  clone_or_update
-  write_env
+  check_docker
+
+  step "Fetching latest release"
+  PLOYER_VERSION=$(get_latest_version)
+  [[ -n "$PLOYER_VERSION" ]] || error "Could not determine latest version. Check your internet connection."
+  log "Version: ${PLOYER_VERSION}"
+
+  # Upgrade detection
+  if [[ -f "$PLOYER_BIN" ]]; then
+    CURRENT_VERSION=$(ployer --version 2>/dev/null | awk '{print $2}' || echo "unknown")
+    if [[ "$CURRENT_VERSION" == "$PLOYER_VERSION" ]]; then
+      log "Already on latest version (${PLOYER_VERSION}). Nothing to do."
+      exit 0
+    fi
+    info "Upgrading ${CURRENT_VERSION} → ${PLOYER_VERSION}"
+    systemctl stop ployer 2>/dev/null || true
+  fi
+
+  mkdir -p "$PLOYER_DIR" "$PLOYER_DATA_DIR"
+
+  step "Downloading Ployer ${PLOYER_VERSION}"
+  download_release "$PLOYER_VERSION"
+
+  prompt_config
+  write_config
+
+  step "Setting up Caddy (reverse proxy)"
+  install_caddy
   write_caddyfile
+  write_caddy_service
+
+  step "Setting up systemd service"
+  write_ployer_service
+
   start_services
-  wait_for_healthy
+  wait_healthy
   print_success
 }
 
