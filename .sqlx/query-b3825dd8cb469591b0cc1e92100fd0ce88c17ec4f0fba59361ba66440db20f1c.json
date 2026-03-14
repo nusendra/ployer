@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, application_id, server_id, commit_sha, commit_message,\n                   status, build_log, container_id, image_tag, started_at, finished_at\n            FROM deployments\n            WHERE id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "application_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "server_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "commit_sha",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "commit_message",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "build_log",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "container_id",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "image_tag",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "started_at",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "finished_at",
+        "ordinal": 10,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "b3825dd8cb469591b0cc1e92100fd0ce88c17ec4f0fba59361ba66440db20f1c"
+}

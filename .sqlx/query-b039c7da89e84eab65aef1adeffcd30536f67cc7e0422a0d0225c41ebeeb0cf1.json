@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE webhooks SET enabled = ?, updated_at = ? WHERE application_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "b039c7da89e84eab65aef1adeffcd30536f67cc7e0422a0d0225c41ebeeb0cf1"
+}

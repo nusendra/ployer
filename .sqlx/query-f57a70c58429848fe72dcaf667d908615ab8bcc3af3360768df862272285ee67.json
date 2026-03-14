@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO container_stats (\n                id, container_id, application_id, cpu_percent, memory_mb,\n                memory_limit_mb, network_rx_mb, network_tx_mb, recorded_at\n            )\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "f57a70c58429848fe72dcaf667d908615ab8bcc3af3360768df862272285ee67"
+}

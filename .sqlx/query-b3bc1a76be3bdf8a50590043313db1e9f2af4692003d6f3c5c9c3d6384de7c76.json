@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO health_check_results (\n                id, application_id, container_id, status,\n                response_time_ms, status_code, error_message, checked_at\n            )\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "b3bc1a76be3bdf8a50590043313db1e9f2af4692003d6f3c5c9c3d6384de7c76"
+}

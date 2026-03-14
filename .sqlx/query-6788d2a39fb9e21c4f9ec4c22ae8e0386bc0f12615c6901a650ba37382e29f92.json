@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, webhook_id, application_id, provider, event_type,\n                   branch, commit_sha, commit_message, author,\n                   status, response_code, error_message, deployment_id, delivered_at\n            FROM webhook_deliveries\n            WHERE application_id = ?\n            ORDER BY delivered_at DESC\n            LIMIT ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "webhook_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "application_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "provider",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "event_type",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "branch",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "commit_sha",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "commit_message",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "author",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "response_code",
+        "ordinal": 10,
+        "type_info": "Int64"
+      },
+      {
+        "name": "error_message",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "deployment_id",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "delivered_at",
+        "ordinal": 13,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "6788d2a39fb9e21c4f9ec4c22ae8e0386bc0f12615c6901a650ba37382e29f92"
+}

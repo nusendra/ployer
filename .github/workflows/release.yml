@@ -71,6 +71,8 @@ jobs:
           key: ${{ matrix.target }}
 
       - name: Build binary
+        env:
+          SQLX_OFFLINE: true
         run: |
           cargo build --release --target ${{ matrix.target }} --package ployer-api
 

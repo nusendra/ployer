@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO health_checks (\n                    id, application_id, path, interval_seconds, timeout_seconds,\n                    healthy_threshold, unhealthy_threshold, created_at\n                )\n                VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "c27016965cac659891ab3b4b0611949b02afbbfdfdd30e9236a775a5be65218b"
+}

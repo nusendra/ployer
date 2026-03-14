@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE deployments\n            SET build_log = COALESCE(build_log || ?, ?)\n            WHERE id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "22427ce5a7c8aa52c846b31033e44f2a40e36c067465e253def2781a5b4c4dbf"
+}

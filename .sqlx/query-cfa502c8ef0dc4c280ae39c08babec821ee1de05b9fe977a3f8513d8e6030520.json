@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE deployments\n            SET status = 'cancelled', finished_at = ?\n            WHERE id = ? AND status NOT IN ('running', 'failed', 'cancelled', 'rolled_back')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "cfa502c8ef0dc4c280ae39c08babec821ee1de05b9fe977a3f8513d8e6030520"
+}

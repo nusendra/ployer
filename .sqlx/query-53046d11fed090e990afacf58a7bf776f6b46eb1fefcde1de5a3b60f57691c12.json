@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, container_id, application_id, cpu_percent, memory_mb,\n                   memory_limit_mb, network_rx_mb, network_tx_mb, recorded_at\n            FROM container_stats\n            WHERE container_id = ?\n              AND recorded_at >= datetime('now', ?)\n            ORDER BY recorded_at ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "container_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "application_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "cpu_percent",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "memory_mb",
+        "ordinal": 4,
+        "type_info": "Float"
+      },
+      {
+        "name": "memory_limit_mb",
+        "ordinal": 5,
+        "type_info": "Float"
+      },
+      {
+        "name": "network_rx_mb",
+        "ordinal": 6,
+        "type_info": "Float"
+      },
+      {
+        "name": "network_tx_mb",
+        "ordinal": 7,
+        "type_info": "Float"
+      },
+      {
+        "name": "recorded_at",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "53046d11fed090e990afacf58a7bf776f6b46eb1fefcde1de5a3b60f57691c12"
+}

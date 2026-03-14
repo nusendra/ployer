@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            DELETE FROM health_check_results\n            WHERE checked_at < datetime('now', ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "750163d4ba9d5ec2563263bac24f717f57b6db8a627cc5e4a440b7c402d641b7"
+}

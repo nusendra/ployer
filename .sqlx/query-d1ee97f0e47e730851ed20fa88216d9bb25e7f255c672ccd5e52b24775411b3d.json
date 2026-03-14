@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, application_id, path, interval_seconds, timeout_seconds,\n                   healthy_threshold, unhealthy_threshold, created_at\n            FROM health_checks\n            WHERE application_id = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "application_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "path",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "interval_seconds",
+        "ordinal": 3,
+        "type_info": "Int64"
+      },
+      {
+        "name": "timeout_seconds",
+        "ordinal": 4,
+        "type_info": "Int64"
+      },
+      {
+        "name": "healthy_threshold",
+        "ordinal": 5,
+        "type_info": "Int64"
+      },
+      {
+        "name": "unhealthy_threshold",
+        "ordinal": 6,
+        "type_info": "Int64"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d1ee97f0e47e730851ed20fa88216d9bb25e7f255c672ccd5e52b24775411b3d"
+}

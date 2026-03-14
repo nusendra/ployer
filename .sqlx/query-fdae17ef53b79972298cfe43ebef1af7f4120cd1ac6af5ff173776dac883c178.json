@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM health_checks WHERE application_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "fdae17ef53b79972298cfe43ebef1af7f4120cd1ac6af5ff173776dac883c178"
+}

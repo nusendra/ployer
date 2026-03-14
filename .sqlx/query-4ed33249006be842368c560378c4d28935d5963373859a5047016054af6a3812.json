@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                UPDATE health_checks\n                SET path = ?, interval_seconds = ?, timeout_seconds = ?,\n                    healthy_threshold = ?, unhealthy_threshold = ?\n                WHERE application_id = ?\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "4ed33249006be842368c560378c4d28935d5963373859a5047016054af6a3812"
+}

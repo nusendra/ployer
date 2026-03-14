@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            DELETE FROM container_stats\n            WHERE recorded_at < datetime('now', ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "36069cdf2d5e292325497f66cf96ba1624760a4857ccfc645f812a9eca7806ce"
+}

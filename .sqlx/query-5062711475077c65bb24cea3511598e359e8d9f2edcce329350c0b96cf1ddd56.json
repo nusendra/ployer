@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT status\n            FROM health_check_results\n            WHERE application_id = ?\n            ORDER BY checked_at DESC\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "status",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5062711475077c65bb24cea3511598e359e8d9f2edcce329350c0b96cf1ddd56"
+}

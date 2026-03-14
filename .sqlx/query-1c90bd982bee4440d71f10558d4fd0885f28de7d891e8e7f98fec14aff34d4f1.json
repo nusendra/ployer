@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE domains SET is_primary = 0 WHERE application_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "1c90bd982bee4440d71f10558d4fd0885f28de7d891e8e7f98fec14aff34d4f1"
+}
