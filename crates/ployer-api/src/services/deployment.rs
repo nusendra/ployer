@@ -179,28 +179,30 @@ impl DeploymentService {
 
         send_log("Build completed successfully".to_string()).await;
 
-        // Step 3: Stop & remove existing container by fixed name (avoids port conflicts)
+        // Step 3: Stop & remove any existing container for this app (avoids port conflicts)
         deployment_repo.update_status(&deployment_id, DeploymentStatus::Deploying).await?;
 
         let container_name = format!("ployer-{}", application.name);
 
-        // Try to stop and remove any existing container with this name
-        if let Err(e) = docker.stop_container(&container_name, Some(10)).await {
-            // Not running or doesn't exist — that's fine
-            warn!("Stop container '{}': {}", container_name, e);
-        } else {
-            send_log(format!("Stopped existing container: {}", container_name)).await;
-        }
-        if let Err(e) = docker.remove_container(&container_name, true).await {
-            warn!("Remove container '{}': {}", container_name, e);
-        } else {
-            send_log(format!("Removed existing container: {}", container_name)).await;
-        }
-
-        // Mark previous running deployment as replaced
+        // Stop by previous deployment's container ID (covers old UUID-named containers)
         if let Ok(Some(prev)) = deployment_repo.get_latest_running(&application.id).await {
+            if let Some(prev_container_id) = &prev.container_id {
+                send_log(format!("Stopping previous container...")).await;
+                if let Err(e) = docker.stop_container(prev_container_id, Some(10)).await {
+                    warn!("Stop previous container {}: {}", prev_container_id, e);
+                }
+                if let Err(e) = docker.remove_container(prev_container_id, true).await {
+                    warn!("Remove previous container {}: {}", prev_container_id, e);
+                } else {
+                    send_log("Previous container removed".to_string()).await;
+                }
+            }
             let _ = deployment_repo.update_status(&prev.id, DeploymentStatus::RolledBack).await;
         }
+
+        // Also stop by fixed name in case a container exists with that name but isn't tracked in DB
+        let _ = docker.stop_container(&container_name, Some(5)).await;
+        let _ = docker.remove_container(&container_name, true).await;
 
         // Step 4: Create and start new container with fixed name
         send_log("Creating container...".to_string()).await;
@@ -221,9 +223,10 @@ impl DeploymentService {
 
         let container_id = docker.create_container(container_config).await?;
         deployment_repo.set_container_id(&deployment_id, &container_id).await?;
-        send_log(format!("Container '{}' created and started", container_name)).await;
+        send_log(format!("Container '{}' created", container_name)).await;
 
         docker.start_container(&container_id).await?;
+        send_log(format!("Container '{}' started", container_name)).await;
 
         // Step 5: Health check (simple wait)
         send_log("Waiting for health check...".to_string()).await;
