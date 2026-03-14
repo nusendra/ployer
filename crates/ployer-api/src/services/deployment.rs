@@ -47,8 +47,8 @@ impl DeploymentService {
     ) -> Result<Deployment> {
         let deployment_repo = DeploymentRepository::new(self.db.clone());
 
-        // Create deployment record
-        let image_tag = format!("ployer-{}:{}", application.name, uuid::Uuid::new_v4());
+        // Fixed image tag per app — always overwrite :latest
+        let image_tag = format!("ployer-{}:latest", application.name);
         let deployment = deployment_repo
             .create(
                 &application.id,
@@ -179,37 +179,35 @@ impl DeploymentService {
 
         send_log("Build completed successfully".to_string()).await;
 
-        // Step 3: Stop old container before starting new one (avoids port conflicts)
+        // Step 3: Stop & remove existing container by fixed name (avoids port conflicts)
         deployment_repo.update_status(&deployment_id, DeploymentStatus::Deploying).await?;
 
-        if let Ok(Some(prev_deployment)) = deployment_repo.get_latest_running(&application.id).await {
-            if let Some(prev_container_id) = prev_deployment.container_id {
-                send_log(format!("Stopping old container: {}", prev_container_id)).await;
+        let container_name = format!("ployer-{}", application.name);
 
-                if let Err(e) = docker.stop_container(&prev_container_id, Some(10)).await {
-                    warn!("Failed to stop old container {}: {}", prev_container_id, e);
-                    send_log(format!("Warning: Failed to stop old container: {}", e)).await;
-                } else {
-                    send_log(format!("Old container stopped: {}", prev_container_id)).await;
-                }
-
-                if let Err(e) = docker.remove_container(&prev_container_id, true).await {
-                    warn!("Failed to remove old container {}: {}", prev_container_id, e);
-                    send_log(format!("Warning: Failed to remove old container: {}", e)).await;
-                } else {
-                    send_log(format!("Old container removed: {}", prev_container_id)).await;
-                }
-
-                let _ = deployment_repo.update_status(&prev_deployment.id, DeploymentStatus::RolledBack).await;
-            }
+        // Try to stop and remove any existing container with this name
+        if let Err(e) = docker.stop_container(&container_name, Some(10)).await {
+            // Not running or doesn't exist — that's fine
+            warn!("Stop container '{}': {}", container_name, e);
+        } else {
+            send_log(format!("Stopped existing container: {}", container_name)).await;
+        }
+        if let Err(e) = docker.remove_container(&container_name, true).await {
+            warn!("Remove container '{}': {}", container_name, e);
+        } else {
+            send_log(format!("Removed existing container: {}", container_name)).await;
         }
 
-        // Step 4: Create and start new container
+        // Mark previous running deployment as replaced
+        if let Ok(Some(prev)) = deployment_repo.get_latest_running(&application.id).await {
+            let _ = deployment_repo.update_status(&prev.id, DeploymentStatus::RolledBack).await;
+        }
+
+        // Step 4: Create and start new container with fixed name
         send_log("Creating container...".to_string()).await;
 
         let container_config = ContainerConfig {
             image: image_tag.clone(),
-            name: Some(format!("{}-{}", application.name, deployment_id)),
+            name: Some(container_name.clone()),
             env: None, // TODO: Load from environment variables
             ports: application.port.map(|p| {
                 let mut ports = HashMap::new();
@@ -223,10 +221,9 @@ impl DeploymentService {
 
         let container_id = docker.create_container(container_config).await?;
         deployment_repo.set_container_id(&deployment_id, &container_id).await?;
-        send_log(format!("Container created: {}", container_id)).await;
+        send_log(format!("Container '{}' created and started", container_name)).await;
 
         docker.start_container(&container_id).await?;
-        send_log("Container started".to_string()).await;
 
         // Step 5: Health check (simple wait)
         send_log("Waiting for health check...".to_string()).await;
