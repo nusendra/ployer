@@ -29,6 +29,8 @@ A lightweight, self-hosted PaaS — deploy your apps from Git with automatic SSL
 | **Disk** | 20 GB | 40 GB+ |
 | **Arch** | x86_64 | x86_64 / arm64 |
 
+**Prerequisites:** Docker must be installed and running before installing Ployer.
+
 > **Important:** Install on a **fresh, dedicated server**. Ployer owns ports 80 and 443 via Caddy. It will conflict with Nginx, Apache, Coolify, or any other reverse proxy already running on those ports.
 
 ---
@@ -41,99 +43,43 @@ Point your domain's DNS `A record` to your server IP first, then run:
 curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh | sudo bash
 ```
 
-> **Note:** `curl | bash` runs in non-interactive mode and will auto-detect your server IP. To use a custom domain with HTTPS, download and run the script directly instead:
+> **Note:** `curl | bash` runs in non-interactive mode and will auto-detect your server IP. To use a custom domain with HTTPS, download and run the script directly:
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh -o install.sh
 > sudo bash install.sh
 > ```
 
 The installer will:
-1. Detect your OS and install Docker if needed
-2. Ask for your domain (or use server IP for quick testing)
-3. Generate a secure JWT secret automatically
-4. Build and start all services
-5. Print the dashboard URL when ready
+1. Detect your OS and architecture
+2. Download the pre-built binary from GitHub Releases (no compilation needed)
+3. Ask for your domain or IP address
+4. Generate a secure JWT secret automatically
+5. Install and configure Caddy as a reverse proxy
+6. Set up systemd services for both Ployer and Caddy
+7. Start everything and print the dashboard URL
 
 **That's it.** HTTPS is provisioned automatically when you use a domain.
 
 ---
 
-## Manual Installation
-
-If you prefer to set things up yourself:
-
-### 1. Install Docker
-
-```bash
-curl -fsSL https://get.docker.com | bash
-```
-
-### 2. Clone the repository
-
-```bash
-git clone https://github.com/nusendra/ployer.git /data/ployer
-cd /data/ployer
-```
-
-### 3. Configure environment
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-Set at minimum:
-
-```env
-PLOYER_JWT_SECRET=your-long-random-secret-here
-PLOYER_BASE_DOMAIN=ployer.yourdomain.com
-PLOYER_PUBLIC_URL=https://ployer.yourdomain.com
-PLOYER_ALLOWED_ORIGINS=https://ployer.yourdomain.com
-```
-
-### 4. Configure Caddy
-
-Edit `Caddyfile` and replace `your-staging-domain.com` with your actual domain:
-
-```
-ployer.yourdomain.com {
-    reverse_proxy ployer:3001
-}
-```
-
-### 5. Start services
-
-```bash
-docker compose up -d --build
-```
-
-### 6. Open the dashboard
-
-Navigate to `https://ployer.yourdomain.com` — you'll be prompted to create the first admin account.
-
----
-
 ## Upgrading
 
-Re-run the install script — it detects an existing installation, pulls the latest code, and restarts:
+Re-run the install script — it detects the current version and upgrades automatically:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh | sudo bash
-```
-
-Or manually:
-
-```bash
-cd /data/ployer
-git pull
-docker compose up -d --build
 ```
 
 ---
 
 ## Configuration
 
-All configuration is via environment variables in `/data/ployer/.env`:
+Config is stored in `/opt/ployer/ployer.env`. Edit it and restart Ployer to apply changes:
+
+```bash
+nano /opt/ployer/ployer.env
+systemctl restart ployer
+```
 
 | Variable | Default | Description |
 |---|---|---|
@@ -141,28 +87,11 @@ All configuration is via environment variables in `/data/ployer/.env`:
 | `PLOYER_BASE_DOMAIN` | `localhost` | Base domain for auto-generated app subdomains |
 | `PLOYER_PUBLIC_URL` | `http://localhost` | Full public URL of the Ployer dashboard |
 | `PLOYER_ALLOWED_ORIGINS` | `*` | CORS allowed origins. Lock down in production. |
-| `PLOYER_DATABASE_URL` | `sqlite:///data/ployer.db` | SQLite database path |
+| `PLOYER_DATABASE_URL` | `sqlite:///var/lib/ployer/ployer.db` | SQLite database path |
 | `PLOYER_PORT` | `3001` | Internal API port |
-| `PLOYER_CADDY_URL` | `http://caddy:2019` | Caddy Admin API URL |
+| `PLOYER_CADDY_URL` | `http://localhost:2019` | Caddy Admin API URL |
 | `PLOYER_DOCKER_SOCKET` | `/var/run/docker.sock` | Docker socket path |
 | `LOG_FORMAT` | *(plain text)* | Set to `json` for structured JSON logging |
-
-After editing `.env`, restart:
-
-```bash
-docker compose -f /data/ployer/docker-compose.yml up -d
-```
-
----
-
-## Resetting a Password
-
-If you get locked out:
-
-```bash
-docker compose -f /data/ployer/docker-compose.yml exec ployer \
-  ./ployer reset-password --email you@example.com --password newpassword123
-```
 
 ---
 
@@ -170,19 +99,15 @@ docker compose -f /data/ployer/docker-compose.yml exec ployer \
 
 ```bash
 # View live logs
-docker compose -f /data/ployer/docker-compose.yml logs -f
+journalctl -u ployer -f
 
-# View only API logs
-docker compose -f /data/ployer/docker-compose.yml logs -f ployer
+# Stop / start / restart
+systemctl stop ployer
+systemctl start ployer
+systemctl restart ployer
 
-# Stop Ployer
-docker compose -f /data/ployer/docker-compose.yml down
-
-# Restart Ployer
-docker compose -f /data/ployer/docker-compose.yml restart ployer
-
-# Open a shell inside the container
-docker compose -f /data/ployer/docker-compose.yml exec ployer sh
+# Reset a locked-out password
+ployer reset-password --email you@example.com --password newpassword123
 ```
 
 ---
@@ -218,20 +143,21 @@ docker compose -f /data/ployer/docker-compose.yml exec ployer sh
 Internet
     │
     ▼
- Caddy (80/443)          ← TLS termination, auto SSL
+ Caddy (80/443)          ← TLS termination, automatic SSL
     │
     ▼
- Ployer (3001)           ← Rust/Axum API + SvelteKit frontend
+ Ployer (3001)           ← Rust/Axum API + SvelteKit frontend (single binary)
     │
-    ├── SQLite (/data)   ← Persistent database
-    ├── Docker socket    ← Container management
-    └── Caddy Admin API  ← Dynamic reverse proxy routes
+    ├── SQLite            ← Persistent database (/var/lib/ployer/)
+    ├── Docker socket     ← Container management
+    └── Caddy Admin API   ← Dynamic reverse proxy routes
 ```
 
 - **Backend** — Rust (Axum), SQLite via sqlx, bollard for Docker
-- **Frontend** — SvelteKit (static build, served by the Rust binary)
+- **Frontend** — SvelteKit (static build, embedded in the binary)
 - **Proxy** — Caddy 2 (automatic HTTPS, dynamic routing)
 - **Database** — SQLite with WAL mode (no separate database server needed)
+- **Process manager** — systemd
 
 ---
 
@@ -239,13 +165,13 @@ Internet
 
 **Dashboard not loading after install**
 ```bash
-docker compose -f /data/ployer/docker-compose.yml logs caddy
-docker compose -f /data/ployer/docker-compose.yml logs ployer
+journalctl -u ployer -f
+journalctl -u caddy -f
 ```
 
 **SSL certificate not issued**
 - Make sure your domain's DNS A record points to the server before running the installer
-- Port 80 must be open on your firewall (`ufw allow 80` and `ufw allow 443`)
+- Ports 80 and 443 must be open (`ufw allow 80 && ufw allow 443`)
 
 **Cannot connect to Docker**
 ```bash
@@ -254,11 +180,10 @@ systemctl status docker        # should be active
 ```
 
 **Database errors on startup**
-- The `/data` volume is created automatically. If permissions are wrong:
 ```bash
-docker compose -f /data/ployer/docker-compose.yml down
-docker volume rm ployer_ployer-data
-docker compose -f /data/ployer/docker-compose.yml up -d
+ls -la /var/lib/ployer/       # check permissions
+chown -R root:root /var/lib/ployer
+systemctl restart ployer
 ```
 
 ---
