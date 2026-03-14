@@ -33,12 +33,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 		throw new Error(message);
 	}
 
-	// Handle 204 No Content responses (e.g., DELETE operations)
-	if (res.status === 204) {
+	// Handle responses with no body (204 No Content, 201 Created with empty body, etc.)
+	if (res.status === 204 || res.headers.get('content-length') === '0') {
 		return null as T;
 	}
-
-	return res.json();
+	const text = await res.text();
+	if (!text) return null as T;
+	return JSON.parse(text);
 }
 
 export const api = {
