@@ -35,6 +35,9 @@
 	let newEnvKey = $state('');
 	let newEnvValue = $state('');
 	let loadingEnvs = $state(false);
+	let bulkMode = $state(false);
+	let bulkText = $state('');
+	let bulkSaving = $state(false);
 
 	// Deploy key
 	let deployKey = $state<{ public_key: string; created_at: string } | null>(null);
@@ -184,6 +187,43 @@
 			await loadEnvVars();
 		} catch (e: any) {
 			error = e.message || 'Failed to add environment variable';
+		}
+	}
+
+	function openBulkMode() {
+		bulkText = appEnvVars.map(e => `${e.key}=${e.value}`).join('\n');
+		bulkMode = true;
+	}
+
+	async function saveBulkEnvVars() {
+		bulkSaving = true;
+		error = '';
+		try {
+			const parsed = bulkText
+				.split('\n')
+				.map(l => l.trim())
+				.filter(l => l && !l.startsWith('#') && l.includes('='))
+				.map(l => {
+					const idx = l.indexOf('=');
+					return { key: l.slice(0, idx).trim(), value: l.slice(idx + 1).trim() };
+				})
+				.filter(e => e.key);
+
+			// Delete all existing then re-add
+			for (const envVar of appEnvVars) {
+				await api.delete(`/applications/${appId}/envs/${envVar.key}`);
+			}
+			for (const envVar of parsed) {
+				await api.post(`/applications/${appId}/envs`, { key: envVar.key, value: envVar.value });
+			}
+
+			bulkMode = false;
+			bulkText = '';
+			await loadEnvVars();
+		} catch (e: any) {
+			error = e.message || 'Failed to save environment variables';
+		} finally {
+			bulkSaving = false;
 		}
 	}
 
@@ -577,37 +617,62 @@
 				{#if activeTab === 'env_vars'}
 					<div class="content-section">
 						<div class="section-header">
-							<h2>Environment Variables</h2>
-							<p>These variables will be injected into your application at runtime.</p>
-						</div>
-
-						<div class="env-add-row">
-							<input type="text" placeholder="KEY" bind:value={newEnvKey} class="env-key-input" />
-							<input type="text" placeholder="Value" bind:value={newEnvValue} class="env-val-input" />
-							<button class="btn-primary btn-sm" onclick={addEnvVar}>Add</button>
-						</div>
-
-						{#if loadingEnvs}
-							<div class="loading-inline">Loading variables...</div>
-						{:else if appEnvVars.length === 0}
-							<div class="empty-vars">No environment variables defined yet.</div>
-						{:else}
-							<div class="env-table">
-								<div class="env-table-header">
-									<span>Key</span>
-									<span>Value</span>
-									<span></span>
+							<div class="section-header-row">
+								<div>
+									<h2>Environment Variables</h2>
+									<p>These variables will be injected into your application at runtime.</p>
 								</div>
-								{#each appEnvVars as envVar (envVar.key)}
-									<div class="env-table-row">
-										<span class="env-key">{envVar.key}</span>
-										<span class="env-value">{envVar.value}</span>
-										<button class="btn-icon-danger" onclick={() => deleteEnvVar(envVar.key)} title="Delete">
-											<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-										</button>
-									</div>
-								{/each}
+								<button class="btn-sm-ghost" onclick={() => bulkMode ? (bulkMode = false) : openBulkMode()}>
+									{bulkMode ? '← Row editor' : 'Bulk edit'}
+								</button>
 							</div>
+						</div>
+
+						{#if bulkMode}
+							<div class="bulk-editor">
+								<p class="bulk-hint">One variable per line in <code>KEY=VALUE</code> format. Lines starting with <code>#</code> are ignored. Saving will replace all existing variables.</p>
+								<textarea
+									class="bulk-textarea"
+									bind:value={bulkText}
+									placeholder="DATABASE_URL=postgres://...\nREDIS_URL=redis://...\nSECRET_KEY=abc123"
+									rows="12"
+								></textarea>
+								<div class="bulk-actions">
+									<button class="btn-primary" onclick={saveBulkEnvVars} disabled={bulkSaving}>
+										{bulkSaving ? 'Saving…' : 'Save All'}
+									</button>
+									<button class="btn-sm-ghost" onclick={() => bulkMode = false}>Cancel</button>
+								</div>
+							</div>
+						{:else}
+							<div class="env-add-row">
+								<input type="text" placeholder="KEY" bind:value={newEnvKey} class="env-key-input" />
+								<input type="text" placeholder="Value" bind:value={newEnvValue} class="env-val-input" />
+								<button class="btn-primary btn-sm" onclick={addEnvVar}>Add</button>
+							</div>
+
+							{#if loadingEnvs}
+								<div class="loading-inline">Loading variables...</div>
+							{:else if appEnvVars.length === 0}
+								<div class="empty-vars">No environment variables defined yet.</div>
+							{:else}
+								<div class="env-table">
+									<div class="env-table-header">
+										<span>Key</span>
+										<span>Value</span>
+										<span></span>
+									</div>
+									{#each appEnvVars as envVar (envVar.key)}
+										<div class="env-table-row">
+											<span class="env-key">{envVar.key}</span>
+											<span class="env-value">{envVar.value}</span>
+											<button class="btn-icon-danger" onclick={() => deleteEnvVar(envVar.key)} title="Delete">
+												<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+											</button>
+										</div>
+									{/each}
+								</div>
+							{/if}
 						{/if}
 					</div>
 				{/if}
@@ -1059,6 +1124,13 @@
 		border-bottom: 1px solid var(--border);
 	}
 
+	.section-header-row {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
 	.section-header h2 {
 		margin: 0 0 0.375rem;
 		font-size: 1.125rem;
@@ -1183,6 +1255,54 @@
 	.btn-icon-danger:hover {
 		color: var(--danger);
 		background: rgba(239, 68, 68, 0.1);
+	}
+
+	/* ── Bulk editor ── */
+	.bulk-editor {
+		display: flex;
+		flex-direction: column;
+		gap: 0.875rem;
+	}
+
+	.bulk-hint {
+		margin: 0;
+		font-size: 0.8125rem;
+		color: var(--text-muted);
+	}
+
+	.bulk-hint code {
+		font-family: 'Courier New', monospace;
+		background: var(--bg-tertiary);
+		padding: 0.1rem 0.35rem;
+		border-radius: 3px;
+		font-size: 0.75rem;
+		color: var(--primary);
+	}
+
+	.bulk-textarea {
+		width: 100%;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 0.75rem;
+		font-family: 'Courier New', monospace;
+		font-size: 0.8125rem;
+		color: var(--text);
+		line-height: 1.6;
+		resize: vertical;
+		outline: none;
+		transition: border-color 0.15s;
+		box-sizing: border-box;
+	}
+
+	.bulk-textarea:focus {
+		border-color: var(--primary);
+	}
+
+	.bulk-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
 	}
 
 	/* ── Env vars ── */
