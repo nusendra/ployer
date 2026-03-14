@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
-use ployer_core::models::{Application, Deployment, DeploymentStatus, WsEvent};
-use ployer_db::repositories::{DeploymentRepository, DomainRepository};
+use ployer_core::models::{AppStatus, Application, Deployment, DeploymentStatus, WsEvent};
+use ployer_db::repositories::{ApplicationRepository, DeploymentRepository, DomainRepository};
 use ployer_docker::{DockerClient, ContainerConfig};
 use ployer_git::GitService;
 use ployer_proxy::{CaddyClient, ReverseProxyConfig};
@@ -83,10 +83,11 @@ impl DeploymentService {
             .await
             {
                 error!("Deployment failed: {}", e);
-                // Mark deployment as failed so status doesn't stay stuck
-                let repo = DeploymentRepository::new(db);
+                let repo = DeploymentRepository::new(db.clone());
                 let _ = repo.update_status(&deployment_id, DeploymentStatus::Failed).await;
                 let _ = repo.append_log(&deployment_id, &format!("ERROR: {}", e)).await;
+                let _ = ApplicationRepository::new(db)
+                    .update_status(&application.id, AppStatus::Failed).await;
                 let _ = ws_broadcast.send(WsEvent::DeploymentStatus {
                     deployment_id,
                     app_id: application.id,
@@ -276,8 +277,10 @@ impl DeploymentService {
             }
         }
 
-        // Step 6: Mark deployment as running
+        // Step 6: Mark deployment as running and update application status
         deployment_repo.update_status(&deployment_id, DeploymentStatus::Running).await?;
+        ApplicationRepository::new(db.clone())
+            .update_status(&application.id, AppStatus::Running).await?;
         send_log("Deployment completed successfully!".to_string()).await;
 
         // Broadcast deployment status change
