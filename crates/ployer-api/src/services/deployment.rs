@@ -179,30 +179,28 @@ impl DeploymentService {
 
         send_log("Build completed successfully".to_string()).await;
 
-        // Step 3: Stop & remove any existing container for this app (avoids port conflicts)
+        // Step 3: Remove any existing containers for this app (avoids port conflicts)
         deployment_repo.update_status(&deployment_id, DeploymentStatus::Deploying).await?;
 
         let container_name = format!("ployer-{}", application.name);
 
-        // Stop by previous deployment's container ID (covers old UUID-named containers)
+        // Force-remove by DB-tracked container ID (covers any naming scheme)
         if let Ok(Some(prev)) = deployment_repo.get_latest_running(&application.id).await {
             if let Some(prev_container_id) = &prev.container_id {
-                send_log(format!("Stopping previous container...")).await;
-                if let Err(e) = docker.stop_container(prev_container_id, Some(10)).await {
-                    warn!("Stop previous container {}: {}", prev_container_id, e);
-                }
-                if let Err(e) = docker.remove_container(prev_container_id, true).await {
-                    warn!("Remove previous container {}: {}", prev_container_id, e);
-                } else {
-                    send_log("Previous container removed".to_string()).await;
+                send_log(format!("Removing previous container ({})...", &prev_container_id[..12])).await;
+                match docker.remove_container(prev_container_id, true).await {
+                    Ok(_) => send_log("Previous container removed".to_string()).await,
+                    Err(e) => send_log(format!("Warning: could not remove previous container: {}", e)).await,
                 }
             }
             let _ = deployment_repo.update_status(&prev.id, DeploymentStatus::RolledBack).await;
         }
 
-        // Also stop by fixed name in case a container exists with that name but isn't tracked in DB
-        let _ = docker.stop_container(&container_name, Some(5)).await;
-        let _ = docker.remove_container(&container_name, true).await;
+        // Also force-remove by fixed name (catches untracked containers with the same name)
+        match docker.remove_container(&container_name, true).await {
+            Ok(_) => send_log(format!("Removed existing container '{}'", container_name)).await,
+            Err(_) => {} // doesn't exist — that's fine
+        }
 
         // Step 4: Create and start new container with fixed name
         send_log("Creating container...".to_string()).await;
