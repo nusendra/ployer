@@ -27,34 +27,9 @@
 		network_tx_bytes: number;
 	}
 
-	interface EnvVar {
-		key: string;
-		value: string;
-	}
-
-	interface PortMapping {
-		containerPort: string;
-		hostPort: string;
-	}
-
-	interface VolumeMount {
-		hostPath: string;
-		containerPath: string;
-	}
-
 	let containers: Container[] = $state([]);
 	let loading = $state(true);
 	let error = $state('');
-	let showCreateForm = $state(false);
-
-	// Form state
-	let formImage = $state('');
-	let formName = $state('');
-	let formEnvVars: EnvVar[] = $state([]);
-	let formPorts: PortMapping[] = $state([]);
-	let formVolumes: VolumeMount[] = $state([]);
-	let formCmd = $state('');
-	let formSubmitting = $state(false);
 
 	// Action states
 	let actioningContainer = $state<string | null>(null);
@@ -97,93 +72,6 @@
 			error = e.message || 'Failed to load containers';
 		} finally {
 			loading = false;
-		}
-	}
-
-	function addEnvVar() {
-		formEnvVars = [...formEnvVars, { key: '', value: '' }];
-	}
-
-	function removeEnvVar(index: number) {
-		formEnvVars = formEnvVars.filter((_, i) => i !== index);
-	}
-
-	function addPort() {
-		formPorts = [...formPorts, { containerPort: '', hostPort: '' }];
-	}
-
-	function removePort(index: number) {
-		formPorts = formPorts.filter((_, i) => i !== index);
-	}
-
-	function addVolume() {
-		formVolumes = [...formVolumes, { hostPath: '', containerPath: '' }];
-	}
-
-	function removeVolume(index: number) {
-		formVolumes = formVolumes.filter((_, i) => i !== index);
-	}
-
-	function resetForm() {
-		formImage = '';
-		formName = '';
-		formEnvVars = [];
-		formPorts = [];
-		formVolumes = [];
-		formCmd = '';
-		showCreateForm = false;
-	}
-
-	async function handleCreateContainer(e: Event) {
-		e.preventDefault();
-		if (!formImage.trim()) {
-			error = 'Image name is required';
-			return;
-		}
-
-		try {
-			formSubmitting = true;
-			error = '';
-
-			// Build env array
-			const env = formEnvVars
-				.filter(e => e.key.trim() && e.value.trim())
-				.map(e => `${e.key}=${e.value}`);
-
-			// Build ports object
-			const ports: Record<string, string> = {};
-			formPorts
-				.filter(p => p.containerPort && p.hostPort)
-				.forEach(p => {
-					ports[`${p.containerPort}/tcp`] = p.hostPort;
-				});
-
-			// Build volumes object
-			const volumes: Record<string, string> = {};
-			formVolumes
-				.filter(v => v.hostPath && v.containerPath)
-				.forEach(v => {
-					volumes[v.hostPath] = v.containerPath;
-				});
-
-			// Build cmd array
-			const cmd = formCmd.trim() ? formCmd.trim().split(' ') : undefined;
-
-			await api.post('/containers', {
-				image: formImage,
-				name: formName || undefined,
-				env: env.length > 0 ? env : undefined,
-				ports: Object.keys(ports).length > 0 ? ports : undefined,
-				volumes: Object.keys(volumes).length > 0 ? volumes : undefined,
-				cmd
-			});
-
-			resetForm();
-			await loadContainers();
-		} catch (e: any) {
-			error = e.message || 'Failed to create container';
-		} finally {
-			formSubmitting = false;
 		}
 	}
 
@@ -302,96 +190,16 @@
 <div class="containers-page">
 	<div class="header">
 		<h2>Containers</h2>
-		<button class="btn-primary" onclick={() => {
-			if (showCreateForm) {
-				resetForm();
-			} else {
-				showCreateForm = true;
-			}
-		}}>
-			{showCreateForm ? 'Cancel' : 'Create Container'}
-		</button>
 	</div>
 
 	{#if error}
 		<div class="error">{error}</div>
 	{/if}
 
-	{#if showCreateForm}
-		<div class="card create-form">
-			<h3>Create Container</h3>
-			<form onsubmit={handleCreateContainer}>
-				<div class="form-group">
-					<label for="image">Image *</label>
-					<input id="image" type="text" bind:value={formImage} placeholder="nginx:latest" required />
-				</div>
-
-				<div class="form-group">
-					<label for="name">Container Name (optional)</label>
-					<input id="name" type="text" bind:value={formName} placeholder="my-container" />
-				</div>
-
-				<div class="form-section">
-					<div class="section-header">
-						<label>Environment Variables</label>
-						<button type="button" class="btn-small" onclick={addEnvVar}>+ Add</button>
-					</div>
-					{#each formEnvVars as envVar, i}
-						<div class="form-row">
-							<input type="text" bind:value={envVar.key} placeholder="KEY" />
-							<input type="text" bind:value={envVar.value} placeholder="value" />
-							<button type="button" class="btn-danger-small" onclick={() => removeEnvVar(i)}>×</button>
-						</div>
-					{/each}
-				</div>
-
-				<div class="form-section">
-					<div class="section-header">
-						<label>Port Mappings</label>
-						<button type="button" class="btn-small" onclick={addPort}>+ Add</button>
-					</div>
-					{#each formPorts as port, i}
-						<div class="form-row">
-							<input type="text" bind:value={port.hostPort} placeholder="Host Port (e.g., 8080)" />
-							<span class="arrow">→</span>
-							<input type="text" bind:value={port.containerPort} placeholder="Container Port (e.g., 80)" />
-							<button type="button" class="btn-danger-small" onclick={() => removePort(i)}>×</button>
-						</div>
-					{/each}
-				</div>
-
-				<div class="form-section">
-					<div class="section-header">
-						<label>Volume Mounts</label>
-						<button type="button" class="btn-small" onclick={addVolume}>+ Add</button>
-					</div>
-					{#each formVolumes as volume, i}
-						<div class="form-row">
-							<input type="text" bind:value={volume.hostPath} placeholder="Host Path (e.g., /data)" />
-							<span class="arrow">→</span>
-							<input type="text" bind:value={volume.containerPath} placeholder="Container Path (e.g., /app/data)" />
-							<button type="button" class="btn-danger-small" onclick={() => removeVolume(i)}>×</button>
-						</div>
-					{/each}
-				</div>
-
-				<div class="form-group">
-					<label for="cmd">Command (optional)</label>
-					<input id="cmd" type="text" bind:value={formCmd} placeholder="npm start" />
-					<small class="hint">Space-separated command arguments</small>
-				</div>
-
-				<button type="submit" class="btn-primary" disabled={formSubmitting}>
-					{formSubmitting ? 'Creating...' : 'Create Container'}
-				</button>
-			</form>
-		</div>
-	{/if}
-
 	{#if loading}
 		<p class="text-muted">Loading containers...</p>
 	{:else if containers.length === 0}
-		<p class="text-muted">No containers found. Create one to get started.</p>
+		<p class="text-muted">No containers found. Deploy an application to create one.</p>
 	{:else}
 		<div class="containers-grid">
 			{#each containers as container (container.id)}
