@@ -19,6 +19,22 @@ pub fn router() -> Router<SharedState> {
         .route("/register", post(register))
         .route("/login", post(login))
         .route("/me", get(me))
+        .route("/registration-status", get(registration_status))
+}
+
+#[derive(Debug, Serialize)]
+struct RegistrationStatusResponse {
+    allow_registration: bool,
+}
+
+async fn registration_status(
+    State(state): State<SharedState>,
+) -> Result<Json<RegistrationStatusResponse>, (StatusCode, String)> {
+    let allow = SettingsRepository::new(state.db.clone())
+        .allow_registration()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(Json(RegistrationStatusResponse { allow_registration: allow }))
 }
 
 #[derive(Debug, Deserialize)]

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api/client';
 	import { setAuth } from '$lib/stores/auth';
@@ -9,6 +10,17 @@
 	let name = '';
 	let error = '';
 	let loading = false;
+	let allowRegistration = $state(true);
+
+	onMount(async () => {
+		try {
+			const res = await api.get<{ allow_registration: boolean }>('/auth/registration-status');
+			allowRegistration = res.allow_registration;
+			if (!allowRegistration) mode = 'login';
+		} catch {
+			// default to showing registration if check fails
+		}
+	});
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
@@ -57,12 +69,14 @@
 		<h1>Ployer</h1>
 		<p class="subtitle">Lightweight self-hosting PaaS</p>
 
+		{#if allowRegistration}
 		<div class="tabs">
 			<button class:active={mode === 'login'} onclick={() => (mode = 'login')}>Login</button>
 			<button class:active={mode === 'register'} onclick={() => (mode = 'register')}>
 				Register
 			</button>
 		</div>
+	{/if}
 
 		<form onsubmit={handleSubmit}>
 			{#if mode === 'register'}
