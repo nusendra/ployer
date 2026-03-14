@@ -135,8 +135,8 @@
 			</div>
 		</div>
 
-		<!-- Main content grid -->
-		<div class="content-grid">
+		<!-- Main area: cards grid -->
+		<div class="main-area">
 			<!-- Applications Status -->
 			<div class="card">
 				<div class="card-header">
@@ -202,41 +202,45 @@
 					</div>
 				{/if}
 			</div>
-		</div>
 
-		<!-- Server Status -->
-		<div class="card" style="margin-top: 1.5rem;">
-			<div class="card-header">
-				<h3>Server Status</h3>
-				<a href="/servers" class="card-link">View all →</a>
-			</div>
-			{#if servers.length === 0}
-				<div class="empty-state">
-					<p>No servers configured</p>
-					<a href="/servers" class="btn-primary-sm">Add Server</a>
+			<!-- Server Status -->
+			<div class="card card-full">
+				<div class="card-header">
+					<h3>Server Status</h3>
+					<a href="/servers" class="card-link">View all →</a>
 				</div>
-			{:else}
-				<div class="server-grid">
-					{#each servers as server (server.id)}
-						<div class="server-card">
-							<div class="server-card-header">
-								<span class="item-dot dot-{server.status === 'online' ? 'running' : 'stopped'}"></span>
-								<span class="server-name">{server.name}</span>
+				{#if servers.length === 0}
+					<div class="empty-state">
+						<p>No servers configured</p>
+						<a href="/servers" class="btn-primary-sm">Add Server</a>
+					</div>
+				{:else}
+					<div class="server-grid">
+						{#each servers as server (server.id)}
+							<div class="server-item">
+								<div class="server-card-header">
+									<span class="item-dot dot-{server.status === 'online' ? 'running' : 'stopped'}"></span>
+									<span class="server-name">{server.name}</span>
+								</div>
+								<span class="server-host">{server.host}</span>
+								<span class="status-pill status-{server.status === 'online' ? 'running' : 'stopped'}">{server.status}</span>
 							</div>
-							<span class="server-host">{server.host}</span>
-							<span class="status-pill status-{server.status === 'online' ? 'running' : 'stopped'}">{server.status}</span>
-						</div>
-					{/each}
-				</div>
-			{/if}
+						{/each}
+					</div>
+				{/if}
+			</div>
 		</div>
 	{/if}
 </div>
 
 <style>
 	.dashboard {
-		max-width: 1200px;
-		margin: 0 auto;
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		overflow: hidden;
 	}
 
 	/* Header */
@@ -244,7 +248,7 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-start;
-		margin-bottom: 1.5rem;
+		flex-shrink: 0;
 	}
 
 	h2 {
@@ -288,7 +292,7 @@
 		display: grid;
 		grid-template-columns: repeat(4, 1fr);
 		gap: 1rem;
-		margin-bottom: 1.5rem;
+		flex-shrink: 0;
 	}
 
 	.stat-card {
@@ -362,11 +366,14 @@
 		color: var(--primary);
 	}
 
-	/* Content Grid */
-	.content-grid {
+	/* Main area grid */
+	.main-area {
+		flex: 1;
+		min-height: 0;
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 1.5rem;
+		grid-template-rows: 1fr auto;
+		gap: 1rem;
 	}
 
 	/* Cards */
@@ -375,6 +382,13 @@
 		border: 1px solid var(--border);
 		border-radius: 10px;
 		padding: 1.25rem;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.card-full {
+		grid-column: 1 / -1;
 	}
 
 	.card-header {
@@ -433,6 +447,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
+		overflow-y: auto;
+		flex: 1;
 	}
 
 	.item-row {
@@ -529,7 +545,8 @@
 
 	/* Table */
 	.table-wrapper {
-		overflow-x: auto;
+		overflow: auto;
+		flex: 1;
 	}
 
 	.data-table {
@@ -582,7 +599,7 @@
 		gap: 0.75rem;
 	}
 
-	.server-card {
+	.server-item {
 		background: var(--bg);
 		border: 1px solid var(--border);
 		border-radius: 8px;
@@ -609,7 +626,7 @@
 		color: var(--text-muted);
 	}
 
-	.server-card .status-pill {
+	.server-item .status-pill {
 		align-self: flex-start;
 	}
 
@@ -618,7 +635,7 @@
 		.stats-grid {
 			grid-template-columns: repeat(2, 1fr);
 		}
-		.content-grid {
+		.main-area {
 			grid-template-columns: 1fr;
 		}
 	}

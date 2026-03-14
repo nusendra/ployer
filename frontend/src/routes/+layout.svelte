@@ -344,5 +344,7 @@
 		flex: 1;
 		padding: 2rem;
 		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
 	}
 </style>
