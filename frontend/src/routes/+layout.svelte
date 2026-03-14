@@ -168,7 +168,8 @@
 
 	.app-shell {
 		display: flex;
-		min-height: 100vh;
+		height: 100vh;
+		overflow: hidden;
 	}
 
 	.sidebar {
@@ -181,6 +182,8 @@
 		flex-direction: column;
 		gap: 0.5rem;
 		box-shadow: 4px 0 20px rgba(0, 0, 0, 0.2);
+		height: 100vh;
+		overflow-y: auto;
 	}
 
 	/* Logo */
