@@ -235,6 +235,7 @@ PLOYER_JWT_SECRET=${jwt_secret}
 PLOYER_TOKEN_EXPIRY_HOURS=24
 PLOYER_DOCKER_SOCKET=/var/run/docker.sock
 PLOYER_CADDY_URL=http://localhost:2019
+FRONTEND_DIR=${PLOYER_DIR}/public
 EOF
 
   chmod 600 "$env_file"
