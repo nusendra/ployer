@@ -72,6 +72,7 @@ install_docker() {
   info "Docker not found — installing via official script..."
 
   # Use Docker's official convenience script (supports Ubuntu, Debian, CentOS, Fedora, etc.)
+  wait_for_apt
   curl -fsSL https://get.docker.com | sh \
     || error "Docker installation failed. Install manually: https://docs.docker.com/engine/install/"
 
@@ -95,9 +96,35 @@ check_docker() {
 
 # ── Package helpers ───────────────────────────
 
+wait_for_apt() {
+  local locks=(
+    /var/lib/dpkg/lock-frontend
+    /var/lib/dpkg/lock
+    /var/lib/apt/lists/lock
+    /var/cache/apt/archives/lock
+  )
+  local waited=0
+  while fuser "${locks[@]}" &>/dev/null 2>&1; do
+    if [[ $waited -eq 0 ]]; then
+      info "Waiting for apt lock (unattended-upgrades is running)..."
+    fi
+    sleep 3
+    waited=$((waited + 3))
+    if [[ $waited -ge 120 ]]; then
+      warn "Apt lock held for 2 minutes. Killing unattended-upgrades..."
+      systemctl stop unattended-upgrades 2>/dev/null || true
+      kill -9 "$(fuser /var/lib/dpkg/lock-frontend 2>/dev/null)" 2>/dev/null || true
+      sleep 2
+      break
+    fi
+  done
+  [[ $waited -gt 0 ]] && log "Apt lock released"
+}
+
 install_packages() {
   case "$OS_ID" in
     ubuntu|debian|linuxmint|pop)
+      wait_for_apt
       apt-get update -qq && apt-get install -y -qq "$@" ;;
     centos|rhel|rocky|almalinux)
       yum install -y -q "$@" 2>/dev/null || dnf install -y -q "$@" ;;
