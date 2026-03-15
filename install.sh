@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ─────────────────────────────────────────────
 # Ployer — One-line installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh | sudo bash
+# Usage: curl -fsSL https://ployer.nusendra.com/install.sh | sudo bash
 # ─────────────────────────────────────────────
 
 PLOYER_REPO="nusendra/ployer"
@@ -67,9 +67,29 @@ check_os() {
   fi
 }
 
+install_docker() {
+  step "Installing Docker"
+  info "Docker not found — installing via official script..."
+
+  # Use Docker's official convenience script (supports Ubuntu, Debian, CentOS, Fedora, etc.)
+  curl -fsSL https://get.docker.com | sh \
+    || error "Docker installation failed. Install manually: https://docs.docker.com/engine/install/"
+
+  # Enable and start Docker
+  systemctl enable docker --now
+  log "Docker installed and started"
+}
+
 check_docker() {
-  command -v docker &>/dev/null || error "Docker is not installed. Install it first: https://docs.docker.com/engine/install/"
-  docker info &>/dev/null || error "Docker is not running. Start it: systemctl start docker"
+  if ! command -v docker &>/dev/null; then
+    install_docker
+  fi
+
+  if ! docker info &>/dev/null; then
+    info "Starting Docker..."
+    systemctl start docker || error "Docker is installed but could not be started. Try: systemctl start docker"
+  fi
+
   log "Docker: $(docker --version | awk '{print $3}' | tr -d ',')"
 }
 
@@ -361,7 +381,7 @@ print_success() {
   echo -e "    Logs:     ${YELLOW}journalctl -u ployer -f${NC}"
   echo -e "    Stop:     ${YELLOW}systemctl stop ployer${NC}"
   echo -e "    Restart:  ${YELLOW}systemctl restart ployer${NC}"
-  echo -e "    Upgrade:  ${YELLOW}curl -fsSL https://raw.githubusercontent.com/${PLOYER_REPO}/main/install.sh | sudo bash${NC}"
+  echo -e "    Upgrade:  ${YELLOW}curl -fsSL https://ployer.nusendra.com/install.sh | sudo bash${NC}"
   echo ""
   if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo -e "  ${YELLOW}Tip: Point a domain to this server and re-run the installer for HTTPS.${NC}"
