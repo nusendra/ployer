@@ -591,6 +591,9 @@
 								<div class="form-group">
 									<label for="git_url">Git Repository URL</label>
 									<input id="git_url" type="text" bind:value={editForm.git_url} placeholder="git@github.com:user/repo.git" />
+									{#if editForm.git_url.startsWith('https://')}
+										<p class="input-warn">Use SSH format: <code>git@github.com:user/repo.git</code> — HTTPS URLs don't work with deploy keys.</p>
+									{/if}
 								</div>
 
 								<div class="form-group">
@@ -1177,6 +1180,16 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.375rem;
+	}
+
+	.input-warn {
+		font-size: 0.8125rem;
+		color: var(--warning);
+	}
+
+	.input-warn code {
+		font-family: monospace;
+		color: var(--text);
 	}
 
 	.form-group label {
