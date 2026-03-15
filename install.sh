@@ -277,8 +277,9 @@ install_caddy() {
 write_caddyfile() {
   local caddyfile="${PLOYER_DIR}/Caddyfile"
 
-  # Create empty apps.caddy if it doesn't exist (app routes are appended here on deploy)
-  touch "${PLOYER_DIR}/apps.caddy"
+  # Reset apps.caddy on every install — stale HTTP-less entries cause Caddy to
+  # auto-redirect to HTTPS. Fresh deploys will re-add routes with http:// prefix.
+  : > "${PLOYER_DIR}/apps.caddy"
 
   cat > "$caddyfile" <<EOF
 ${DOMAIN} {
