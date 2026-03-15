@@ -193,7 +193,7 @@ prompt_config() {
   echo ""
   echo -e "  ${BOLD}Where will Ployer be accessible?${NC}"
   echo -e "  ${YELLOW}→ Domain (e.g. ployer.yourdomain.com) — gets automatic HTTPS${NC}"
-  echo -e "  ${YELLOW}→ IP address — auto-converted to sslip.io for free HTTPS + subdomains${NC}"
+  echo -e "  ${YELLOW}→ IP address — auto-converted to nip.io for free HTTPS + subdomains${NC}"
   echo ""
 
   if [[ -t 0 ]]; then
@@ -205,11 +205,9 @@ prompt_config() {
   fi
   DOMAIN="${DOMAIN:-$server_ip}"
 
-  # Convert bare IP to sslip.io for working subdomains + free HTTPS
+  # Convert bare IP to nip.io for working subdomains + free HTTPS
   if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    local sslip_domain
-    sslip_domain=$(echo "$DOMAIN" | tr '.' '-')
-    DOMAIN="${sslip_domain}.sslip.io"
+    DOMAIN="${DOMAIN}.nip.io"
     info "IP detected — using ${DOMAIN} for free HTTPS and subdomains"
   fi
 
@@ -403,7 +401,7 @@ print_success() {
   echo -e "    Restart:  ${YELLOW}systemctl restart ployer${NC}"
   echo -e "    Upgrade:  ${YELLOW}curl -fsSL https://ployer.nusendra.com/install.sh | sudo bash${NC}"
   echo ""
-  if [[ "$DOMAIN" =~ \.sslip\.io$ ]]; then
+  if [[ "$DOMAIN" =~ \.nip\.io$ ]]; then
     echo -e "  ${YELLOW}Tip: For a permanent URL, point your own domain to this server and re-run the installer.${NC}"
     echo ""
   fi
