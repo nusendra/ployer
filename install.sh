@@ -140,8 +140,10 @@ install_packages() {
 # ── Fetch latest release ──────────────────────
 
 get_latest_version() {
+  # Extract all tag names, sort by version (handles alpha.9 < alpha.10 < alpha.11),
+  # and take the highest — GitHub API does not guarantee chronological ordering.
   curl -fsSL "https://api.github.com/repos/${PLOYER_REPO}/releases" \
-    | grep '"tag_name"' | head -1 | cut -d'"' -f4
+    | grep '"tag_name"' | cut -d'"' -f4 | sort -V | tail -1
 }
 
 download_release() {
