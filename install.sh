@@ -345,8 +345,17 @@ EOF
   log "Caddy service configured"
 }
 
+open_firewall() {
+  if command -v ufw &>/dev/null && ufw status | grep -q "Status: active"; then
+    ufw allow 80/tcp  >/dev/null 2>&1 || true
+    ufw allow 443/tcp >/dev/null 2>&1 || true
+    log "Firewall: ports 80 and 443 opened"
+  fi
+}
+
 start_services() {
   step "Starting services"
+  open_firewall
   systemctl daemon-reload
 
   systemctl enable caddy --now
