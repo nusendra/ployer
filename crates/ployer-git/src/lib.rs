@@ -85,6 +85,11 @@ impl GitService {
 
         let mut callbacks = RemoteCallbacks::new();
 
+        // Accept SSH host keys without requiring known_hosts entry
+        callbacks.certificate_check(|_cert, _host| {
+            Ok(git2::CertificateCheckStatus::CertificateOk)
+        });
+
         // Set up SSH authentication if private key is provided
         if let Some(key) = private_key {
             let key_owned = key.to_string();
@@ -117,6 +122,12 @@ impl GitService {
 
         // Set up callbacks for authentication
         let mut callbacks = RemoteCallbacks::new();
+
+        // Accept SSH host keys without requiring known_hosts entry
+        callbacks.certificate_check(|_cert, _host| {
+            Ok(git2::CertificateCheckStatus::CertificateOk)
+        });
+
         if let Some(key) = private_key {
             let key_owned = key.to_string();
             callbacks.credentials(move |_url, username_from_url, _allowed_types| {
