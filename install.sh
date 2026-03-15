@@ -193,7 +193,7 @@ prompt_config() {
   echo ""
   echo -e "  ${BOLD}Where will Ployer be accessible?${NC}"
   echo -e "  ${YELLOW}→ Domain (e.g. ployer.yourdomain.com) — gets automatic HTTPS${NC}"
-  echo -e "  ${YELLOW}→ IP address — HTTP only, good for testing${NC}"
+  echo -e "  ${YELLOW}→ IP address — auto-converted to sslip.io for free HTTPS + subdomains${NC}"
   echo ""
 
   if [[ -t 0 ]]; then
@@ -205,12 +205,15 @@ prompt_config() {
   fi
   DOMAIN="${DOMAIN:-$server_ip}"
 
+  # Convert bare IP to sslip.io for working subdomains + free HTTPS
   if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    PUBLIC_URL="http://${DOMAIN}"
-  else
-    PUBLIC_URL="https://${DOMAIN}"
+    local sslip_domain
+    sslip_domain=$(echo "$DOMAIN" | tr '.' '-')
+    DOMAIN="${sslip_domain}.sslip.io"
+    info "IP detected — using ${DOMAIN} for free HTTPS and subdomains"
   fi
 
+  PUBLIC_URL="https://${DOMAIN}"
   log "Dashboard will be at: ${PUBLIC_URL}"
 }
 
@@ -273,18 +276,7 @@ install_caddy() {
 write_caddyfile() {
   local caddyfile="${PLOYER_DIR}/Caddyfile"
 
-  if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    cat > "$caddyfile" <<EOF
-:80 {
-    reverse_proxy localhost:3001
-}
-
-:2019 {
-    bind 127.0.0.1
-}
-EOF
-  else
-    cat > "$caddyfile" <<EOF
+  cat > "$caddyfile" <<EOF
 ${DOMAIN} {
     reverse_proxy localhost:3001
 }
@@ -293,7 +285,6 @@ ${DOMAIN} {
     bind 127.0.0.1
 }
 EOF
-  fi
 
   log "Caddyfile written: ${caddyfile}"
 }
@@ -401,8 +392,8 @@ print_success() {
   echo -e "    Restart:  ${YELLOW}systemctl restart ployer${NC}"
   echo -e "    Upgrade:  ${YELLOW}curl -fsSL https://ployer.nusendra.com/install.sh | sudo bash${NC}"
   echo ""
-  if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo -e "  ${YELLOW}Tip: Point a domain to this server and re-run the installer for HTTPS.${NC}"
+  if [[ "$DOMAIN" =~ \.sslip\.io$ ]]; then
+    echo -e "  ${YELLOW}Tip: For a permanent URL, point your own domain to this server and re-run the installer.${NC}"
     echo ""
   fi
 }
