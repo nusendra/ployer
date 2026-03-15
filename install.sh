@@ -250,33 +250,23 @@ install_caddy() {
   fi
 
   step "Installing Caddy"
-  case "$OS_ID" in
-    ubuntu|debian|linuxmint|pop)
-      install_packages debian-keyring debian-archive-keyring apt-transport-https curl gnupg
-      curl -fsSL 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
-        | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-      curl -fsSL 'https://dl.cloudsmith.io/public/caddy/stable/deb/debian.deb.txt' \
-        > /etc/apt/sources.list.d/caddy-stable.list
-      wait_for_apt
-      apt-get update -qq && apt-get install -y -qq caddy
-      ;;
-    centos|rhel|rocky|almalinux|fedora)
-      yum install -y yum-plugin-copr 2>/dev/null || dnf install -y 'dnf-command(copr)'
-      yum copr enable -y @caddy/caddy 2>/dev/null || dnf copr enable -y @caddy/caddy
-      yum install -y caddy 2>/dev/null || dnf install -y caddy
-      ;;
-    *)
-      # Fallback: download caddy binary from GitHub
-      local caddy_arch="$BINARY_ARCH"
-      [[ "$BINARY_ARCH" == "x86_64" ]] && caddy_arch="amd64"
-      local caddy_url
-      caddy_url=$(curl -fsSL https://api.github.com/repos/caddyserver/caddy/releases/latest \
-        | grep "browser_download_url.*linux_${caddy_arch}\.tar\.gz" | cut -d'"' -f4 | head -1)
-      curl -fsSL "$caddy_url" | tar -xz -C /usr/local/bin caddy
-      chmod +x /usr/local/bin/caddy
-      ;;
-  esac
-  log "Caddy installed"
+
+  local caddy_arch="amd64"
+  [[ "$BINARY_ARCH" == "arm64" ]] && caddy_arch="arm64"
+
+  info "Fetching latest Caddy release..."
+  local caddy_version
+  caddy_version=$(curl -fsSL https://api.github.com/repos/caddyserver/caddy/releases/latest \
+    | grep '"tag_name"' | cut -d'"' -f4)
+  [[ -n "$caddy_version" ]] || error "Could not determine latest Caddy version."
+
+  local caddy_url="https://github.com/caddyserver/caddy/releases/download/${caddy_version}/caddy_${caddy_version#v}_linux_${caddy_arch}.tar.gz"
+  info "Downloading Caddy ${caddy_version}..."
+  curl -fsSL "$caddy_url" | tar -xz -C /usr/local/bin caddy \
+    || error "Failed to download Caddy from ${caddy_url}"
+  chmod +x /usr/local/bin/caddy
+
+  log "Caddy ${caddy_version} installed"
 }
 
 write_caddyfile() {
