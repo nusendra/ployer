@@ -252,12 +252,12 @@ install_caddy() {
   step "Installing Caddy"
   case "$OS_ID" in
     ubuntu|debian|linuxmint|pop)
-      install_packages debian-keyring debian-archive-keyring apt-transport-https curl
+      install_packages debian-keyring debian-archive-keyring apt-transport-https curl gnupg
       curl -fsSL 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
         | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-      echo "deb [signed-by=/usr/share/keyrings/caddy-stable-archive-keyring.gpg] \
-        https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main" \
+      curl -fsSL 'https://dl.cloudsmith.io/public/caddy/stable/deb/debian.deb.txt' \
         > /etc/apt/sources.list.d/caddy-stable.list
+      wait_for_apt
       apt-get update -qq && apt-get install -y -qq caddy
       ;;
     centos|rhel|rocky|almalinux|fedora)
