@@ -7,11 +7,13 @@
 	import { wsClient } from '$lib/stores/websocket';
 	import { onDestroy } from 'svelte';
 	import Toast from '$lib/components/Toast.svelte';
+	import { api } from '$lib/api/client';
 
 	let { children } = $props();
 	let isAuthenticated = $state(false);
 	let isLoginPage = $state(false);
 	let isChecking = $state(true);
+	let version = $state('');
 	$effect(() => {
 		if (!browser) return;
 
@@ -42,6 +44,8 @@
 	onDestroy(() => {
 		wsClient.disconnect();
 	});
+
+	api.get<{ version: string }>('/health').then(r => version = r.version).catch(() => {});
 
 	function handleLogout() {
 		wsClient.disconnect();
@@ -148,6 +152,9 @@
 					</div>
 				</div>
 				<button class="btn-logout" onclick={handleLogout}>Logout</button>
+				{#if version}
+					<div class="version-badge">v{version}</div>
+				{/if}
 			</div>
 		</nav>
 		<main class="content">
@@ -338,6 +345,13 @@
 	.btn-logout:hover {
 		background: var(--bg-tertiary);
 		color: var(--text);
+	}
+
+	.version-badge {
+		text-align: center;
+		font-size: 0.75rem;
+		color: var(--text-dim, #506080);
+		font-family: monospace;
 	}
 
 	.content {
