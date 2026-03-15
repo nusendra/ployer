@@ -49,6 +49,7 @@ pub struct DockerConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CaddyConfig {
     pub admin_url: String,
+    pub caddyfile_path: String,
 }
 
 impl Default for AppConfig {
@@ -73,6 +74,7 @@ impl Default for AppConfig {
             },
             caddy: CaddyConfig {
                 admin_url: "http://localhost:2019".to_string(),
+                caddyfile_path: "/opt/ployer/Caddyfile".to_string(),
             },
         }
     }
@@ -97,7 +99,8 @@ impl AppConfig {
         if let Ok(v) = std::env::var("PLOYER_JWT_SECRET")      { cfg.auth.jwt_secret = v; }
         if let Ok(v) = std::env::var("PLOYER_TOKEN_EXPIRY_HOURS") { if let Ok(h) = v.parse() { cfg.auth.token_expiry_hours = h; } }
         if let Ok(v) = std::env::var("PLOYER_DOCKER_SOCKET")   { cfg.docker.socket_path = v; }
-        if let Ok(v) = std::env::var("PLOYER_CADDY_URL")       { cfg.caddy.admin_url = v; }
+        if let Ok(v) = std::env::var("PLOYER_CADDY_URL")        { cfg.caddy.admin_url = v; }
+        if let Ok(v) = std::env::var("PLOYER_CADDYFILE")        { cfg.caddy.caddyfile_path = v; }
 
         cfg
     }

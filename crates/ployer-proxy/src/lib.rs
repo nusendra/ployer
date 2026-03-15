@@ -1,11 +1,13 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
 #[derive(Clone)]
 pub struct CaddyClient {
     admin_url: String,
     client: reqwest::Client,
+    caddyfile_path: PathBuf,
 }
 
 #[derive(Debug, Serialize)]
@@ -23,12 +25,52 @@ pub struct RouteInfo {
 }
 
 impl CaddyClient {
-    pub fn new(admin_url: &str) -> Self {
+    pub fn new(admin_url: &str, caddyfile_path: &str) -> Self {
         info!("Caddy client configured for {}", admin_url);
         Self {
             admin_url: admin_url.to_string(),
             client: reqwest::Client::new(),
+            caddyfile_path: PathBuf::from(caddyfile_path),
         }
+    }
+
+    fn apps_caddyfile(&self) -> PathBuf {
+        self.caddyfile_path
+            .parent()
+            .unwrap_or(Path::new("/opt/ployer"))
+            .join("apps.caddy")
+    }
+
+    /// Write the app route to apps.caddy for persistence across restarts,
+    /// then reload Caddy so the route takes effect immediately.
+    pub fn persist_route(&self, domain: &str, upstream: &str) -> Result<()> {
+        let apps_file = self.apps_caddyfile();
+
+        // Read existing content
+        let existing = std::fs::read_to_string(&apps_file).unwrap_or_default();
+
+        // Only append if this domain isn't already in the file
+        if !existing.contains(domain) {
+            let block = format!(
+                "\n{} {{\n    reverse_proxy {}\n}}\n",
+                domain, upstream
+            );
+            std::fs::write(&apps_file, format!("{}{}", existing, block))?;
+            info!("Persisted Caddy route for {} -> {}", domain, upstream);
+        }
+
+        // Reload Caddy to pick up the new config
+        let status = std::process::Command::new("caddy")
+            .args(["reload", "--config", self.caddyfile_path.to_str().unwrap_or("/opt/ployer/Caddyfile")])
+            .status();
+
+        match status {
+            Ok(s) if s.success() => info!("Caddy reloaded successfully"),
+            Ok(s) => warn!("Caddy reload exited with status {}", s),
+            Err(e) => warn!("Failed to run caddy reload: {}", e),
+        }
+
+        Ok(())
     }
 
     pub async fn ping(&self) -> Result<bool> {

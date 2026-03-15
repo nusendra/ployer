@@ -257,15 +257,11 @@ impl DeploymentService {
                     if let Some(ref caddy_client) = caddy {
                         if let Some(port) = application.port {
                             let upstream = format!("localhost:{}", port);
-                            let caddy_config = ReverseProxyConfig {
-                                domain: subdomain.clone(),
-                                upstream,
-                                enable_https: true,
-                            };
 
-                            if let Err(e) = caddy_client.add_route(caddy_config).await {
-                                warn!("Failed to configure Caddy route: {}", e);
-                                send_log(format!("Warning: Caddy configuration failed: {}", e)).await;
+                            // Persist route to apps.caddy so it survives Caddy restarts
+                            if let Err(e) = caddy_client.persist_route(&subdomain, &upstream) {
+                                warn!("Failed to persist Caddy route: {}", e);
+                                send_log(format!("Warning: Caddy route persistence failed: {}", e)).await;
                             } else {
                                 send_log(format!("Caddy configured: https://{}", subdomain)).await;
                             }

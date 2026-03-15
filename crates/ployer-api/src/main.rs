@@ -182,7 +182,7 @@ async fn start_server(config: AppConfig) -> Result<()> {
     };
 
     // Caddy client
-    let caddy = CaddyClient::new(&config.caddy.admin_url);
+    let caddy = CaddyClient::new(&config.caddy.admin_url, &config.caddy.caddyfile_path);
 
     let addr = format!("{}:{}", config.server.host, config.server.port);
     let cors = build_cors(&config.server.allowed_origins);

@@ -238,6 +238,7 @@ PLOYER_JWT_SECRET=${jwt_secret}
 PLOYER_TOKEN_EXPIRY_HOURS=24
 PLOYER_DOCKER_SOCKET=/var/run/docker.sock
 PLOYER_CADDY_URL=http://localhost:2019
+PLOYER_CADDYFILE=${PLOYER_DIR}/Caddyfile
 FRONTEND_DIR=${PLOYER_DIR}/public
 EOF
 
@@ -276,14 +277,15 @@ install_caddy() {
 write_caddyfile() {
   local caddyfile="${PLOYER_DIR}/Caddyfile"
 
+  # Create empty apps.caddy if it doesn't exist (app routes are appended here on deploy)
+  touch "${PLOYER_DIR}/apps.caddy"
+
   cat > "$caddyfile" <<EOF
 ${DOMAIN} {
     reverse_proxy localhost:3001
 }
 
-:2019 {
-    bind 127.0.0.1
-}
+import ${PLOYER_DIR}/apps.caddy
 EOF
 
   log "Caddyfile written: ${caddyfile}"
