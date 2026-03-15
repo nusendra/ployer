@@ -40,12 +40,12 @@ A lightweight, self-hosted PaaS — deploy your apps from Git with automatic SSL
 Point your domain's DNS `A record` to your server IP first, then run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh | sudo bash
+curl -fsSL https://ployer.nusendra.com/install.sh | sudo bash
 ```
 
 > **Note:** `curl | bash` runs in non-interactive mode and will auto-detect your server IP. To use a custom domain with HTTPS, download and run the script directly:
 > ```bash
-> curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh -o install.sh
+> curl -fsSL https://ployer.nusendra.com/install.sh -o install.sh
 > sudo bash install.sh
 > ```
 
@@ -67,7 +67,7 @@ The installer will:
 Re-run the install script — it detects the current version and upgrades automatically:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nusendra/ployer/main/install.sh | sudo bash
+curl -fsSL https://ployer.nusendra.com/install.sh | sudo bash
 ```
 
 ---
