@@ -51,8 +51,11 @@ impl CaddyClient {
 
         // Only append if this domain isn't already in the file
         if !existing.contains(domain) {
+            // Use http:// prefix to avoid Let's Encrypt rate-limit issues on shared
+            // wildcard DNS services (nip.io, sslip.io). The main dashboard domain
+            // keeps HTTPS; app subdomains are served over plain HTTP.
             let block = format!(
-                "\n{} {{\n    reverse_proxy {}\n}}\n",
+                "\nhttp://{} {{\n    reverse_proxy {}\n}}\n",
                 domain, upstream
             );
             std::fs::write(&apps_file, format!("{}{}", existing, block))?;

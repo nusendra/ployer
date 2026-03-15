@@ -263,7 +263,7 @@ impl DeploymentService {
                                 warn!("Failed to persist Caddy route: {}", e);
                                 send_log(format!("Warning: Caddy route persistence failed: {}", e)).await;
                             } else {
-                                send_log(format!("Caddy configured: https://{}", subdomain)).await;
+                                send_log(format!("Caddy configured: http://{}", subdomain)).await;
                             }
                         }
                     }
