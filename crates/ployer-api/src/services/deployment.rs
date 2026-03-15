@@ -247,30 +247,27 @@ impl DeploymentService {
         let subdomain = format!("{}.{}", application.name, base_domain);
 
         let domain_repo = DomainRepository::new(db.clone());
-        // Check if subdomain already exists
+
+        // Always (re)write the Caddy route on every deploy — apps.caddy may have been
+        // wiped on reinstall even if the domain record already exists in the DB.
+        if let Some(ref caddy_client) = caddy {
+            if let Some(port) = application.port {
+                let upstream = format!("localhost:{}", port);
+                if let Err(e) = caddy_client.persist_route(&subdomain, &upstream) {
+                    warn!("Failed to persist Caddy route: {}", e);
+                    send_log(format!("Warning: Caddy route persistence failed: {}", e)).await;
+                } else {
+                    send_log(format!("Caddy configured: http://{}", subdomain)).await;
+                }
+            }
+        }
+
+        // Create domain record if it doesn't already exist
         if domain_repo.find_by_domain(&subdomain).await.ok().flatten().is_none() {
-            match domain_repo.create(&application.id, &subdomain, true).await {
-                Ok(_) => {
-                    send_log(format!("Subdomain created: {}", subdomain)).await;
-
-                    // Configure Caddy if available
-                    if let Some(ref caddy_client) = caddy {
-                        if let Some(port) = application.port {
-                            let upstream = format!("localhost:{}", port);
-
-                            // Persist route to apps.caddy so it survives Caddy restarts
-                            if let Err(e) = caddy_client.persist_route(&subdomain, &upstream) {
-                                warn!("Failed to persist Caddy route: {}", e);
-                                send_log(format!("Warning: Caddy route persistence failed: {}", e)).await;
-                            } else {
-                                send_log(format!("Caddy configured: http://{}", subdomain)).await;
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    warn!("Failed to create subdomain: {}", e);
-                }
+            if let Err(e) = domain_repo.create(&application.id, &subdomain, true).await {
+                warn!("Failed to create subdomain record: {}", e);
+            } else {
+                send_log(format!("Subdomain created: {}", subdomain)).await;
             }
         }
 

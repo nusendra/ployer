@@ -282,6 +282,12 @@ write_caddyfile() {
   : > "${PLOYER_DIR}/apps.caddy"
 
   cat > "$caddyfile" <<EOF
+{
+    # Disable Caddy's catch-all HTTP→HTTPS redirect so app subdomains
+    # served with http:// prefix are not silently upgraded to HTTPS.
+    auto_https disable_redirects
+}
+
 ${DOMAIN} {
     reverse_proxy localhost:3001
 }
