@@ -4,12 +4,12 @@
 	import { api } from '$lib/api/client';
 	import { setAuth } from '$lib/stores/auth';
 
-	let mode: 'login' | 'register' = 'login';
-	let email = '';
-	let password = '';
-	let name = '';
-	let error = '';
-	let loading = false;
+	let mode: 'login' | 'register' = $state('login');
+	let email = $state('');
+	let password = $state('');
+	let name = $state('');
+	let error = $state('');
+	let loading = $state(false);
 	let allowRegistration = $state(true);
 
 	onMount(async () => {
