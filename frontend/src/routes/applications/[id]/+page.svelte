@@ -774,6 +774,14 @@
 							<p>Manage custom domains for this application.</p>
 						</div>
 
+						{#if app && /^\d+\.\d+\.\d+\.\d+$/.test(servers.find(s => s.id === app!.server_id)?.host || '')}
+							<div class="ip-domain-warning">
+								<strong>Subdomain routing requires a real domain.</strong>
+								Your server is configured with an IP address — subdomains like <code>{app.name}.103.x.x.x</code> are not valid hostnames and won't work in a browser.
+								To enable subdomain routing and automatic SSL, point a domain to this server and re-run the installer.
+							</div>
+						{/if}
+
 						<div class="domain-add-row">
 							<input type="text" placeholder="example.com" bind:value={newDomain} class="domain-input-field" />
 							<button class="btn-primary btn-sm" onclick={addDomain}>Add Domain</button>
@@ -1749,6 +1757,22 @@
 		color: var(--text);
 		font-family: 'Courier New', monospace;
 		word-break: break-all;
+	}
+
+	.ip-domain-warning {
+		padding: 0.875rem 1rem;
+		background: rgba(245, 158, 11, 0.1);
+		border: 1px solid var(--warning);
+		border-radius: var(--radius);
+		font-size: 0.875rem;
+		color: var(--text);
+		margin-bottom: 1.25rem;
+		line-height: 1.6;
+	}
+
+	.ip-domain-warning code {
+		font-family: monospace;
+		color: var(--warning);
 	}
 
 	.hint {
