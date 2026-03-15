@@ -140,8 +140,8 @@ install_packages() {
 # ── Fetch latest release ──────────────────────
 
 get_latest_version() {
-  curl -fsSL "https://api.github.com/repos/${PLOYER_REPO}/releases/latest" \
-    | grep '"tag_name"' | cut -d'"' -f4
+  curl -fsSL "https://api.github.com/repos/${PLOYER_REPO}/releases" \
+    | grep '"tag_name"' | head -1 | cut -d'"' -f4
 }
 
 download_release() {
