@@ -108,7 +108,12 @@
 						<path d="M10 2V18M2 6.5L10 11L18 6.5" stroke="var(--bg-secondary)" stroke-width="1.5"/>
 					</svg>
 				</div>
-				<span class="logo-text">Ployer</span>
+				<div class="logo-title">
+					<span class="logo-text">Ployer</span>
+					{#if version}
+						<span class="logo-version">v{version}</span>
+					{/if}
+				</div>
 			</div>
 
 			<!-- Primary nav -->
@@ -152,9 +157,6 @@
 					</div>
 				</div>
 				<button class="btn-logout" onclick={handleLogout}>Logout</button>
-				{#if version}
-					<div class="version-badge">v{version}</div>
-				{/if}
 			</div>
 		</nav>
 		<main class="content">
@@ -210,11 +212,25 @@
 		height: 28px;
 	}
 
+	.logo-title {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+
 	.logo-text {
 		font-size: 1.25rem;
 		font-weight: 600;
 		color: var(--text);
 		letter-spacing: -0.02em;
+		line-height: 1;
+	}
+
+	.logo-version {
+		font-size: 0.6875rem;
+		color: var(--text-muted);
+		font-family: monospace;
+		line-height: 1;
 	}
 
 	/* Nav */
@@ -347,14 +363,7 @@
 		color: var(--text);
 	}
 
-	.version-badge {
-		text-align: center;
-		font-size: 0.75rem;
-		color: var(--text-dim, #506080);
-		font-family: monospace;
-	}
-
-	.content {
+.content {
 		flex: 1;
 		padding: 2rem;
 		overflow-y: auto;
