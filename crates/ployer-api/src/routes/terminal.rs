@@ -75,7 +75,7 @@ async fn handle_terminal(socket: WebSocket, app_id: String, state: SharedState) 
     };
 
     // Try bash, fall back to sh if bash isn't in the image
-    let start_result = match try_exec(docker.inner(), &container_id, "/bin/bash").await {
+    let (exec_id, start_result) = match try_exec(docker.inner(), &container_id, "/bin/bash").await {
         Ok(r) => r,
         Err(_) => match try_exec(docker.inner(), &container_id, "/bin/sh").await {
             Ok(r) => r,
@@ -160,7 +160,7 @@ async fn try_exec(
     docker: &bollard::Docker,
     container_id: &str,
     shell: &str,
-) -> anyhow::Result<StartExecResults> {
+) -> anyhow::Result<(String, StartExecResults)> {
     let exec = docker
         .create_exec(
             container_id,
@@ -175,9 +175,10 @@ async fn try_exec(
         )
         .await?;
 
+    let exec_id = exec.id.clone();
     let result = docker
         .start_exec(
-            &exec.id,
+            &exec_id,
             Some(StartExecOptions {
                 detach: false,
                 tty: true,
@@ -186,5 +187,5 @@ async fn try_exec(
         )
         .await?;
 
-    Ok(result)
+    Ok((exec_id, result))
 }
