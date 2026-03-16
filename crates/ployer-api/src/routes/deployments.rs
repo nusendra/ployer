@@ -90,6 +90,7 @@ async fn trigger_deployment(
         docker,
         Some(Arc::new(state.caddy.clone())),
         state.config.server.base_domain.clone(),
+        state.config.get_secret_key(),
         state.ws_broadcast.clone(),
     );
 
@@ -151,6 +152,7 @@ async fn cancel_deployment(
         docker,
         Some(Arc::new(state.caddy.clone())),
         state.config.server.base_domain.clone(),
+        state.config.get_secret_key(),
         state.ws_broadcast.clone(),
     );
 

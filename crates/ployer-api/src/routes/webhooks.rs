@@ -288,6 +288,7 @@ async fn handle_github_webhook(
             docker,
             Some(Arc::new(state.caddy.clone())),
             state.config.server.base_domain.clone(),
+            state.config.get_secret_key(),
             state.ws_broadcast.clone(),
         );
 
@@ -398,6 +399,7 @@ async fn handle_gitlab_webhook(
             docker,
             Some(Arc::new(state.caddy.clone())),
             state.config.server.base_domain.clone(),
+            state.config.get_secret_key(),
             state.ws_broadcast.clone(),
         );
 

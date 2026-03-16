@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use ployer_core::models::{AppStatus, Application, Deployment, DeploymentStatus, WsEvent};
-use ployer_db::repositories::{ApplicationRepository, DeploymentRepository, DomainRepository};
+use ployer_db::repositories::{ApplicationRepository, DeploymentRepository, DomainRepository, EnvVarRepository};
 use ployer_docker::{DockerClient, ContainerConfig};
 use ployer_git::GitService;
 use ployer_proxy::{CaddyClient, ReverseProxyConfig};
@@ -18,6 +18,7 @@ pub struct DeploymentService {
     git: GitService,
     caddy: Option<Arc<CaddyClient>>,
     base_domain: String,
+    secret_key: [u8; 32],
     ws_broadcast: broadcast::Sender<WsEvent>,
 }
 
@@ -27,6 +28,7 @@ impl DeploymentService {
         docker: Arc<DockerClient>,
         caddy: Option<Arc<CaddyClient>>,
         base_domain: String,
+        secret_key: [u8; 32],
         ws_broadcast: broadcast::Sender<WsEvent>,
     ) -> Self {
         Self {
@@ -35,6 +37,7 @@ impl DeploymentService {
             git: GitService::new(),
             caddy,
             base_domain,
+            secret_key,
             ws_broadcast,
         }
     }
@@ -66,6 +69,7 @@ impl DeploymentService {
         let docker = self.docker.clone();
         let caddy = self.caddy.clone();
         let base_domain = self.base_domain.clone();
+        let secret_key = self.secret_key;
         let ws_broadcast = self.ws_broadcast.clone();
 
         tokio::spawn(async move {
@@ -74,6 +78,7 @@ impl DeploymentService {
                 docker,
                 caddy,
                 base_domain,
+                secret_key,
                 ws_broadcast.clone(),
                 deployment_id.clone(),
                 application.clone(),
@@ -105,6 +110,7 @@ impl DeploymentService {
         docker: Arc<DockerClient>,
         caddy: Option<Arc<CaddyClient>>,
         base_domain: String,
+        secret_key: [u8; 32],
         ws_broadcast: broadcast::Sender<WsEvent>,
         deployment_id: String,
         application: Application,
@@ -238,10 +244,33 @@ impl DeploymentService {
         // Step 4: Create and start new container with fixed name
         send_log("Creating container...".to_string()).await;
 
+        // Load and decrypt environment variables for this app
+        let env_vars = {
+            let env_repo = EnvVarRepository::new(db.clone());
+            match env_repo.list_by_application(&application.id).await {
+                Ok(vars) if !vars.is_empty() => {
+                    let mut kv_pairs = Vec::new();
+                    for var in &vars {
+                        match ployer_core::crypto::decrypt(&var.value_encrypted, &secret_key) {
+                            Ok(val) => kv_pairs.push(format!("{}={}", var.key, val)),
+                            Err(e) => warn!("Failed to decrypt env var {}: {}", var.key, e),
+                        }
+                    }
+                    send_log(format!("Loaded {} environment variable(s)", kv_pairs.len())).await;
+                    Some(kv_pairs)
+                }
+                Ok(_) => None,
+                Err(e) => {
+                    warn!("Failed to load env vars: {}", e);
+                    None
+                }
+            }
+        };
+
         let container_config = ContainerConfig {
             image: image_tag.clone(),
             name: Some(container_name.clone()),
-            env: None, // TODO: Load from environment variables
+            env: env_vars,
             ports: effective_port.map(|p| {
                 let mut ports = HashMap::new();
                 ports.insert(format!("{}/tcp", p), p.to_string());
