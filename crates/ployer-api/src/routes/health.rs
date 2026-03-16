@@ -19,7 +19,7 @@ async fn health_check(State(state): State<SharedState>) -> Json<Value> {
 
     Json(json!({
         "status": if db_ok { "ok" } else { "degraded" },
-        "version": env!("CARGO_PKG_VERSION"),
+        "version": env!("PLOYER_VERSION"),
         "services": {
             "database": db_ok,
             "docker": docker_ok,
