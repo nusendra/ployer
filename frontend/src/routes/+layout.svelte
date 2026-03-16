@@ -102,12 +102,6 @@
 		<nav class="sidebar">
 			<!-- Logo -->
 			<div class="sidebar-logo">
-				<div class="logo-icon">
-					<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<path d="M10 2L18 6.5V13.5L10 18L2 13.5V6.5L10 2Z" fill="var(--primary)" stroke="var(--primary)" stroke-width="1" stroke-linejoin="round"/>
-						<path d="M10 2V18M2 6.5L10 11L18 6.5" stroke="var(--bg-secondary)" stroke-width="1.5"/>
-					</svg>
-				</div>
 				<div class="logo-title">
 					<span class="logo-text">Ployer</span>
 					{#if version}
@@ -204,15 +198,7 @@
 		margin-bottom: 0.5rem;
 	}
 
-	.logo-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-	}
-
-	.logo-title {
+.logo-title {
 		display: flex;
 		flex-direction: column;
 		gap: 0.1rem;
