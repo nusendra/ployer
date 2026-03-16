@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
-	import { clearAuth, user } from '$lib/stores/auth';
+	import { clearAuth, restoreAuth, user } from '$lib/stores/auth';
 	import { wsClient } from '$lib/stores/websocket';
 	import { onDestroy } from 'svelte';
 	import Toast from '$lib/components/Toast.svelte';
@@ -35,6 +35,7 @@
 			isAuthenticated = false;
 			wsClient.disconnect();
 		} else {
+			restoreAuth();
 			isAuthenticated = true;
 			wsClient.connect(token);
 		}
