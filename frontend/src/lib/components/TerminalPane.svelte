@@ -50,10 +50,11 @@
 		term.open(container);
 		fitAddon.fit();
 
-		// Connect WebSocket
+		// Connect WebSocket — use same host/port as the page so the Vite proxy
+		// (ws: true) forwards correctly in dev, and direct in production.
 		const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-		const host = window.location.host;
-		ws = new WebSocket(`${proto}//${host}/api/v1/applications/${appId}/terminal?token=${token}`);
+		const wsUrl = `${proto}//${window.location.host}/api/v1/applications/${appId}/terminal?token=${encodeURIComponent(token)}`;
+		ws = new WebSocket(wsUrl);
 		ws.binaryType = 'arraybuffer';
 
 		ws.onopen = () => {
