@@ -3,7 +3,7 @@ use ployer_core::models::{AppStatus, Application, Deployment, DeploymentStatus, 
 use ployer_db::repositories::{ApplicationRepository, DeploymentRepository, DomainRepository, EnvVarRepository};
 use ployer_docker::{DockerClient, ContainerConfig};
 use ployer_git::GitService;
-use ployer_proxy::{CaddyClient, ReverseProxyConfig};
+use ployer_proxy::CaddyClient;
 use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::path::PathBuf;

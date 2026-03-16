@@ -36,3 +36,4 @@ sha2 = { workspace = true }
 hex = { workspace = true }
 reqwest = { workspace = true }
 governor = { workspace = true }
+bollard = { workspace = true }
