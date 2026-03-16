@@ -492,6 +492,30 @@ impl DockerClient {
         Ok(())
     }
 
+    /// Return the first TCP port declared via EXPOSE in a built image.
+    /// Returns None if the image has no EXPOSE declarations.
+    pub async fn get_image_exposed_port(&self, image: &str) -> Result<Option<u16>> {
+        let inspect = self.client.inspect_image(image).await?;
+        let port = inspect
+            .config
+            .and_then(|c| c.exposed_ports)
+            .and_then(|ports| {
+                ports.keys()
+                    .filter_map(|key| {
+                        // key format: "3000/tcp" or "3000/udp"
+                        let proto_sep = key.find('/').unwrap_or(key.len());
+                        let (port_str, proto) = key.split_at(proto_sep);
+                        if proto == "/tcp" || proto.is_empty() {
+                            port_str.parse::<u16>().ok()
+                        } else {
+                            None
+                        }
+                    })
+                    .min() // pick the lowest port if multiple are exposed
+            });
+        Ok(port)
+    }
+
     // ===== Helper Methods =====
 
     // Helper to convert bollard's ContainerSummary to our ContainerInfo

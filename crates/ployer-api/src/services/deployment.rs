@@ -179,6 +179,29 @@ impl DeploymentService {
 
         send_log("Build completed successfully".to_string()).await;
 
+        // Step 2.5: Auto-detect port from EXPOSE if not set by user
+        let effective_port: Option<u16> = if application.port.is_some() {
+            application.port
+        } else {
+            match docker.get_image_exposed_port(&image_tag).await {
+                Ok(Some(port)) => {
+                    send_log(format!("Auto-detected port {} from Dockerfile EXPOSE", port)).await;
+                    // Persist so the UI shows it and future deploys use it
+                    let _ = ApplicationRepository::new(db.clone())
+                        .update_port(&application.id, port).await;
+                    Some(port)
+                }
+                Ok(None) => {
+                    send_log("Warning: no EXPOSE in Dockerfile and no port configured — subdomain routing will be skipped".to_string()).await;
+                    None
+                }
+                Err(e) => {
+                    send_log(format!("Warning: could not detect port from image: {}", e)).await;
+                    None
+                }
+            }
+        };
+
         // Step 3: Remove any existing containers for this app (avoids port conflicts)
         deployment_repo.update_status(&deployment_id, DeploymentStatus::Deploying).await?;
 
@@ -203,7 +226,7 @@ impl DeploymentService {
         }
 
         // Kill any remaining containers still bound to the app's port
-        if let Some(port) = application.port {
+        if let Some(port) = effective_port {
             match docker.remove_containers_by_port(port).await {
                 Ok(removed) if !removed.is_empty() => {
                     send_log(format!("Freed port {} (removed: {})", port, removed.join(", "))).await;
@@ -219,7 +242,7 @@ impl DeploymentService {
             image: image_tag.clone(),
             name: Some(container_name.clone()),
             env: None, // TODO: Load from environment variables
-            ports: application.port.map(|p| {
+            ports: effective_port.map(|p| {
                 let mut ports = HashMap::new();
                 ports.insert(format!("{}/tcp", p), p.to_string());
                 ports
@@ -251,7 +274,7 @@ impl DeploymentService {
         // Always (re)write the Caddy route on every deploy — apps.caddy may have been
         // wiped on reinstall even if the domain record already exists in the DB.
         if let Some(ref caddy_client) = caddy {
-            if let Some(port) = application.port {
+            if let Some(port) = effective_port {
                 let upstream = format!("localhost:{}", port);
                 if let Err(e) = caddy_client.persist_route(&subdomain, &upstream) {
                     warn!("Failed to persist Caddy route: {}", e);
