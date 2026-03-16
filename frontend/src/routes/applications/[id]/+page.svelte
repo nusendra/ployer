@@ -36,6 +36,7 @@
 	let newEnvValue = $state('');
 	let loadingEnvs = $state(false);
 	let bulkMode = $state(false);
+	let envVarsChanged = $state(false);
 	let bulkText = $state('');
 	let bulkSaving = $state(false);
 
@@ -206,6 +207,7 @@
 			newEnvKey = '';
 			newEnvValue = '';
 			await loadEnvVars();
+			envVarsChanged = true;
 		} catch (e: any) {
 			error = e.message || 'Failed to add environment variable';
 		}
@@ -241,6 +243,7 @@
 			bulkMode = false;
 			bulkText = '';
 			await loadEnvVars();
+			envVarsChanged = true;
 		} catch (e: any) {
 			error = e.message || 'Failed to save environment variables';
 		} finally {
@@ -254,6 +257,7 @@
 			try {
 				await api.delete(`/applications/${appId}/envs/${key}`);
 				await loadEnvVars();
+				envVarsChanged = true;
 			} catch (e: any) {
 				error = e.message || 'Failed to delete environment variable';
 			}
@@ -640,6 +644,12 @@
 				<!-- Environment Variables -->
 				{#if activeTab === 'env_vars'}
 					<div class="content-section">
+						{#if envVarsChanged}
+							<div class="redeploy-notice">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+								Changes saved — redeploy the app for them to take effect.
+							</div>
+						{/if}
 						<div class="section-header">
 							<div class="section-header-row">
 								<div>
@@ -1348,6 +1358,19 @@
 	}
 
 	/* ── Env vars ── */
+	.redeploy-notice {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		background: rgba(234, 179, 8, 0.1);
+		border: 1px solid rgba(234, 179, 8, 0.35);
+		color: #ca8a04;
+		border-radius: 8px;
+		padding: 0.65rem 1rem;
+		font-size: 0.875rem;
+		margin-bottom: 1.25rem;
+	}
+
 	.env-add-row {
 		display: flex;
 		gap: 0.625rem;
