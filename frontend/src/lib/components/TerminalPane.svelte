@@ -145,9 +145,19 @@
 
 	:global(.xterm) {
 		height: 100%;
+		position: relative;
+		overflow: hidden;
 	}
 
 	:global(.xterm-viewport) {
 		border-radius: 0;
+	}
+
+	:global(.xterm-char-measure-element) {
+		visibility: hidden !important;
+	}
+
+	:global(.xterm-helper-textarea) {
+		opacity: 0 !important;
 	}
 </style>
