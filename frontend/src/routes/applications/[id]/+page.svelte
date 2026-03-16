@@ -5,11 +5,12 @@
 	import { api } from '$lib/api/client';
 	import type { Application, BuildStrategy } from '$lib/types';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
+	import TerminalPane from '$lib/components/TerminalPane.svelte';
 	import { wsClient } from '$lib/stores/websocket';
 
 	const appId = $page.params.id;
 
-	type Tab = 'configuration' | 'env_vars' | 'deployments' | 'domains' | 'deploy_key' | 'webhooks';
+	type Tab = 'configuration' | 'env_vars' | 'deployments' | 'domains' | 'deploy_key' | 'webhooks' | 'terminal';
 	let activeTab = $state<Tab>('configuration');
 
 	let app = $state<Application | null>(null);
@@ -37,6 +38,10 @@
 	let loadingEnvs = $state(false);
 	let bulkMode = $state(false);
 	let envVarsChanged = $state(false);
+
+	// Terminal
+	let terminalContainer = $state<HTMLDivElement | null>(null);
+	let terminalActive = $state(false);
 	let bulkText = $state('');
 	let bulkSaving = $state(false);
 
@@ -133,6 +138,7 @@
 		if (tab === 'env_vars' && appEnvVars.length === 0) await loadEnvVars();
 		if (tab === 'deployments' && deployments.length === 0) await loadDeployments();
 		if (tab === 'domains' && appDomains.length === 0) await loadDomains();
+		if (tab === 'terminal') { terminalActive = true; }
 		if (tab === 'deploy_key' && !deployKey) await loadDeployKey();
 		if (tab === 'webhooks' && !webhook) await loadWebhook();
 	}
@@ -513,7 +519,8 @@
 		{ id: 'deployments', label: 'Deployments', icon: '🚀' },
 		{ id: 'domains', label: 'Domains', icon: '🌐' },
 		{ id: 'deploy_key', label: 'Deploy Key', icon: '🗝️' },
-		{ id: 'webhooks', label: 'Webhooks', icon: '🔗' }
+		{ id: 'webhooks', label: 'Webhooks', icon: '🔗' },
+		{ id: 'terminal', label: 'Terminal', icon: '>_' }
 	];
 </script>
 
@@ -928,6 +935,15 @@
 
 								<button class="btn-danger" onclick={deleteWebhook}>Delete Webhook</button>
 							</div>
+						{/if}
+					</div>
+				{/if}
+
+				<!-- Terminal -->
+				{#if activeTab === 'terminal'}
+					<div class="content-section terminal-section">
+						{#if terminalActive}
+							<TerminalPane appId={appId} token={localStorage.getItem('token') ?? ''} />
 						{/if}
 					</div>
 				{/if}
@@ -1355,6 +1371,14 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+	}
+
+	/* ── Terminal ── */
+	.terminal-section {
+		padding: 0;
+		height: 520px;
+		display: flex;
+		flex-direction: column;
 	}
 
 	/* ── Env vars ── */

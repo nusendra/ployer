@@ -8,6 +8,7 @@ pub mod domains;
 pub mod webhooks;
 pub mod monitoring;
 pub mod settings;
+pub mod terminal;
 
 use axum::{routing::get, Router};
 use crate::app_state::SharedState;
@@ -29,4 +30,5 @@ pub fn api_router() -> Router<SharedState> {
         .nest("/deployments", deployments::router())
         .nest("/settings", settings::router())
         .route("/ws", get(websocket::websocket_handler))
+        .route("/applications/:id/terminal", get(terminal::terminal_ws_handler))
 }
