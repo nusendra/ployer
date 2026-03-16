@@ -74,52 +74,17 @@ async fn handle_terminal(socket: WebSocket, app_id: String, state: SharedState) 
         }
     };
 
-    // Try bash first, fall back to sh
-    let shell = detect_shell(docker.inner(), &container_id).await;
-
-    // Create exec session with TTY
-    let exec = match docker
-        .inner()
-        .create_exec(
-            &container_id,
-            CreateExecOptions {
-                attach_stdin: Some(true),
-                attach_stdout: Some(true),
-                attach_stderr: Some(true),
-                tty: Some(true),
-                cmd: Some(vec![shell.as_str()]),
-                ..Default::default()
-            },
-        )
-        .await
-    {
-        Ok(e) => e,
-        Err(e) => {
-            warn!("Failed to create exec for {}: {}", app_id, e);
-            let mut s = socket;
-            let _ = s.send(Message::Text(format!("\r\nFailed to start terminal: {}\r\n", e))).await;
-            return;
-        }
-    };
-
-    let exec_id = exec.id.clone();
-
-    let start_result = match docker
-        .inner()
-        .start_exec(
-            &exec_id,
-            Some(StartExecOptions {
-                detach: false,
-                tty: true,
-                ..Default::default()
-            }),
-        )
-        .await
-    {
+    // Try bash, fall back to sh if bash isn't in the image
+    let start_result = match try_exec(docker.inner(), &container_id, "/bin/bash").await {
         Ok(r) => r,
-        Err(e) => {
-            warn!("Failed to start exec: {}", e);
-            return;
+        Err(_) => match try_exec(docker.inner(), &container_id, "/bin/sh").await {
+            Ok(r) => r,
+            Err(e) => {
+                warn!("Failed to start exec for {}: {}", app_id, e);
+                let mut s = socket;
+                let _ = s.send(Message::Text(format!("\r\nFailed to start terminal: {}\r\n", e))).await;
+                return;
+            }
         }
     };
 
@@ -189,22 +154,37 @@ async fn handle_terminal(socket: WebSocket, app_id: String, state: SharedState) 
     }
 }
 
-/// Try `/bin/bash` first; if the exec errors fall back to `/bin/sh`.
-async fn detect_shell(docker: &bollard::Docker, container_id: &str) -> String {
-    let probe = docker
+/// Create and start an exec session for `shell` with full TTY attached.
+/// Returns an error if the shell binary doesn't exist in the container.
+async fn try_exec(
+    docker: &bollard::Docker,
+    container_id: &str,
+    shell: &str,
+) -> anyhow::Result<StartExecResults> {
+    let exec = docker
         .create_exec(
             container_id,
             CreateExecOptions {
+                attach_stdin: Some(true),
                 attach_stdout: Some(true),
-                cmd: Some(vec!["/bin/bash", "--version"]),
+                attach_stderr: Some(true),
+                tty: Some(true),
+                cmd: Some(vec![shell]),
                 ..Default::default()
             },
         )
-        .await;
+        .await?;
 
-    if probe.is_ok() {
-        "/bin/bash".to_string()
-    } else {
-        "/bin/sh".to_string()
-    }
+    let result = docker
+        .start_exec(
+            &exec.id,
+            Some(StartExecOptions {
+                detach: false,
+                tty: true,
+                ..Default::default()
+            }),
+        )
+        .await?;
+
+    Ok(result)
 }
