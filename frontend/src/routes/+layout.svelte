@@ -217,6 +217,7 @@
 		color: var(--text-muted);
 		font-family: monospace;
 		line-height: 1;
+		margin-top: 0.25rem;
 	}
 
 	/* Nav */
