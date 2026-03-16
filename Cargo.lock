@@ -2265,6 +2265,7 @@ dependencies = [
  "anyhow",
  "argon2",
  "axum",
+ "bollard",
  "chrono",
  "clap",
  "futures-util",

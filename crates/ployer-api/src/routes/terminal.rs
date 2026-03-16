@@ -74,17 +74,13 @@ async fn handle_terminal(socket: WebSocket, app_id: String, state: SharedState) 
         }
     };
 
-    // Try bash, fall back to sh if bash isn't in the image
-    let (exec_id, start_result) = match try_exec(docker.inner(), &container_id, "/bin/bash").await {
+    let (exec_id, start_result) = match try_exec(docker.inner(), &container_id, "/bin/sh").await {
         Ok(r) => r,
-        Err(_) => match try_exec(docker.inner(), &container_id, "/bin/sh").await {
-            Ok(r) => r,
-            Err(e) => {
-                warn!("Failed to start exec for {}: {}", app_id, e);
-                let mut s = socket;
-                let _ = s.send(Message::Text(format!("\r\nFailed to start terminal: {}\r\n", e))).await;
-                return;
-            }
+        Err(e) => {
+            warn!("Failed to start exec for {}: {}", app_id, e);
+            let mut s = socket;
+            let _ = s.send(Message::Text(format!("\r\nFailed to start terminal: {}\r\n", e))).await;
+            return;
         }
     };
 
