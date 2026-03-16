@@ -7,6 +7,7 @@
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import TerminalPane from '$lib/components/TerminalPane.svelte';
 	import { wsClient } from '$lib/stores/websocket';
+	import { toast } from '$lib/stores/toast';
 
 	const appId = $page.params.id;
 
@@ -320,6 +321,11 @@
 						closeWsSubscription();
 						// Reload deployments to get final data (commit sha, etc.)
 						loadDeployments();
+						if (msg.status === 'running') {
+							toast.success(`Deployment successful — ${app?.name ?? 'app'} is live.`);
+						} else if (msg.status === 'failed') {
+							toast.error(`Deployment failed — ${app?.name ?? 'app'} could not be deployed.`);
+						}
 					}
 				}
 			});
