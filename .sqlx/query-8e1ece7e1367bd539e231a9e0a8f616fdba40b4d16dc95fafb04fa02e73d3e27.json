@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE applications SET port = ?, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "8e1ece7e1367bd539e231a9e0a8f616fdba40b4d16dc95fafb04fa02e73d3e27"
+}
