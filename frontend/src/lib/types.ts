@@ -31,6 +31,8 @@ export interface Application {
 	build_strategy: BuildStrategy;
 	dockerfile_path: string | null;
 	port: number | null;
+	cpu_limit: number | null;
+	memory_limit: number | null;
 	auto_deploy: boolean;
 	status: AppStatus;
 	created_at: string;

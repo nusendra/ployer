@@ -31,6 +31,8 @@ pub struct ContainerConfig {
     pub volumes: Option<HashMap<String, String>>, // host_path -> container_path
     pub network: Option<String>,
     pub cmd: Option<Vec<String>>,
+    pub cpu_limit: Option<f64>,       // CPU cores (e.g. 0.5 = half a core)
+    pub memory_limit: Option<i64>,    // Memory in MB
 }
 
 // Container information summary
@@ -249,10 +251,15 @@ impl DockerClient {
                 .collect::<Vec<_>>()
         });
 
+        let nano_cpus = config.cpu_limit.map(|c| (c * 1_000_000_000.0) as i64);
+        let memory = config.memory_limit.map(|m| m * 1024 * 1024); // MB to bytes
+
         let host_config = Some(HostConfig {
             port_bindings: Some(port_bindings),
             binds,
             network_mode: config.network,
+            nano_cpus,
+            memory,
             ..Default::default()
         });
 

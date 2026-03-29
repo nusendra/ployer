@@ -37,6 +37,8 @@ struct CreateApplicationRequest {
     build_strategy: BuildStrategy,
     dockerfile_path: Option<String>,
     port: Option<u16>,
+    cpu_limit: Option<f64>,
+    memory_limit: Option<i64>,
     #[serde(default)]
     auto_deploy: bool,
     env_vars: Option<HashMap<String, String>>,
@@ -64,6 +66,8 @@ struct UpdateApplicationRequest {
     build_strategy: Option<BuildStrategy>,
     dockerfile_path: Option<String>,
     port: Option<u16>,
+    cpu_limit: Option<f64>,
+    memory_limit: Option<i64>,
     auto_deploy: Option<bool>,
 }
 
@@ -136,6 +140,8 @@ async fn create_application(
             req.dockerfile_path.as_deref(),
             req.port,
             req.auto_deploy,
+            req.cpu_limit,
+            req.memory_limit,
         )
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -213,10 +219,12 @@ async fn update_application(
     let build_strategy = req.build_strategy.unwrap_or(existing.build_strategy);
     let dockerfile_path = req.dockerfile_path.as_deref().or(existing.dockerfile_path.as_deref());
     let port = req.port.or(existing.port);
+    let cpu_limit = if req.cpu_limit.is_some() { req.cpu_limit } else { existing.cpu_limit };
+    let memory_limit = if req.memory_limit.is_some() { req.memory_limit } else { existing.memory_limit };
     let auto_deploy = req.auto_deploy.unwrap_or(existing.auto_deploy);
 
     let app = repo
-        .update(&id, name, git_url, git_branch, build_strategy, dockerfile_path, port, auto_deploy)
+        .update(&id, name, git_url, git_branch, build_strategy, dockerfile_path, port, auto_deploy, cpu_limit, memory_limit)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

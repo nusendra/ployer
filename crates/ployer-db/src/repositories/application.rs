@@ -22,6 +22,8 @@ impl ApplicationRepository {
         dockerfile_path: Option<&str>,
         port: Option<u16>,
         auto_deploy: bool,
+        cpu_limit: Option<f64>,
+        memory_limit: Option<i64>,
     ) -> Result<Application> {
         let id = Uuid::new_v4().to_string();
         let now = chrono::Utc::now().to_rfc3339();
@@ -29,8 +31,8 @@ impl ApplicationRepository {
         let strategy = build_strategy.as_str();
 
         sqlx::query(
-            "INSERT INTO applications (id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, status, auto_deploy, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO applications (id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, status, auto_deploy, cpu_limit, memory_limit, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&id)
         .bind(name)
@@ -42,6 +44,8 @@ impl ApplicationRepository {
         .bind(port.map(|p| p as i64))
         .bind(status)
         .bind(if auto_deploy { 1 } else { 0 })
+        .bind(cpu_limit)
+        .bind(memory_limit)
         .bind(&now)
         .bind(&now)
         .execute(&self.pool)
@@ -53,7 +57,7 @@ impl ApplicationRepository {
 
     pub async fn find_by_id(&self, id: &str) -> Result<Option<Application>> {
         let row = sqlx::query_as::<_, ApplicationRow>(
-            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, status, auto_deploy, created_at, updated_at
+            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, cpu_limit, memory_limit, status, auto_deploy, created_at, updated_at
              FROM applications WHERE id = ?"
         )
         .bind(id)
@@ -65,7 +69,7 @@ impl ApplicationRepository {
 
     pub async fn list(&self) -> Result<Vec<Application>> {
         let rows = sqlx::query_as::<_, ApplicationRow>(
-            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, status, auto_deploy, created_at, updated_at
+            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, cpu_limit, memory_limit, status, auto_deploy, created_at, updated_at
              FROM applications ORDER BY created_at DESC"
         )
         .fetch_all(&self.pool)
@@ -76,7 +80,7 @@ impl ApplicationRepository {
 
     pub async fn list_by_server(&self, server_id: &str) -> Result<Vec<Application>> {
         let rows = sqlx::query_as::<_, ApplicationRow>(
-            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, status, auto_deploy, created_at, updated_at
+            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, cpu_limit, memory_limit, status, auto_deploy, created_at, updated_at
              FROM applications WHERE server_id = ? ORDER BY created_at DESC"
         )
         .bind(server_id)
@@ -96,13 +100,15 @@ impl ApplicationRepository {
         dockerfile_path: Option<&str>,
         port: Option<u16>,
         auto_deploy: bool,
+        cpu_limit: Option<f64>,
+        memory_limit: Option<i64>,
     ) -> Result<Application> {
         let now = chrono::Utc::now().to_rfc3339();
         let strategy = build_strategy.as_str();
 
         sqlx::query(
             "UPDATE applications
-             SET name = ?, git_url = ?, git_branch = ?, build_strategy = ?, dockerfile_path = ?, port = ?, auto_deploy = ?, updated_at = ?
+             SET name = ?, git_url = ?, git_branch = ?, build_strategy = ?, dockerfile_path = ?, port = ?, auto_deploy = ?, cpu_limit = ?, memory_limit = ?, updated_at = ?
              WHERE id = ?"
         )
         .bind(name)
@@ -112,6 +118,8 @@ impl ApplicationRepository {
         .bind(dockerfile_path)
         .bind(port.map(|p| p as i64))
         .bind(if auto_deploy { 1 } else { 0 })
+        .bind(cpu_limit)
+        .bind(memory_limit)
         .bind(&now)
         .bind(id)
         .execute(&self.pool)
@@ -172,6 +180,8 @@ struct ApplicationRow {
     build_strategy: String,
     dockerfile_path: Option<String>,
     port: Option<i64>,
+    cpu_limit: Option<f64>,
+    memory_limit: Option<i64>,
     status: String,
     auto_deploy: i64,
     created_at: String,
@@ -189,6 +199,8 @@ impl From<ApplicationRow> for Application {
             build_strategy: BuildStrategy::from_str(&row.build_strategy),
             dockerfile_path: row.dockerfile_path,
             port: row.port.map(|p| p as u16),
+            cpu_limit: row.cpu_limit,
+            memory_limit: row.memory_limit,
             status: AppStatus::from_str(&row.status),
             auto_deploy: row.auto_deploy != 0,
             created_at: chrono::DateTime::parse_from_rfc3339(&row.created_at)

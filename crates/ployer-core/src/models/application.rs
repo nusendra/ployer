@@ -11,6 +11,8 @@ pub struct Application {
     pub build_strategy: BuildStrategy,
     pub dockerfile_path: Option<String>,
     pub port: Option<u16>,
+    pub cpu_limit: Option<f64>,
+    pub memory_limit: Option<i64>,
     pub status: AppStatus,
     pub auto_deploy: bool,
     pub created_at: DateTime<Utc>,

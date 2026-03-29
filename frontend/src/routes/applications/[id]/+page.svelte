@@ -29,6 +29,8 @@
 		build_strategy: 'dockerfile' as BuildStrategy,
 		dockerfile_path: '',
 		port: undefined as number | undefined,
+		cpu_limit: undefined as number | undefined,
+		memory_limit: undefined as number | undefined,
 		auto_deploy: false
 	});
 
@@ -118,6 +120,8 @@
 				build_strategy: app.build_strategy,
 				dockerfile_path: app.dockerfile_path || '',
 				port: app.port ?? undefined,
+				cpu_limit: app.cpu_limit ?? undefined,
+				memory_limit: app.memory_limit ?? undefined,
 				auto_deploy: app.auto_deploy
 			};
 		} catch (e: any) {
@@ -158,6 +162,8 @@
 			if (editForm.build_strategy !== app.build_strategy) payload.build_strategy = editForm.build_strategy;
 			if (editForm.dockerfile_path !== (app.dockerfile_path || '')) payload.dockerfile_path = editForm.dockerfile_path || null;
 			if (editForm.port !== (app.port ?? undefined)) payload.port = editForm.port;
+			if (editForm.cpu_limit !== (app.cpu_limit ?? undefined)) payload.cpu_limit = editForm.cpu_limit || null;
+			if (editForm.memory_limit !== (app.memory_limit ?? undefined)) payload.memory_limit = editForm.memory_limit || null;
 			if (editForm.auto_deploy !== app.auto_deploy) payload.auto_deploy = editForm.auto_deploy;
 
 			await api.put(`/applications/${appId}`, payload);
@@ -637,6 +643,19 @@
 								<div class="form-group">
 									<label for="port">Port</label>
 									<input id="port" type="number" bind:value={editForm.port} placeholder="3000" />
+								</div>
+							</div>
+
+							<div class="form-row">
+								<div class="form-group">
+									<label for="cpu_limit">CPU Limit (cores)</label>
+									<input id="cpu_limit" type="number" step="0.1" min="0.1" bind:value={editForm.cpu_limit} placeholder="e.g. 0.5" />
+									<p class="input-hint">Leave empty for unlimited. 0.5 = half a core, 1 = one core.</p>
+								</div>
+								<div class="form-group">
+									<label for="memory_limit">Memory Limit (MB)</label>
+									<input id="memory_limit" type="number" step="1" min="4" bind:value={editForm.memory_limit} placeholder="e.g. 512" />
+									<p class="input-hint">Leave empty for unlimited. Minimum 4 MB.</p>
 								</div>
 							</div>
 
@@ -1230,6 +1249,18 @@
 	.input-warn code {
 		font-family: monospace;
 		color: var(--text);
+	}
+
+	.input-hint {
+		font-size: 0.75rem;
+		color: var(--text-muted);
+		margin-top: 0.25rem;
+	}
+
+	.form-row {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1rem;
 	}
 
 	.form-group label {

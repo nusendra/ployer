@@ -139,6 +139,8 @@ async fn create_container(
         volumes: req.volumes,
         network: req.network,
         cmd: req.cmd,
+        cpu_limit: None,
+        memory_limit: None,
     };
 
     let container_id = docker

@@ -279,6 +279,8 @@ impl DeploymentService {
             volumes: None,
             network: Some("bridge".to_string()),
             cmd: None,
+            cpu_limit: application.cpu_limit,
+            memory_limit: application.memory_limit,
         };
 
         let container_id = docker.create_container(container_config).await?;
