@@ -1289,6 +1289,7 @@
 	.form-group-checkbox {
 		display: flex;
 		align-items: center;
+		margin-top: 0.75rem;
 		gap: 0.5rem;
 		margin-bottom: 1.5rem;
 	}
