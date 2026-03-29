@@ -72,9 +72,15 @@ install_docker() {
   info "Docker not found — installing via official script..."
 
   # Use Docker's official convenience script (supports Ubuntu, Debian, CentOS, Fedora, etc.)
+  # Download to a temp file — do NOT pipe to sh here, because this installer itself is
+  # being piped into bash (curl | bash), and a nested pipe would steal stdin mid-script.
   wait_for_apt
-  curl -fsSL https://get.docker.com | sh \
-    || error "Docker installation failed. Install manually: https://docs.docker.com/engine/install/"
+  local docker_script
+  docker_script=$(mktemp)
+  curl -fsSL https://get.docker.com -o "$docker_script" \
+    || error "Failed to download Docker install script."
+  sh "$docker_script" || error "Docker installation failed. Install manually: https://docs.docker.com/engine/install/"
+  rm -f "$docker_script"
 
   # Enable and start Docker
   systemctl enable docker --now
