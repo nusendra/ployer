@@ -124,7 +124,7 @@ wait_for_apt() {
       break
     fi
   done
-  [[ $waited -gt 0 ]] && log "Apt lock released"
+  if [[ $waited -gt 0 ]]; then log "Apt lock released"; fi
 }
 
 install_packages() {
