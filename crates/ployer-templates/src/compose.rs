@@ -62,6 +62,36 @@ pub fn parse(yaml: &str) -> Result<ComposeSpec, TemplateError> {
     Ok(serde_yaml::from_str(yaml)?)
 }
 
+/// Remove any `ports` mapping from every service in the compose YAML.
+pub fn remove_ports_from_all_services(yaml: &str) -> Result<String, TemplateError> {
+    let mut root: serde_yaml::Value = serde_yaml::from_str(yaml)?;
+    if let Some(services) = root.get_mut("services").and_then(|s| s.as_mapping_mut()) {
+        for (_, svc) in services.iter_mut() {
+            if let Some(svc_map) = svc.as_mapping_mut() {
+                svc_map.remove(&serde_yaml::Value::String("ports".to_string()));
+            }
+        }
+    }
+    Ok(serde_yaml::to_string(&root)?)
+}
+
+/// Read the current host:container port bindings declared in the compose,
+/// flattened across all services. Useful for showing current state in the UI.
+pub fn current_port_bindings(yaml: &str) -> Result<Vec<(u16, u16)>, TemplateError> {
+    let spec: ComposeSpec = serde_yaml::from_str(yaml)?;
+    let mut out = Vec::new();
+    for (_, svc) in spec.services {
+        for port_str in svc.ports {
+            if let Some((host_s, container_s)) = split_port(&port_str) {
+                if let (Ok(h), Ok(c)) = (host_s.parse::<u16>(), container_s.parse::<u16>()) {
+                    out.push((c, h));
+                }
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// Inject a `ports` mapping into every service in the compose YAML. Used by
 /// the install endpoint when the user opts to expose a template's port to
 /// the host. `bindings` maps `container_port -> host_port`.

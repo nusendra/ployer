@@ -34,6 +34,13 @@
 		auto_deploy: false
 	});
 
+	// Service expose toggle (for template-installed apps)
+	type PortSpec = { container: number; expose?: boolean };
+	let templatePorts = $state<PortSpec[]>([]);
+	let exposed = $state(false);
+	let hostPorts = $state<Record<number, number>>({});
+	let exposing = $state(false);
+
 	// Env vars
 	let appEnvVars = $state<Array<{ key: string; value: string }>>([]);
 	let newEnvKey = $state('');
@@ -124,10 +131,74 @@
 				memory_limit: app.memory_limit ?? undefined,
 				auto_deploy: app.auto_deploy
 			};
+			if (app.template_slug) {
+				await loadServiceState();
+			}
 		} catch (e: any) {
 			error = e.message || 'Failed to load application';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function loadServiceState() {
+		if (!app?.template_slug) return;
+		try {
+			const tpl = await api.get<{ ports?: PortSpec[] }>(`/templates/${app.template_slug}`);
+			templatePorts = tpl.ports ?? [];
+			const bindings = parseComposeBindings(app.compose_content ?? '');
+			exposed = Object.keys(bindings).length > 0;
+			for (const p of templatePorts) {
+				hostPorts[p.container] = bindings[p.container] ?? p.container;
+			}
+		} catch {
+			// Registry unavailable — leave template-driven controls hidden.
+		}
+	}
+
+	// Returns { container_port: host_port } from a docker-compose YAML string.
+	function parseComposeBindings(yaml: string): Record<number, number> {
+		const result: Record<number, number> = {};
+		const lines = yaml.split('\n');
+		let inPorts = false;
+		let portsIndent = -1;
+		for (const line of lines) {
+			const m = line.match(/^(\s*)ports:\s*$/);
+			if (m) {
+				inPorts = true;
+				portsIndent = m[1].length;
+				continue;
+			}
+			if (inPorts) {
+				const portMatch = line.match(/^\s*-\s*"?(\d+):(\d+)"?\s*$/);
+				if (portMatch) {
+					result[parseInt(portMatch[2], 10)] = parseInt(portMatch[1], 10);
+					continue;
+				}
+				const indent = line.match(/^(\s*)\S/);
+				if (indent && indent[1].length <= portsIndent && line.trim()) {
+					inPorts = false;
+				}
+			}
+		}
+		return result;
+	}
+
+	async function saveExpose() {
+		if (!app) return;
+		exposing = true;
+		error = '';
+		try {
+			await api.put(`/applications/${app.id}/expose`, {
+				expose: exposed,
+				host_ports: exposed ? hostPorts : {}
+			});
+			toast.success('Service redeploying with new port settings');
+			await loadApp();
+		} catch (e: any) {
+			error = e.message || 'Failed to update expose';
+		} finally {
+			exposing = false;
 		}
 	}
 
@@ -625,10 +696,46 @@
 							</div>
 						</div>
 
+						{#if templatePorts.length > 0}
+							<div class="form-group" style="margin-top: 1.5rem;">
+								<label class="expose-toggle-label">
+									<input type="checkbox" bind:checked={exposed} disabled={exposing} />
+									<span>Expose to host</span>
+								</label>
+								<p class="input-hint">
+									Publish the service's port(s) on the host so it's reachable from outside the
+									Ployer Docker network. The container restarts when you save.
+								</p>
+								{#if exposed}
+									<div class="port-rows">
+										{#each templatePorts as p}
+											<div class="port-row">
+												<span class="port-label">Container :{p.container}</span>
+												<span class="port-arrow">→</span>
+												<span class="port-label">Host</span>
+												<input
+													type="number"
+													min="1"
+													max="65535"
+													bind:value={hostPorts[p.container]}
+													disabled={exposing}
+												/>
+											</div>
+										{/each}
+									</div>
+								{/if}
+								<div class="form-actions" style="margin-top: 0.75rem;">
+									<button type="button" class="btn-primary" onclick={saveExpose} disabled={exposing}>
+										{exposing ? 'Saving…' : 'Save and redeploy'}
+									</button>
+								</div>
+							</div>
+						{/if}
+
 						<div class="form-group" style="margin-top: 1.5rem;">
 							<label>docker-compose.yml</label>
 							<pre class="compose-readonly"><code>{app.compose_content ?? ''}</code></pre>
-							<p class="input-hint">Rendered when the service was installed. Edits aren't supported yet — reinstall the service to change values.</p>
+							<p class="input-hint">Rendered when the service was installed.</p>
 						</div>
 					</div>
 				{/if}
@@ -1954,5 +2061,35 @@
 		max-height: 400px;
 		overflow-y: auto;
 		white-space: pre;
+	}
+
+	.expose-toggle-label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-weight: 500;
+		cursor: pointer;
+	}
+	.expose-toggle-label input {
+		width: auto;
+	}
+	.port-rows {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		margin-top: 0.5rem;
+	}
+	.port-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+	}
+	.port-row input {
+		max-width: 8rem;
+	}
+	.port-label,
+	.port-arrow {
+		color: var(--text-muted);
 	}
 </style>

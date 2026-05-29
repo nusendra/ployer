@@ -6,10 +6,12 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::app_state::SharedState;
 use crate::auth::extract_user_id;
 use crate::middleware::validation;
+use crate::services::deployment::DeploymentService;
 use ployer_core::crypto;
 use ployer_core::models::{Application, BuildStrategy};
 use ployer_db::repositories::{ApplicationRepository, DeployKeyRepository, EnvVarRepository};
@@ -22,6 +24,7 @@ pub fn router() -> Router<SharedState> {
         .route("/:id/envs", get(list_env_vars).post(add_env_var))
         .route("/:id/envs/:key", put(update_env_var).delete(delete_env_var))
         .route("/:id/deploy-key", get(get_deploy_key).post(generate_deploy_key))
+        .route("/:id/expose", put(update_expose))
 }
 
 // ===== Request/Response Types =====
@@ -390,4 +393,113 @@ async fn generate_deploy_key(
             created_at: key.created_at.to_rfc3339(),
         }),
     ))
+}
+
+// ===== Expose Toggle (template-installed apps) =====
+
+#[derive(Debug, Deserialize)]
+struct UpdateExposeRequest {
+    expose: bool,
+    #[serde(default)]
+    host_ports: HashMap<u16, u16>,
+}
+
+#[derive(Debug, Serialize)]
+struct UpdateExposeResponse {
+    application_id: String,
+    deployment_id: String,
+    compose: String,
+}
+
+async fn update_expose(
+    State(state): State<SharedState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<UpdateExposeRequest>,
+) -> Result<Json<UpdateExposeResponse>, (StatusCode, String)> {
+    extract_user_id(&headers, &state.config.auth.jwt_secret)?;
+
+    let app_repo = ApplicationRepository::new(state.db.clone());
+    let application = app_repo
+        .find_by_id(&id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "Application not found".to_string()))?;
+
+    let template_slug = application
+        .template_slug
+        .as_deref()
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "application was not installed from a template".to_string()))?;
+
+    let existing_compose = application
+        .compose_content
+        .clone()
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "application has no compose content".to_string()))?;
+
+    // Always start from a port-less version of the current compose.
+    let mut new_compose = ployer_templates::compose::remove_ports_from_all_services(&existing_compose)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if req.expose {
+        // Look up the template to know which container ports are declared.
+        let template = state
+            .templates
+            .get(template_slug)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+        if template.ports.is_empty() {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "this service template has no exposable ports".to_string(),
+            ));
+        }
+
+        let bindings: Vec<(u16, u16)> = template
+            .ports
+            .iter()
+            .map(|p| (p.container, *req.host_ports.get(&p.container).unwrap_or(&p.container)))
+            .collect();
+        new_compose = ployer_templates::compose::add_ports_to_all_services(&new_compose, &bindings)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+
+    app_repo
+        .update_compose(&id, &new_compose)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // Trigger a redeploy with the updated compose.
+    let docker = state
+        .docker
+        .as_ref()
+        .ok_or_else(|| (StatusCode::SERVICE_UNAVAILABLE, "docker not available".to_string()))?
+        .clone();
+
+    let deployment_service = DeploymentService::new(
+        state.db.clone(),
+        docker,
+        Some(Arc::new(state.caddy.clone())),
+        state.config.server.base_domain.clone(),
+        state.config.get_secret_key(),
+        state.ws_broadcast.clone(),
+    );
+
+    // Re-fetch so compose_content reflects what we just wrote.
+    let updated = app_repo
+        .find_by_id(&id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or_else(|| (StatusCode::INTERNAL_SERVER_ERROR, "application disappeared".to_string()))?;
+
+    let deployment = deployment_service
+        .deploy_compose(updated)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(UpdateExposeResponse {
+        application_id: id,
+        deployment_id: deployment.id,
+        compose: new_compose,
+    }))
 }

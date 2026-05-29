@@ -163,6 +163,17 @@ impl ApplicationRepository {
             .ok_or_else(|| anyhow::anyhow!("Application not found"))
     }
 
+    pub async fn update_compose(&self, id: &str, compose_content: &str) -> Result<()> {
+        let now = chrono::Utc::now().to_rfc3339();
+        sqlx::query("UPDATE applications SET compose_content = ?, updated_at = ? WHERE id = ?")
+            .bind(compose_content)
+            .bind(&now)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn update_port(&self, id: &str, port: u16) -> Result<()> {
         let now = chrono::Utc::now().to_rfc3339();
         sqlx::query!(
