@@ -499,6 +499,64 @@ impl DockerClient {
         Ok(())
     }
 
+    /// Create the named network if it does not already exist.
+    pub async fn ensure_network(&self, name: &str) -> Result<()> {
+        match self
+            .client
+            .inspect_network(name, None::<InspectNetworkOptions<String>>)
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                self.create_network(name, "bridge").await?;
+                Ok(())
+            }
+        }
+    }
+
+    /// Create the named volume if it does not already exist.
+    pub async fn ensure_volume(&self, name: &str) -> Result<()> {
+        if self.client.inspect_volume(name).await.is_ok() {
+            return Ok(());
+        }
+        self.create_volume(name).await?;
+        Ok(())
+    }
+
+    /// Pull an image from a registry, streaming progress lines into the channel.
+    pub async fn pull_image(&self, image: &str) -> Result<mpsc::Receiver<String>> {
+        use bollard::image::CreateImageOptions;
+        let (tx, rx) = mpsc::channel(64);
+
+        let options = CreateImageOptions {
+            from_image: image.to_string(),
+            ..Default::default()
+        };
+
+        let mut stream = self.client.create_image(Some(options), None, None);
+        tokio::spawn(async move {
+            while let Some(item) = stream.next().await {
+                match item {
+                    Ok(info) => {
+                        let line = info
+                            .status
+                            .or(info.error)
+                            .unwrap_or_default();
+                        if !line.is_empty() {
+                            let _ = tx.send(line).await;
+                        }
+                    }
+                    Err(e) => {
+                        let _ = tx.send(format!("pull error: {e}")).await;
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok(rx)
+    }
+
     /// Return the first TCP port declared via EXPOSE in a built image.
     /// Returns None if the image has no EXPOSE declarations.
     pub async fn get_image_exposed_port(&self, image: &str) -> Result<Option<u16>> {

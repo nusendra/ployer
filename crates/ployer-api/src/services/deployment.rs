@@ -344,6 +344,184 @@ impl DeploymentService {
         Ok(())
     }
 
+    /// Trigger a deployment for an application installed from a service
+    /// template. Uses the compose YAML stored on the application row.
+    pub async fn deploy_compose(&self, application: Application) -> Result<Deployment> {
+        let compose_yaml = application
+            .compose_content
+            .clone()
+            .ok_or_else(|| anyhow!("application has no compose_content"))?;
+
+        let deployment_repo = DeploymentRepository::new(self.db.clone());
+        let image_tag = format!("ployer-{}:compose", application.name);
+        let deployment = deployment_repo
+            .create(
+                &application.id,
+                &application.server_id,
+                None,
+                None,
+                &image_tag,
+            )
+            .await?;
+
+        let deployment_id = deployment.id.clone();
+        let db = self.db.clone();
+        let docker = self.docker.clone();
+        let ws_broadcast = self.ws_broadcast.clone();
+        let app = application.clone();
+
+        tokio::spawn(async move {
+            if let Err(e) = Self::execute_compose_deployment(
+                db.clone(),
+                docker,
+                ws_broadcast.clone(),
+                deployment_id.clone(),
+                app.clone(),
+                compose_yaml,
+            )
+            .await
+            {
+                error!("Compose deployment failed: {}", e);
+                let repo = DeploymentRepository::new(db.clone());
+                let _ = repo.update_status(&deployment_id, DeploymentStatus::Failed).await;
+                let _ = repo.append_log(&deployment_id, &format!("ERROR: {}", e)).await;
+                let _ = ApplicationRepository::new(db)
+                    .update_status(&app.id, AppStatus::Failed)
+                    .await;
+                let _ = ws_broadcast.send(WsEvent::DeploymentStatus {
+                    deployment_id,
+                    app_id: app.id,
+                    status: DeploymentStatus::Failed,
+                });
+            }
+        });
+
+        Ok(deployment)
+    }
+
+    async fn execute_compose_deployment(
+        db: SqlitePool,
+        docker: Arc<DockerClient>,
+        ws_broadcast: broadcast::Sender<WsEvent>,
+        deployment_id: String,
+        application: Application,
+        compose_yaml: String,
+    ) -> Result<()> {
+        let deployment_repo = DeploymentRepository::new(db.clone());
+
+        let send_log = |msg: String| {
+            let deployment_id = deployment_id.clone();
+            let db = db.clone();
+            let ws_broadcast = ws_broadcast.clone();
+            async move {
+                let repo = DeploymentRepository::new(db);
+                let _ = repo.append_log(&deployment_id, &msg).await;
+                let _ = ws_broadcast.send(WsEvent::DeploymentLog {
+                    deployment_id: deployment_id.clone(),
+                    line: msg,
+                });
+            }
+        };
+
+        deployment_repo
+            .update_status(&deployment_id, DeploymentStatus::Deploying)
+            .await?;
+
+        let compose = ployer_templates::compose::parse(&compose_yaml)
+            .map_err(|e| anyhow!("parse compose: {e}"))?;
+
+        if compose.services.is_empty() {
+            return Err(anyhow!("compose file has no services"));
+        }
+
+        // Step 1: ensure the shared 'ployer' network exists.
+        send_log("Ensuring ployer network...".to_string()).await;
+        docker.ensure_network("ployer").await?;
+
+        for (service_name, service) in &compose.services {
+            send_log(format!("--- Service: {} ---", service_name)).await;
+
+            // Step 2: pull the image.
+            send_log(format!("Pulling {}...", service.image)).await;
+            let mut pull_logs = docker.pull_image(&service.image).await?;
+            while let Some(line) = pull_logs.recv().await {
+                send_log(line).await;
+            }
+
+            // Step 3: ensure named volumes exist and collect bind specs.
+            let mut volume_binds = HashMap::new();
+            for vol_spec in &service.volumes {
+                let (host, container) = ployer_templates::compose::split_volume(vol_spec)
+                    .ok_or_else(|| anyhow!("invalid volume spec: {vol_spec}"))?;
+                if !host.starts_with('/') && !host.starts_with('.') {
+                    docker.ensure_volume(&host).await?;
+                    send_log(format!("Volume ready: {}", host)).await;
+                }
+                volume_binds.insert(host, container);
+            }
+
+            // Step 4: remove any existing container with the same name.
+            let container_name = format!("ployer-{}-{}", application.name, service_name);
+            if docker.remove_container(&container_name, true).await.is_ok() {
+                send_log(format!("Removed existing container '{}'", container_name)).await;
+            }
+
+            // Step 5: prepare env + ports.
+            let env = service
+                .environment
+                .as_ref()
+                .map(|e| e.to_pairs())
+                .filter(|v| !v.is_empty());
+
+            let mut ports_map = HashMap::new();
+            for port_spec in &service.ports {
+                if let Some((host, container)) = ployer_templates::compose::split_port(port_spec) {
+                    ports_map.insert(format!("{}/tcp", container), host);
+                }
+            }
+            let ports = if ports_map.is_empty() { None } else { Some(ports_map) };
+
+            // Step 6: create + start.
+            let config = ContainerConfig {
+                image: service.image.clone(),
+                name: Some(container_name.clone()),
+                env,
+                ports,
+                volumes: if volume_binds.is_empty() { None } else { Some(volume_binds) },
+                network: Some("ployer".to_string()),
+                cmd: None,
+                cpu_limit: application.cpu_limit,
+                memory_limit: application.memory_limit,
+            };
+
+            let container_id = docker.create_container(config).await?;
+            deployment_repo
+                .set_container_id(&deployment_id, &container_id)
+                .await?;
+            send_log(format!("Container '{}' created", container_name)).await;
+
+            docker.start_container(&container_id).await?;
+            send_log(format!("Container '{}' started", container_name)).await;
+        }
+
+        deployment_repo
+            .update_status(&deployment_id, DeploymentStatus::Running)
+            .await?;
+        ApplicationRepository::new(db.clone())
+            .update_status(&application.id, AppStatus::Running)
+            .await?;
+
+        send_log("Service installed successfully".to_string()).await;
+
+        let _ = ws_broadcast.send(WsEvent::DeploymentStatus {
+            deployment_id,
+            app_id: application.id,
+            status: DeploymentStatus::Running,
+        });
+
+        Ok(())
+    }
+
     /// Cancel a running deployment
     pub async fn cancel_deployment(&self, deployment_id: &str) -> Result<bool> {
         let deployment_repo = DeploymentRepository::new(self.db.clone());

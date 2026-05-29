@@ -55,9 +55,43 @@ impl ApplicationRepository {
             .ok_or_else(|| anyhow::anyhow!("Failed to retrieve created application"))
     }
 
+    /// Create an application from a service template. The rendered compose
+    /// content is stored on the row; build_strategy is set to docker_compose.
+    pub async fn create_from_template(
+        &self,
+        name: &str,
+        server_id: &str,
+        template_slug: &str,
+        compose_content: &str,
+    ) -> Result<Application> {
+        let id = Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+        let status = AppStatus::Idle.as_str();
+        let strategy = BuildStrategy::DockerCompose.as_str();
+
+        sqlx::query(
+            "INSERT INTO applications (id, name, server_id, git_branch, build_strategy, status, auto_deploy, compose_content, template_slug, created_at, updated_at)
+             VALUES (?, ?, ?, 'main', ?, ?, 0, ?, ?, ?, ?)"
+        )
+        .bind(&id)
+        .bind(name)
+        .bind(server_id)
+        .bind(strategy)
+        .bind(status)
+        .bind(compose_content)
+        .bind(template_slug)
+        .bind(&now)
+        .bind(&now)
+        .execute(&self.pool)
+        .await?;
+
+        self.find_by_id(&id).await?
+            .ok_or_else(|| anyhow::anyhow!("Failed to retrieve created application"))
+    }
+
     pub async fn find_by_id(&self, id: &str) -> Result<Option<Application>> {
         let row = sqlx::query_as::<_, ApplicationRow>(
-            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, cpu_limit, memory_limit, status, auto_deploy, created_at, updated_at
+            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, cpu_limit, memory_limit, status, auto_deploy, compose_content, template_slug, created_at, updated_at
              FROM applications WHERE id = ?"
         )
         .bind(id)
@@ -69,7 +103,7 @@ impl ApplicationRepository {
 
     pub async fn list(&self) -> Result<Vec<Application>> {
         let rows = sqlx::query_as::<_, ApplicationRow>(
-            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, cpu_limit, memory_limit, status, auto_deploy, created_at, updated_at
+            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, cpu_limit, memory_limit, status, auto_deploy, compose_content, template_slug, created_at, updated_at
              FROM applications ORDER BY created_at DESC"
         )
         .fetch_all(&self.pool)
@@ -80,7 +114,7 @@ impl ApplicationRepository {
 
     pub async fn list_by_server(&self, server_id: &str) -> Result<Vec<Application>> {
         let rows = sqlx::query_as::<_, ApplicationRow>(
-            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, cpu_limit, memory_limit, status, auto_deploy, created_at, updated_at
+            "SELECT id, name, server_id, git_url, git_branch, build_strategy, dockerfile_path, port, cpu_limit, memory_limit, status, auto_deploy, compose_content, template_slug, created_at, updated_at
              FROM applications WHERE server_id = ? ORDER BY created_at DESC"
         )
         .bind(server_id)
@@ -184,6 +218,8 @@ struct ApplicationRow {
     memory_limit: Option<i64>,
     status: String,
     auto_deploy: i64,
+    compose_content: Option<String>,
+    template_slug: Option<String>,
     created_at: String,
     updated_at: String,
 }
@@ -203,6 +239,8 @@ impl From<ApplicationRow> for Application {
             memory_limit: row.memory_limit,
             status: AppStatus::from_str(&row.status),
             auto_deploy: row.auto_deploy != 0,
+            compose_content: row.compose_content,
+            template_slug: row.template_slug,
             created_at: chrono::DateTime::parse_from_rfc3339(&row.created_at)
                 .unwrap()
                 .with_timezone(&chrono::Utc),

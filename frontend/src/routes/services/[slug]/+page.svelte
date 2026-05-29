@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { api } from '$lib/api/client';
 	import { toast } from '$lib/stores/toast';
 
@@ -24,12 +25,15 @@
 	};
 
 	type InstallResult = {
+		application_id: string;
+		deployment_id: string;
 		compose: string;
 		resolved_inputs: Record<string, string>;
 		post_install_message: string | null;
 		outputs: { label: string; value: string }[];
-		note: string;
 	};
+
+	type Server = { id: string; name: string };
 
 	let slug = $derived($page.params.slug);
 
@@ -37,6 +41,8 @@
 	let loading = $state(true);
 	let error = $state('');
 
+	let servers = $state<Server[]>([]);
+	let serverId = $state('');
 	let appName = $state('');
 	let values = $state<Record<string, string>>({});
 	let showSecrets = $state<Record<string, boolean>>({});
@@ -46,9 +52,15 @@
 
 	onMount(async () => {
 		try {
-			template = await api.get<Template>(`/templates/${slug}`);
-			appName = template.slug;
-			for (const inp of template.inputs) {
+			const [tpl, svr] = await Promise.all([
+				api.get<Template>(`/templates/${slug}`),
+				api.get<{ servers: Server[] }>(`/servers`)
+			]);
+			template = tpl;
+			servers = svr.servers;
+			if (servers.length === 1) serverId = servers[0].id;
+			appName = tpl.slug;
+			for (const inp of tpl.inputs) {
 				values[inp.key] = inp.default ?? '';
 			}
 		} catch (e: any) {
@@ -64,18 +76,28 @@
 			toast.error('Name is required');
 			return;
 		}
+		if (!serverId) {
+			toast.error('Pick a server');
+			return;
+		}
 		installing = true;
 		error = '';
 		try {
 			result = await api.post<InstallResult>(`/templates/${slug}/install`, {
 				app_name: appName.trim(),
+				server_id: serverId,
 				inputs: values
 			});
+			toast.success('Service installed, deploying...');
 		} catch (e: any) {
 			error = e.message || 'Install failed';
 		} finally {
 			installing = false;
 		}
+	}
+
+	function viewApplication() {
+		if (result) goto(`/applications/${result.application_id}`);
 	}
 
 	function copy(value: string) {
@@ -123,6 +145,19 @@
 					<small>Used as the container/service name on the Ployer network.</small>
 				</label>
 
+				<label class="field">
+					<span>Server</span>
+					<select bind:value={serverId} required>
+						<option value="" disabled>Select a server...</option>
+						{#each servers as s}
+							<option value={s.id}>{s.name}</option>
+						{/each}
+					</select>
+					{#if servers.length === 0}
+						<small>No servers configured yet. <a href="/servers">Add one</a> first.</small>
+					{/if}
+				</label>
+
 				{#each template.inputs as inp}
 					<label class="field">
 						<span>{inp.label}</span>
@@ -167,8 +202,11 @@
 			</form>
 		{:else}
 			<section class="card result">
-				<h2>Ready to deploy</h2>
-				<p class="muted preview-note">{result.note}</p>
+				<h2>Service installed</h2>
+				<p class="muted preview-note">
+					Deployment <code>{result.deployment_id.slice(0, 8)}</code> is starting.
+					Save the connection details below — secrets won't be shown again.
+				</p>
 
 				{#if result.post_install_message}
 					<pre class="message">{result.post_install_message}</pre>
@@ -199,7 +237,10 @@
 
 				<div class="actions">
 					<button type="button" class="ghost" onclick={() => (result = null)}>
-						Back to form
+						Install another
+					</button>
+					<button type="button" class="btn-primary" onclick={viewApplication}>
+						View application
 					</button>
 				</div>
 			</section>

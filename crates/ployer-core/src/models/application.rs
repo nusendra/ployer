@@ -15,6 +15,10 @@ pub struct Application {
     pub memory_limit: Option<i64>,
     pub status: AppStatus,
     pub auto_deploy: bool,
+    #[serde(default)]
+    pub compose_content: Option<String>,
+    #[serde(default)]
+    pub template_slug: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

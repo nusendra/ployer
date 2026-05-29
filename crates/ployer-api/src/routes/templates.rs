@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use axum::{
     extract::{Path, State},
@@ -6,12 +7,15 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use ployer_core::crypto;
+use ployer_db::repositories::{ApplicationRepository, EnvVarRepository};
 use ployer_templates::{render, Template, TemplateError};
 use ployer_templates::render::RenderContext;
 use serde::{Deserialize, Serialize};
 
 use crate::app_state::SharedState;
 use crate::auth::extract_user_id;
+use crate::services::deployment::DeploymentService;
 
 pub fn router() -> Router<SharedState> {
     Router::new()
@@ -72,22 +76,19 @@ async fn get_template(
 #[derive(Debug, Deserialize)]
 struct InstallRequest {
     app_name: String,
+    server_id: String,
     #[serde(default)]
     inputs: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize)]
-struct InstallPreview {
-    /// Rendered docker-compose YAML, ready to deploy.
+struct InstallResponse {
+    application_id: String,
+    deployment_id: String,
     compose: String,
-    /// Inputs after defaults and generated values are applied.
-    /// NOTE: secrets are included so the UI can show them once on the post-install screen.
     resolved_inputs: HashMap<String, String>,
     post_install_message: Option<String>,
     outputs: Vec<InstallOutput>,
-    /// Compose-based deployment is not yet wired through ployer-docker.
-    /// For now this endpoint returns the rendered artifact only.
-    note: &'static str,
 }
 
 #[derive(Debug, Serialize)]
@@ -101,26 +102,80 @@ async fn install_template(
     headers: HeaderMap,
     Path(slug): Path<String>,
     Json(req): Json<InstallRequest>,
-) -> Result<Json<InstallPreview>, (StatusCode, String)> {
+) -> Result<Json<InstallResponse>, (StatusCode, String)> {
     extract_user_id(&headers, &state.config.auth.jwt_secret)?;
 
-    if req.app_name.trim().is_empty() {
+    let app_name = req.app_name.trim();
+    if app_name.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "app_name required".to_string()));
+    }
+    if req.server_id.trim().is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "server_id required".to_string()));
     }
 
     let template = state.templates.get(&slug).await.map_err(map_err)?;
 
-    let app_id = uuid::Uuid::new_v4().to_string();
+    // Reserve an id so the compose substitution can reference {{ app.id }} if needed.
+    let placeholder_id = uuid::Uuid::new_v4().to_string();
     let ctx = RenderContext {
-        app_name: &req.app_name,
-        app_id: &app_id,
+        app_name,
+        app_id: &placeholder_id,
         network: "ployer",
         inputs: req.inputs,
     };
-
     let rendered = render(&template, ctx).map_err(map_err)?;
 
-    Ok(Json(InstallPreview {
+    // Persist application + env vars.
+    let app_repo = ApplicationRepository::new(state.db.clone());
+    let application = app_repo
+        .create_from_template(app_name, &req.server_id, &slug, &rendered.compose)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let env_repo = EnvVarRepository::new(state.db.clone());
+    let secret_key = state.config.get_secret_key();
+    for (key, value) in &rendered.resolved_inputs {
+        let encrypted = crypto::encrypt(value, &secret_key).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("env encrypt failed: {e}"),
+            )
+        })?;
+        env_repo
+            .create(&application.id, key, &encrypted)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+
+    // Trigger compose deployment.
+    let docker = state
+        .docker
+        .as_ref()
+        .ok_or_else(|| {
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "docker not available".to_string(),
+            )
+        })?
+        .clone();
+
+    let deployment_service = DeploymentService::new(
+        state.db.clone(),
+        docker,
+        Some(Arc::new(state.caddy.clone())),
+        state.config.server.base_domain.clone(),
+        state.config.get_secret_key(),
+        state.ws_broadcast.clone(),
+    );
+
+    let deployment = deployment_service
+        .deploy_compose(application.clone())
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(InstallResponse {
+        application_id: application.id,
+        deployment_id: deployment.id,
         compose: rendered.compose,
         resolved_inputs: rendered.resolved_inputs,
         post_install_message: rendered.post_install_message,
@@ -129,7 +184,6 @@ async fn install_template(
             .into_iter()
             .map(|(label, value)| InstallOutput { label, value })
             .collect(),
-        note: "preview only: compose-based deploy is not yet wired into ployer-docker",
     }))
 }
 

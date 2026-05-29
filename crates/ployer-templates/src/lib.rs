@@ -1,3 +1,4 @@
+pub mod compose;
 pub mod error;
 pub mod schema;
 pub mod registry;
