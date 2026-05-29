@@ -8,6 +8,7 @@ pub mod domains;
 pub mod webhooks;
 pub mod monitoring;
 pub mod settings;
+pub mod templates;
 pub mod terminal;
 
 use axum::{routing::get, Router};
@@ -29,6 +30,7 @@ pub fn api_router() -> Router<SharedState> {
         .merge(monitoring::router())
         .nest("/deployments", deployments::router())
         .nest("/settings", settings::router())
+        .nest("/templates", templates::router())
         .route("/ws", get(websocket::websocket_handler))
         .route("/applications/:id/terminal", get(terminal::terminal_ws_handler))
 }

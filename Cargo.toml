@@ -8,6 +8,7 @@ members = [
     "crates/ployer-git",
     "crates/ployer-server",
     "crates/ployer-api",
+    "crates/ployer-templates",
 ]
 
 [workspace.package]
@@ -89,3 +90,4 @@ ployer-proxy = { path = "crates/ployer-proxy" }
 ployer-git = { path = "crates/ployer-git" }
 ployer-server = { path = "crates/ployer-server" }
 ployer-api = { path = "crates/ployer-api" }
+ployer-templates = { path = "crates/ployer-templates" }

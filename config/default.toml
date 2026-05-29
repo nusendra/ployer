@@ -17,3 +17,8 @@ socket_path = "/var/run/docker.sock"
 
 [caddy]
 admin_url = "http://localhost:2019"
+
+[templates]
+registry_url = "https://ployer.nusendra.com/templates"
+cache_dir = "/opt/ployer/templates-cache"
+cache_ttl_minutes = 60

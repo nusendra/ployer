@@ -75,6 +75,11 @@
 			href: '/containers',
 			icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 2L14 5.5V10.5L8 14L2 10.5V5.5L8 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 2V14M2 5.5L8 9L14 5.5" stroke="currentColor" stroke-width="1.5"/></svg>`
 		},
+		{
+			label: 'Services',
+			href: '/services',
+			icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><circle cx="11.5" cy="11.5" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>`
+		},
 	];
 
 	const secondaryNavItems = [

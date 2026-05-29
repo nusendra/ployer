@@ -8,6 +8,8 @@ pub struct AppConfig {
     pub auth: AuthConfig,
     pub docker: DockerConfig,
     pub caddy: CaddyConfig,
+    #[serde(default)]
+    pub templates: TemplatesConfig,
 }
 
 impl AppConfig {
@@ -47,6 +49,23 @@ pub struct DockerConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TemplatesConfig {
+    pub registry_url: String,
+    pub cache_dir: String,
+    pub cache_ttl_minutes: u64,
+}
+
+impl Default for TemplatesConfig {
+    fn default() -> Self {
+        Self {
+            registry_url: "https://ployer.nusendra.com/templates".to_string(),
+            cache_dir: "/opt/ployer/templates-cache".to_string(),
+            cache_ttl_minutes: 60,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CaddyConfig {
     pub admin_url: String,
     pub caddyfile_path: String,
@@ -76,6 +95,7 @@ impl Default for AppConfig {
                 admin_url: "http://localhost:2019".to_string(),
                 caddyfile_path: "/opt/ployer/Caddyfile".to_string(),
             },
+            templates: TemplatesConfig::default(),
         }
     }
 }
@@ -101,6 +121,9 @@ impl AppConfig {
         if let Ok(v) = std::env::var("PLOYER_DOCKER_SOCKET")   { cfg.docker.socket_path = v; }
         if let Ok(v) = std::env::var("PLOYER_CADDY_URL")        { cfg.caddy.admin_url = v; }
         if let Ok(v) = std::env::var("PLOYER_CADDYFILE")        { cfg.caddy.caddyfile_path = v; }
+        if let Ok(v) = std::env::var("PLOYER_TEMPLATES_URL")    { cfg.templates.registry_url = v; }
+        if let Ok(v) = std::env::var("PLOYER_TEMPLATES_CACHE_DIR") { cfg.templates.cache_dir = v; }
+        if let Ok(v) = std::env::var("PLOYER_TEMPLATES_CACHE_TTL_MINUTES") { if let Ok(m) = v.parse() { cfg.templates.cache_ttl_minutes = m; } }
 
         cfg
     }

@@ -14,6 +14,7 @@ ployer-docker = { workspace = true }
 ployer-proxy = { workspace = true }
 ployer-git = { workspace = true }
 ployer-server = { workspace = true }
+ployer-templates = { workspace = true }
 axum = { workspace = true }
 tower-http = { workspace = true }
 tokio = { workspace = true }
