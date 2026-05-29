@@ -52,7 +52,14 @@ pub struct DockerConfig {
 pub struct TemplatesConfig {
     pub registry_url: String,
     pub cache_dir: String,
-    pub cache_ttl_minutes: u64,
+    /// How long the catalog index can be served from the in-memory cache
+    /// before refetching. Disk fallback still applies on network failure.
+    #[serde(default = "default_index_ttl_seconds")]
+    pub index_ttl_seconds: u64,
+}
+
+fn default_index_ttl_seconds() -> u64 {
+    15
 }
 
 impl Default for TemplatesConfig {
@@ -60,7 +67,7 @@ impl Default for TemplatesConfig {
         Self {
             registry_url: "https://ployer.nusendra.com/templates".to_string(),
             cache_dir: "/opt/ployer/templates-cache".to_string(),
-            cache_ttl_minutes: 60,
+            index_ttl_seconds: default_index_ttl_seconds(),
         }
     }
 }
@@ -123,7 +130,7 @@ impl AppConfig {
         if let Ok(v) = std::env::var("PLOYER_CADDYFILE")        { cfg.caddy.caddyfile_path = v; }
         if let Ok(v) = std::env::var("PLOYER_TEMPLATES_URL")    { cfg.templates.registry_url = v; }
         if let Ok(v) = std::env::var("PLOYER_TEMPLATES_CACHE_DIR") { cfg.templates.cache_dir = v; }
-        if let Ok(v) = std::env::var("PLOYER_TEMPLATES_CACHE_TTL_MINUTES") { if let Ok(m) = v.parse() { cfg.templates.cache_ttl_minutes = m; } }
+        if let Ok(v) = std::env::var("PLOYER_TEMPLATES_INDEX_TTL_SECONDS") { if let Ok(s) = v.parse() { cfg.templates.index_ttl_seconds = s; } }
 
         cfg
     }

@@ -31,7 +31,7 @@ impl AppState {
         let templates = Arc::new(Registry::new(RegistryConfig {
             registry_url: config.templates.registry_url.clone(),
             cache_dir: PathBuf::from(&config.templates.cache_dir),
-            cache_ttl: Duration::from_secs(config.templates.cache_ttl_minutes * 60),
+            cache_ttl: Duration::from_secs(config.templates.index_ttl_seconds),
         }));
         Arc::new(Self {
             db,
