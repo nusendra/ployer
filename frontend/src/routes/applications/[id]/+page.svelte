@@ -525,7 +525,7 @@
 		}
 	}
 
-	const tabs: { id: Tab; label: string; icon: string }[] = [
+	const allTabs: { id: Tab; label: string; icon: string }[] = [
 		{ id: 'configuration', label: 'Configuration', icon: '⚙️' },
 		{ id: 'env_vars', label: 'Environment Variables', icon: '🔑' },
 		{ id: 'deployments', label: 'Deployments', icon: '🚀' },
@@ -534,6 +534,16 @@
 		{ id: 'webhooks', label: 'Webhooks', icon: '🔗' },
 		{ id: 'terminal', label: 'Terminal', icon: '>_' }
 	];
+
+	const isService = $derived(!!app?.template_slug);
+
+	// Service installs (docker-compose, no git) skip the tabs that only make
+	// sense for git-deployed apps: domains/deploy_key/webhooks.
+	const tabs = $derived(
+		isService
+			? allTabs.filter((t) => !['domains', 'deploy_key', 'webhooks'].includes(t.id))
+			: allTabs
+	);
 </script>
 
 <div class="detail-page">
@@ -597,7 +607,33 @@
 			<div class="detail-content">
 
 				<!-- Configuration -->
-				{#if activeTab === 'configuration'}
+				{#if activeTab === 'configuration' && isService && app}
+					<div class="content-section">
+						<div class="section-header">
+							<h2>Service</h2>
+							<p>Installed from the <code>{app.template_slug}</code> template.</p>
+						</div>
+
+						<div class="form-grid">
+							<div class="form-group">
+								<label>Application Name</label>
+								<input type="text" value={app.name} disabled />
+							</div>
+							<div class="form-group">
+								<label>Template</label>
+								<input type="text" value={app.template_slug ?? ''} disabled />
+							</div>
+						</div>
+
+						<div class="form-group" style="margin-top: 1.5rem;">
+							<label>docker-compose.yml</label>
+							<pre class="compose-readonly"><code>{app.compose_content ?? ''}</code></pre>
+							<p class="input-hint">Rendered when the service was installed. Edits aren't supported yet — reinstall the service to change values.</p>
+						</div>
+					</div>
+				{/if}
+
+				{#if activeTab === 'configuration' && !isService}
 					<div class="content-section">
 						<div class="section-header">
 							<h2>Configuration</h2>
@@ -1905,5 +1941,18 @@
 	.delivery-time {
 		font-size: 0.75rem;
 		color: var(--text-muted);
+	}
+
+	.compose-readonly {
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 1rem;
+		font-family: monospace;
+		font-size: 0.8rem;
+		overflow-x: auto;
+		max-height: 400px;
+		overflow-y: auto;
+		white-space: pre;
 	}
 </style>

@@ -35,6 +35,8 @@ export interface Application {
 	memory_limit: number | null;
 	auto_deploy: boolean;
 	status: AppStatus;
+	compose_content: string | null;
+	template_slug: string | null;
 	created_at: string;
 	updated_at: string;
 }

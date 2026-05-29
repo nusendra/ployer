@@ -79,6 +79,13 @@ struct InstallRequest {
     server_id: String,
     #[serde(default)]
     inputs: HashMap<String, String>,
+    /// When true, publish each container port declared in the template to the
+    /// host (using `host_ports` if provided, else the container port number).
+    #[serde(default)]
+    expose: bool,
+    /// Map of container_port -> host_port. Only used when `expose` is true.
+    #[serde(default)]
+    host_ports: HashMap<u16, u16>,
 }
 
 #[derive(Debug, Serialize)]
@@ -123,7 +130,18 @@ async fn install_template(
         network: "ployer",
         inputs: req.inputs,
     };
-    let rendered = render(&template, ctx).map_err(map_err)?;
+    let mut rendered = render(&template, ctx).map_err(map_err)?;
+
+    if req.expose && !template.ports.is_empty() {
+        let bindings: Vec<(u16, u16)> = template
+            .ports
+            .iter()
+            .map(|p| (p.container, *req.host_ports.get(&p.container).unwrap_or(&p.container)))
+            .collect();
+        rendered.compose =
+            ployer_templates::compose::add_ports_to_all_services(&rendered.compose, &bindings)
+                .map_err(map_err)?;
+    }
 
     // Persist application + env vars.
     let app_repo = ApplicationRepository::new(state.db.clone());

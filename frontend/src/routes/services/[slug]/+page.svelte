@@ -14,6 +14,8 @@
 		required?: boolean;
 	};
 
+	type PortSpec = { container: number; expose?: boolean };
+
 	type Template = {
 		slug: string;
 		name: string;
@@ -21,6 +23,7 @@
 		category: string;
 		tags: string[];
 		inputs: InputSpec[];
+		ports?: PortSpec[];
 		post_install?: { message?: string };
 	};
 
@@ -46,6 +49,8 @@
 	let appName = $state('');
 	let values = $state<Record<string, string>>({});
 	let showSecrets = $state<Record<string, boolean>>({});
+	let expose = $state(false);
+	let hostPorts = $state<Record<number, number>>({});
 
 	let installing = $state(false);
 	let result = $state<InstallResult | null>(null);
@@ -62,6 +67,9 @@
 			appName = tpl.slug;
 			for (const inp of tpl.inputs) {
 				values[inp.key] = inp.default ?? '';
+			}
+			for (const p of tpl.ports ?? []) {
+				hostPorts[p.container] = p.container;
 			}
 		} catch (e: any) {
 			error = e.message || 'Failed to load service';
@@ -86,7 +94,9 @@
 			result = await api.post<InstallResult>(`/templates/${slug}/install`, {
 				app_name: appName.trim(),
 				server_id: serverId,
-				inputs: values
+				inputs: values,
+				expose,
+				host_ports: expose ? hostPorts : {}
 			});
 			toast.success('Service installed, deploying...');
 		} catch (e: any) {
@@ -189,6 +199,37 @@
 						<small class="key">{inp.key}</small>
 					</label>
 				{/each}
+
+				{#if (template.ports ?? []).length > 0}
+					<div class="field">
+						<label class="expose-toggle">
+							<input type="checkbox" bind:checked={expose} />
+							<span>Expose to host</span>
+						</label>
+						<small>
+							Publish the service port on the host so it's reachable from outside the Ployer
+							Docker network. Anyone who can reach this server will be able to connect — make
+							sure your firewall is set up.
+						</small>
+						{#if expose}
+							<div class="port-rows">
+								{#each template.ports ?? [] as p}
+									<div class="port-row">
+										<span class="port-label">Container :{p.container}</span>
+										<span class="port-arrow">→</span>
+										<span class="port-label">Host</span>
+										<input
+											type="number"
+											min="1"
+											max="65535"
+											bind:value={hostPorts[p.container]}
+										/>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
 
 				{#if error}
 					<div class="error">{error}</div>
@@ -326,6 +367,37 @@
 	}
 	.password-row input {
 		flex: 1;
+	}
+	.expose-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-weight: 500;
+		cursor: pointer;
+	}
+	.expose-toggle input {
+		width: auto;
+	}
+	.port-rows {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		margin-top: 0.5rem;
+	}
+	.port-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+	}
+	.port-row input {
+		max-width: 8rem;
+	}
+	.port-label {
+		color: var(--text-muted);
+	}
+	.port-arrow {
+		color: var(--text-muted);
 	}
 	.ghost {
 		background: var(--bg-tertiary);

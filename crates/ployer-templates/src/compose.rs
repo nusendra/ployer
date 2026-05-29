@@ -62,6 +62,45 @@ pub fn parse(yaml: &str) -> Result<ComposeSpec, TemplateError> {
     Ok(serde_yaml::from_str(yaml)?)
 }
 
+/// Inject a `ports` mapping into every service in the compose YAML. Used by
+/// the install endpoint when the user opts to expose a template's port to
+/// the host. `bindings` maps `container_port -> host_port`.
+pub fn add_ports_to_all_services(
+    yaml: &str,
+    bindings: &[(u16, u16)],
+) -> Result<String, TemplateError> {
+    if bindings.is_empty() {
+        return Ok(yaml.to_string());
+    }
+
+    let mut root: serde_yaml::Value = serde_yaml::from_str(yaml)?;
+    let services = root
+        .get_mut("services")
+        .and_then(|s| s.as_mapping_mut())
+        .ok_or_else(|| TemplateError::InvalidInput {
+            key: "compose".to_string(),
+            reason: "missing services map".to_string(),
+        })?;
+
+    let port_seq: Vec<serde_yaml::Value> = bindings
+        .iter()
+        .map(|(container, host)| {
+            serde_yaml::Value::String(format!("{}:{}", host, container))
+        })
+        .collect();
+
+    for (_, svc) in services.iter_mut() {
+        if let Some(svc_map) = svc.as_mapping_mut() {
+            svc_map.insert(
+                serde_yaml::Value::String("ports".to_string()),
+                serde_yaml::Value::Sequence(port_seq.clone()),
+            );
+        }
+    }
+
+    Ok(serde_yaml::to_string(&root)?)
+}
+
 /// Split `host:container` or `host:container:mode` into (host, container).
 /// Returns None if the format isn't recognized.
 pub fn split_volume(spec: &str) -> Option<(String, String)> {
