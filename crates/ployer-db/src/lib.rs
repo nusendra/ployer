@@ -45,6 +45,7 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         ("003_health_check_results", include_str!("../../../migrations/003_health_check_results.sql")),
         ("004_settings", include_str!("../../../migrations/004_settings.sql")),
         ("005_resource_limits", include_str!("../../../migrations/005_resource_limits.sql")),
+        ("006_template_apps", include_str!("../../../migrations/006_template_apps.sql")),
     ];
 
     // If tracking table was just created but the DB already has tables,
