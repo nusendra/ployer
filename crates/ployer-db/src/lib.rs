@@ -22,24 +22,80 @@ pub async fn create_pool(database_url: &str) -> Result<SqlitePool> {
 }
 
 pub async fn run_migrations(pool: &SqlitePool) -> Result<()> {
-    let migrations = [
-        include_str!("../../../migrations/001_initial.sql"),
-        include_str!("../../../migrations/002_webhooks.sql"),
-        include_str!("../../../migrations/003_health_check_results.sql"),
-        include_str!("../../../migrations/004_settings.sql"),
-        include_str!("../../../migrations/005_resource_limits.sql"),
+    // Check if _migrations table already exists (i.e. tracking was set up before)
+    let tracking_exists: bool = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='_migrations'",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS _migrations (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )"
+    )
+    .execute(pool)
+    .await?;
+
+    let migrations: &[(&str, &str)] = &[
+        ("001_initial", include_str!("../../../migrations/001_initial.sql")),
+        ("002_webhooks", include_str!("../../../migrations/002_webhooks.sql")),
+        ("003_health_check_results", include_str!("../../../migrations/003_health_check_results.sql")),
+        ("004_settings", include_str!("../../../migrations/004_settings.sql")),
+        ("005_resource_limits", include_str!("../../../migrations/005_resource_limits.sql")),
     ];
 
-    for migration_sql in &migrations {
+    // If tracking table was just created but the DB already has tables,
+    // mark all existing migrations as applied to avoid re-running them.
+    if !tracking_exists {
+        let has_tables: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='users'",
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if has_tables {
+            for (name, _) in migrations {
+                sqlx::query("INSERT INTO _migrations (name) VALUES (?)")
+                    .bind(name)
+                    .execute(pool)
+                    .await?;
+            }
+            info!("Migrations up to date (existing database, tracking initialized)");
+            return Ok(());
+        }
+    }
+
+    for (name, migration_sql) in migrations {
+        let already_applied: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM _migrations WHERE name = ?",
+        )
+        .bind(name)
+        .fetch_one(pool)
+        .await?;
+
+        if already_applied {
+            continue;
+        }
+
         for statement in migration_sql.split(';') {
             let stmt = statement.trim();
             if !stmt.is_empty() {
                 sqlx::query(stmt).execute(pool).await?;
             }
         }
+
+        sqlx::query("INSERT INTO _migrations (name) VALUES (?)")
+            .bind(name)
+            .execute(pool)
+            .await?;
+
+        info!("Migration applied: {}", name);
     }
 
-    info!("Migrations applied successfully");
+    info!("Migrations up to date");
     Ok(())
 }
 
