@@ -8,12 +8,16 @@
 	import { onDestroy } from 'svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import { api } from '$lib/api/client';
+	import { toast } from '$lib/stores/toast';
 
 	let { children } = $props();
 	let isAuthenticated = $state(false);
 	let isLoginPage = $state(false);
 	let isChecking = $state(true);
 	let version = $state('');
+	let latestVersion = $state('');
+	let updateAvailable = $state(false);
+	let updating = $state(false);
 	$effect(() => {
 		if (!browser) return;
 
@@ -46,7 +50,67 @@
 		wsClient.disconnect();
 	});
 
-	api.get<{ version: string }>('/health').then(r => version = r.version).catch(() => {});
+	async function checkVersion() {
+		try {
+			const r = await api.get<{ current: string; latest: string | null; update_available: boolean }>(
+				'/system/version'
+			);
+			version = r.current;
+			latestVersion = r.latest ?? '';
+			updateAvailable = r.update_available;
+		} catch {
+			// Fall back to /health so we at least show the running version
+			try {
+				const h = await api.get<{ version: string }>('/health');
+				version = h.version;
+			} catch {}
+		}
+	}
+
+	$effect(() => {
+		if (!browser || !isAuthenticated) return;
+		checkVersion();
+		const id = setInterval(checkVersion, 5 * 60 * 1000);
+		return () => clearInterval(id);
+	});
+
+	async function handleUpdate() {
+		if (updating) return;
+		const ok = confirm(
+			`Update Ployer from v${version} to v${latestVersion}?\n\nThe service will restart automatically. The dashboard may be unavailable for ~30s.`
+		);
+		if (!ok) return;
+		updating = true;
+		try {
+			await api.post('/system/update', {});
+			toast.success('Update started. Reconnecting in a moment...');
+			// Poll /health until the new version comes back
+			const target = latestVersion;
+			const deadline = Date.now() + 5 * 60 * 1000;
+			const poll = async () => {
+				try {
+					const h = await api.get<{ version: string }>('/health');
+					if (h.version === target) {
+						version = h.version;
+						updateAvailable = false;
+						updating = false;
+						toast.success(`Updated to v${target}`);
+						return;
+					}
+				} catch {}
+				if (Date.now() < deadline) {
+					setTimeout(poll, 5000);
+				} else {
+					updating = false;
+					toast.error('Update is taking longer than expected. Check the server.');
+				}
+			};
+			setTimeout(poll, 10000);
+		} catch (e: any) {
+			updating = false;
+			toast.error(e.message || 'Failed to start update');
+		}
+	}
 
 	function handleLogout() {
 		wsClient.disconnect();
@@ -111,10 +175,30 @@
 				<div class="logo-title">
 					<span class="logo-text">Ployer</span>
 					{#if version}
-						<span class="logo-version">v{version}</span>
+						<span class="logo-version">
+							v{version}
+							{#if updateAvailable}
+								<span class="update-dot" title="Update available: v{latestVersion}"></span>
+							{/if}
+						</span>
 					{/if}
 				</div>
 			</div>
+
+			{#if updateAvailable}
+				<button class="update-banner" onclick={handleUpdate} disabled={updating}>
+					{#if updating}
+						<span class="update-spinner"></span>
+						<span>Updating...</span>
+					{:else}
+						<span class="update-icon">↑</span>
+						<span class="update-text">
+							<span class="update-title">Update to v{latestVersion}</span>
+							<span class="update-sub">Click to install</span>
+						</span>
+					{/if}
+				</button>
+			{/if}
 
 			<!-- Primary nav -->
 			<ul class="nav-links">
@@ -224,6 +308,82 @@
 		font-family: monospace;
 		line-height: 1;
 		margin-top: 0.25rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.update-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--primary);
+		box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.0), 0 0 8px var(--primary);
+	}
+
+	.update-banner {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		margin: 0.5rem 0.25rem 0.75rem;
+		padding: 0.625rem 0.75rem;
+		background: rgba(99, 102, 241, 0.12);
+		border: 1px solid rgba(99, 102, 241, 0.35);
+		color: var(--text);
+		border-radius: 8px;
+		cursor: pointer;
+		text-align: left;
+		transition: background 0.15s, border-color 0.15s;
+	}
+
+	.update-banner:hover:not(:disabled) {
+		background: rgba(99, 102, 241, 0.2);
+		border-color: var(--primary);
+	}
+
+	.update-banner:disabled {
+		opacity: 0.7;
+		cursor: progress;
+	}
+
+	.update-icon {
+		font-size: 1rem;
+		font-weight: 700;
+		color: var(--primary);
+		line-height: 1;
+	}
+
+	.update-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+		min-width: 0;
+	}
+
+	.update-title {
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: var(--text);
+		line-height: 1.1;
+	}
+
+	.update-sub {
+		font-size: 0.6875rem;
+		color: var(--text-muted);
+		line-height: 1;
+	}
+
+	.update-spinner {
+		width: 12px;
+		height: 12px;
+		border: 2px solid rgba(255, 255, 255, 0.2);
+		border-top-color: var(--primary);
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
 	}
 
 	/* Nav */

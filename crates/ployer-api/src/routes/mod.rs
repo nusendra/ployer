@@ -8,6 +8,7 @@ pub mod domains;
 pub mod webhooks;
 pub mod monitoring;
 pub mod settings;
+pub mod system;
 pub mod templates;
 pub mod terminal;
 
@@ -31,6 +32,7 @@ pub fn api_router() -> Router<SharedState> {
         .nest("/deployments", deployments::router())
         .nest("/settings", settings::router())
         .nest("/templates", templates::router())
+        .nest("/system", system::router())
         .route("/ws", get(websocket::websocket_handler))
         .route("/applications/:id/terminal", get(terminal::terminal_ws_handler))
 }
