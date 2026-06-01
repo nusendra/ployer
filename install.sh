@@ -298,6 +298,12 @@ ${DOMAIN} {
     reverse_proxy localhost:3001
 }
 
+# LAN / direct-IP access (HTTP only — no cert possible for private IPs).
+# Catches any host not matched above (e.g. http://192.168.x.x, http://hostname.local).
+http:// {
+    reverse_proxy localhost:3001
+}
+
 import ${PLOYER_DIR}/apps.caddy
 EOF
 

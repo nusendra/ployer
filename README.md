@@ -159,6 +159,12 @@ Internet
 - **Database** — SQLite with WAL mode (no separate database server needed)
 - **Process manager** — systemd
 
+### Accessing Ployer over your LAN
+
+In addition to your configured domain, the Ployer dashboard is reachable over plain HTTP on any host that resolves to the server — e.g. `http://192.168.x.x` or `http://hostname.local`. This is handy for local-network use when your domain isn't reachable (or you don't have one yet).
+
+TLS is not used on this path because Let's Encrypt can't issue certs for private IPs or `.local` names; keep the public domain for anything sensitive.
+
 ---
 
 ## Troubleshooting
