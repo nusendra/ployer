@@ -198,20 +198,34 @@ prompt_config() {
   local server_ip
   server_ip=$(get_server_ip)
 
+  # Preserve previously-configured domain on upgrades. Self-update from the
+  # dashboard runs this script non-interactively via `curl | bash`, so without
+  # this we'd silently overwrite the user's real domain with an auto-detected
+  # IP/nip.io on every update.
+  local existing_domain=""
+  if [[ -f "${PLOYER_DIR}/ployer.env" ]]; then
+    existing_domain=$(grep "^PLOYER_BASE_DOMAIN=" "${PLOYER_DIR}/ployer.env" 2>/dev/null | cut -d'=' -f2- || true)
+  fi
+
   echo ""
   echo -e "  ${BOLD}Where will Ployer be accessible?${NC}"
   echo -e "  ${YELLOW}→ Domain (e.g. ployer.yourdomain.com) — gets automatic HTTPS${NC}"
   echo -e "  ${YELLOW}→ IP address — auto-converted to nip.io for free HTTPS + subdomains${NC}"
   echo ""
 
+  local default_domain="${existing_domain:-$server_ip}"
+
   if [[ -t 0 ]]; then
-    read -rp "  Enter domain or IP [default: ${server_ip}]: " DOMAIN
+    read -rp "  Enter domain or IP [default: ${default_domain}]: " DOMAIN
+  elif [[ -n "$existing_domain" ]]; then
+    info "Non-interactive mode — keeping existing domain: ${existing_domain}"
+    DOMAIN="$existing_domain"
   else
     warn "Non-interactive mode (curl | bash). Using server IP: ${server_ip}"
     warn "Re-run 'bash install.sh' to set a custom domain."
     DOMAIN=""
   fi
-  DOMAIN="${DOMAIN:-$server_ip}"
+  DOMAIN="${DOMAIN:-$default_domain}"
 
   # Convert bare IP to nip.io for working subdomains + free HTTPS
   if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
