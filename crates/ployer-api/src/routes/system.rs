@@ -40,6 +40,38 @@ fn latest_cache() -> &'static Mutex<Option<LatestCache>> {
     CACHE.get_or_init(|| Mutex::new(None))
 }
 
+// install.sh uses BINARY_ARCH=x86_64 for amd64 and BINARY_ARCH=arm64 for
+// aarch64, and asset names are `ployer-{tag}-ployer-linux-{BINARY_ARCH}.tar.gz`.
+// We need to match the same naming so we only consider releases whose tarball
+// for this host's arch has actually been uploaded — otherwise the dashboard
+// would advertise an "update" that the installer can't download yet (e.g. while
+// the GitHub Actions release job is still running), which leaves the service
+// broken until someone re-runs the installer by hand.
+fn current_binary_arch() -> &'static str {
+    match std::env::consts::ARCH {
+        "x86_64" => "x86_64",
+        "aarch64" => "arm64",
+        other => other,
+    }
+}
+
+fn release_has_binary_for_this_host(release: &Value, tag: &str) -> bool {
+    let needle = format!(
+        "ployer-{}-ployer-linux-{}.tar.gz",
+        tag,
+        current_binary_arch()
+    );
+    release
+        .get("assets")
+        .and_then(|a| a.as_array())
+        .map(|arr| {
+            arr.iter().any(|asset| {
+                asset.get("name").and_then(|n| n.as_str()) == Some(needle.as_str())
+            })
+        })
+        .unwrap_or(false)
+}
+
 async fn fetch_latest_version() -> Option<String> {
     {
         let guard = latest_cache().lock().await;
@@ -58,13 +90,24 @@ async fn fetch_latest_version() -> Option<String> {
         .ok()?;
     let releases: Vec<Value> = client.get(&url).send().await.ok()?.json().await.ok()?;
 
-    let mut tags: Vec<String> = releases
+    // Pair each release with its tag, drop drafts, sort high → low, then pick
+    // the highest version whose tarball for this host's arch is uploaded.
+    let mut candidates: Vec<(String, &Value)> = releases
         .iter()
-        .filter_map(|r| r.get("tag_name").and_then(|v| v.as_str()).map(String::from))
+        .filter(|r| !r.get("draft").and_then(|d| d.as_bool()).unwrap_or(false))
+        .filter_map(|r| {
+            r.get("tag_name")
+                .and_then(|v| v.as_str())
+                .map(|t| (t.to_string(), r))
+        })
         .collect();
-    tags.sort_by(|a, b| version_key(a).cmp(&version_key(b)));
-    let latest = tags.into_iter().last()?;
-    let stripped = latest.trim_start_matches('v').to_string();
+    candidates.sort_by(|a, b| version_key(&b.0).cmp(&version_key(&a.0)));
+
+    let latest_tag = candidates
+        .into_iter()
+        .find(|(tag, r)| release_has_binary_for_this_host(r, tag))
+        .map(|(tag, _)| tag)?;
+    let stripped = latest_tag.trim_start_matches('v').to_string();
 
     let mut guard = latest_cache().lock().await;
     *guard = Some(LatestCache {
