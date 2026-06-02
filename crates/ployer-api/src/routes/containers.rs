@@ -9,7 +9,43 @@ use std::collections::HashMap;
 
 use crate::app_state::SharedState;
 use crate::auth::extract_user_id;
+use ployer_core::models::AppStatus;
+use ployer_db::repositories::ApplicationRepository;
 use ployer_docker::{ContainerConfig, ContainerInfo, ContainerStats, NetworkInfo, VolumeInfo};
+
+// Reconcile the owning application's stored status with the container's actual
+// state in Docker. The convention is that Ployer-managed containers are named
+// `ployer-{app.name}` (single-container apps) — when a user starts/stops one of
+// those from the containers page, the application row in the DB needs to follow
+// so the dashboard and applications list don't keep showing a stale "running".
+async fn sync_application_status_from_container(state: &SharedState, container_id: &str) {
+    let Some(docker) = state.docker.as_ref() else { return };
+    let Ok(inspect) = docker.inspect_container(container_id).await else { return };
+
+    let raw_name = inspect.name.clone().unwrap_or_default();
+    let trimmed = raw_name.trim_start_matches('/');
+    let Some(rest) = trimmed.strip_prefix("ployer-") else { return };
+
+    let new_status = inspect
+        .state
+        .as_ref()
+        .and_then(|s| s.status.as_ref())
+        .map(|s| match s.to_string().to_lowercase().as_str() {
+            "running" => AppStatus::Running,
+            _ => AppStatus::Stopped,
+        })
+        .unwrap_or(AppStatus::Stopped);
+
+    let repo = ApplicationRepository::new(state.db.clone());
+    let Ok(apps) = repo.list().await else { return };
+
+    for app in apps {
+        if rest == app.name && app.compose_content.is_none() {
+            let _ = repo.update_status(&app.id, new_status).await;
+            return;
+        }
+    }
+}
 
 pub fn router() -> Router<SharedState> {
     Router::new()
@@ -225,6 +261,8 @@ async fn start_container(
             }
         })?;
 
+    sync_application_status_from_container(&state, &id).await;
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -255,6 +293,8 @@ async fn stop_container(
             }
         })?;
 
+    sync_application_status_from_container(&state, &id).await;
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -282,6 +322,8 @@ async fn restart_container(
                 (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
             }
         })?;
+
+    sync_application_status_from_container(&state, &id).await;
 
     Ok(StatusCode::NO_CONTENT)
 }
