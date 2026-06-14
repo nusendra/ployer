@@ -177,6 +177,7 @@ async fn create_container(
         cmd: req.cmd,
         cpu_limit: None,
         memory_limit: None,
+        restart: None,
     };
 
     let container_id = docker

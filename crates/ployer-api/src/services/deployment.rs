@@ -281,6 +281,7 @@ impl DeploymentService {
             cmd: None,
             cpu_limit: application.cpu_limit,
             memory_limit: application.memory_limit,
+            restart: None,
         };
 
         let container_id = docker.create_container(container_config).await?;
@@ -492,6 +493,7 @@ impl DeploymentService {
                 cmd: None,
                 cpu_limit: application.cpu_limit,
                 memory_limit: application.memory_limit,
+                restart: None,
             };
 
             let container_id = docker.create_container(config).await?;

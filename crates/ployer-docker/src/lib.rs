@@ -4,7 +4,10 @@ use bollard::container::{
     LogsOptions, RemoveContainerOptions, StartContainerOptions, StatsOptions, StopContainerOptions,
 };
 use bollard::image::BuildImageOptions;
-use bollard::models::{ContainerInspectResponse, ContainerSummary, HostConfig, PortBinding};
+use bollard::models::{
+    ContainerInspectResponse, ContainerSummary, HostConfig, PortBinding, RestartPolicy,
+    RestartPolicyNameEnum,
+};
 use bollard::network::{CreateNetworkOptions, InspectNetworkOptions, ListNetworksOptions};
 use bollard::volume::{CreateVolumeOptions, ListVolumesOptions, RemoveVolumeOptions};
 use bollard::Docker;
@@ -33,6 +36,9 @@ pub struct ContainerConfig {
     pub cmd: Option<Vec<String>>,
     pub cpu_limit: Option<f64>,       // CPU cores (e.g. 0.5 = half a core)
     pub memory_limit: Option<i64>,    // Memory in MB
+    // Docker restart policy: "no" | "always" | "unless-stopped" | "on-failure".
+    // None defaults to "unless-stopped" so containers survive host reboots.
+    pub restart: Option<String>,
 }
 
 // Container information summary
@@ -254,12 +260,24 @@ impl DockerClient {
         let nano_cpus = config.cpu_limit.map(|c| (c * 1_000_000_000.0) as i64);
         let memory = config.memory_limit.map(|m| m * 1024 * 1024); // MB to bytes
 
+        // Default to "unless-stopped" so containers come back after a host reboot.
+        let restart_policy_name = match config.restart.as_deref().unwrap_or("unless-stopped") {
+            "no" => RestartPolicyNameEnum::NO,
+            "always" => RestartPolicyNameEnum::ALWAYS,
+            "on-failure" => RestartPolicyNameEnum::ON_FAILURE,
+            _ => RestartPolicyNameEnum::UNLESS_STOPPED,
+        };
+
         let host_config = Some(HostConfig {
             port_bindings: Some(port_bindings),
             binds,
             network_mode: config.network,
             nano_cpus,
             memory,
+            restart_policy: Some(RestartPolicy {
+                name: Some(restart_policy_name),
+                maximum_retry_count: None,
+            }),
             ..Default::default()
         });
 
