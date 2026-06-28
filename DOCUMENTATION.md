@@ -706,6 +706,22 @@ Response (201 Created):
 
 Note: This generates a new RSA 4096 key pair. The old key is deleted.
 
+**Private repositories**
+
+Cloning a private repo over SSH (`git@github.com:org/repo.git`) requires a deploy key. If none is registered for the application, the clone fails with:
+
+```
+authentication required but no callback set; class=Ssh (23); code=Auth (-16)
+```
+
+To fix:
+
+1. Generate a deploy key for the application (`POST /api/v1/applications/:id/deploy-key`).
+2. Add the returned `public_key` to the repository on GitHub: **Settings → Deploy keys → Add deploy key**.
+3. Redeploy.
+
+Deploy keys are per-application — a key generated for one application does not authenticate another. The key must exist in Ployer **and** be added to the repository before the clone runs.
+
 ### Deployments
 
 **Trigger deployment**

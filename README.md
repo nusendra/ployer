@@ -185,6 +185,16 @@ ls -la /var/run/docker.sock   # should exist
 systemctl status docker        # should be active
 ```
 
+**Cloning a private repo fails with `authentication required but no callback set`**
+
+This means no deploy key is registered for the application, so Ployer has no credentials to authenticate the SSH clone. Deploy keys are per-application — generating one for a different app does not help.
+
+1. Open the application in Ployer and **generate a deploy key** (Settings → Deploy key).
+2. Copy the public key and add it to your repository on GitHub: **Settings → Deploy keys → Add deploy key**.
+3. Redeploy.
+
+The deploy key must exist in Ployer **and** be added to the repository before the clone runs.
+
 **Database errors on startup**
 ```bash
 ls -la /var/lib/ployer/       # check permissions
