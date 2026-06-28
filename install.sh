@@ -168,9 +168,26 @@ download_release() {
 
   local extracted="${tmpdir}/ployer-${version}-ployer-linux-${BINARY_ARCH}"
 
+  # Validate the tarball BEFORE touching the installed copy. A release missing
+  # the binary or a built frontend would otherwise leave ployer running but
+  # serving a 404 dashboard (empty public/). Abort and keep the old version up.
+  local missing=""
+  [[ -f "${extracted}/ployer" ]]            || missing+=" ployer"
+  [[ -f "${extracted}/public/index.html" ]] || missing+=" public/index.html"
+  [[ -d "${extracted}/migrations" ]]        || missing+=" migrations"
+  if [[ -n "$missing" ]]; then
+    rm -rf "$tmpdir"
+    warn "Release ${version} is incomplete (missing:${missing})."
+    # main() stops ployer before calling us on upgrade — bring the old one back.
+    systemctl start ployer 2>/dev/null || true
+    error "Aborting update. Existing version left running. Re-cut the release with a built frontend."
+  fi
+
   install -m 755 "${extracted}/ployer" "$PLOYER_BIN"
   log "Binary installed: ${PLOYER_BIN}"
 
+  # Replace frontend wholesale so stale files from prior versions are removed.
+  rm -rf "${PLOYER_DIR}/public"
   mkdir -p "${PLOYER_DIR}/public" "${PLOYER_DIR}/migrations"
   cp -r "${extracted}/public/." "${PLOYER_DIR}/public/"
   cp -r "${extracted}/migrations/." "${PLOYER_DIR}/migrations/"
