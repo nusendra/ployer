@@ -40,7 +40,7 @@ async fn sync_application_status_from_container(state: &SharedState, container_i
     let Ok(apps) = repo.list().await else { return };
 
     for app in apps {
-        if rest == app.name && app.compose_content.is_none() {
+        if rest == app.slug() && app.compose_content.is_none() {
             let _ = repo.update_status(&app.id, new_status).await;
             return;
         }

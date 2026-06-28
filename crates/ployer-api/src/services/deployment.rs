@@ -51,7 +51,7 @@ impl DeploymentService {
         let deployment_repo = DeploymentRepository::new(self.db.clone());
 
         // Fixed image tag per app — always overwrite :latest
-        let image_tag = format!("ployer-{}:latest", application.name);
+        let image_tag = format!("ployer-{}:latest", application.slug());
         let deployment = deployment_repo
             .create(
                 &application.id,
@@ -211,7 +211,7 @@ impl DeploymentService {
         // Step 3: Remove any existing containers for this app (avoids port conflicts)
         deployment_repo.update_status(&deployment_id, DeploymentStatus::Deploying).await?;
 
-        let container_name = format!("ployer-{}", application.name);
+        let container_name = format!("ployer-{}", application.slug());
 
         // Force-remove by DB-tracked container ID (covers any naming scheme)
         if let Ok(Some(prev)) = deployment_repo.get_latest_running(&application.id).await {
@@ -299,7 +299,7 @@ impl DeploymentService {
         // For MVP, skip actual Caddy configuration (would need Caddy running)
         // Just create the domain record
         send_log("Configuring domain...".to_string()).await;
-        let subdomain = format!("{}.{}", application.name, base_domain);
+        let subdomain = format!("{}.{}", application.slug(), base_domain);
 
         let domain_repo = DomainRepository::new(db.clone());
 
@@ -354,7 +354,7 @@ impl DeploymentService {
             .ok_or_else(|| anyhow!("application has no compose_content"))?;
 
         let deployment_repo = DeploymentRepository::new(self.db.clone());
-        let image_tag = format!("ployer-{}:compose", application.name);
+        let image_tag = format!("ployer-{}:compose", application.slug());
         let deployment = deployment_repo
             .create(
                 &application.id,
@@ -462,7 +462,7 @@ impl DeploymentService {
             }
 
             // Step 4: remove any existing container with the same name.
-            let container_name = format!("ployer-{}-{}", application.name, service_name);
+            let container_name = format!("ployer-{}-{}", application.slug(), service_name);
             if docker.remove_container(&container_name, true).await.is_ok() {
                 send_log(format!("Removed existing container '{}'", container_name)).await;
             }

@@ -89,6 +89,40 @@ impl AppStatus {
     }
 }
 
+impl Application {
+    /// Docker- and DNS-safe form of the application name.
+    ///
+    /// Docker repository names and DNS labels only allow lowercase
+    /// `[a-z0-9-]`, so derive a slug used for image tags, container names and
+    /// subdomains. Without this, a name like `SLW Homes` produces an invalid
+    /// reference such as `ployer-SLW Homes`.
+    pub fn slug(&self) -> String {
+        slugify(&self.name)
+    }
+}
+
+/// Lowercase, replace any run of non-`[a-z0-9]` with a single `-`, trim
+/// leading/trailing `-`. Falls back to `app` if nothing usable remains.
+pub fn slugify(name: &str) -> String {
+    let mut slug = String::with_capacity(name.len());
+    let mut prev_dash = false;
+    for c in name.chars() {
+        if c.is_ascii_alphanumeric() {
+            slug.push(c.to_ascii_lowercase());
+            prev_dash = false;
+        } else if !prev_dash {
+            slug.push('-');
+            prev_dash = true;
+        }
+    }
+    let trimmed = slug.trim_matches('-');
+    if trimmed.is_empty() {
+        "app".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
 #[cfg(test)]
 #[path = "application_tests.rs"]
 mod tests;
