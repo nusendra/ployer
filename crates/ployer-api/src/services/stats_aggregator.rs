@@ -3,7 +3,7 @@ use ployer_docker::DockerClient;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 pub fn spawn_stats_aggregator(db: SqlitePool, docker: Option<Arc<DockerClient>>) {
     tokio::spawn(async move {
@@ -15,6 +15,9 @@ pub fn spawn_stats_aggregator(db: SqlitePool, docker: Option<Arc<DockerClient>>)
         loop {
             tokio::select! {
                 _ = stats_interval.tick() => {
+                    // Warn before the host disk fills — a full disk takes down
+                    // Ployer's own SQLite database (disk I/O errors → 500s).
+                    check_host_disk();
                     if let Some(ref docker_client) = docker {
                         if let Err(e) = collect_container_stats(&db, docker_client).await {
                             warn!("Stats collection error: {}", e);
@@ -85,6 +88,42 @@ async fn collect_container_stats(db: &SqlitePool, docker: &DockerClient) -> anyh
     }
 
     Ok(())
+}
+
+/// Check the root filesystem and log a warning (or error) as it approaches
+/// full. A full disk is what previously broke Ployer's database, so surfacing
+/// it early gives the operator a chance to act before everything 500s.
+fn check_host_disk() {
+    use sysinfo::Disks;
+
+    let disks = Disks::new_with_refreshed_list();
+    let Some(root) = disks
+        .list()
+        .iter()
+        .find(|d| d.mount_point() == std::path::Path::new("/"))
+    else {
+        return;
+    };
+
+    let total = root.total_space();
+    if total == 0 {
+        return;
+    }
+    let available = root.available_space();
+    let used_pct = (total - available) as f64 / total as f64 * 100.0;
+    let free_mb = available / 1_048_576;
+
+    if used_pct >= 95.0 {
+        error!(
+            "Host disk critically full: {:.1}% used on / ({} MB free). A full disk causes database I/O errors — free space now (prune Docker images, rotate app logs).",
+            used_pct, free_mb
+        );
+    } else if used_pct >= 85.0 {
+        warn!(
+            "Host disk usage high: {:.1}% used on / ({} MB free).",
+            used_pct, free_mb
+        );
+    }
 }
 
 async fn cleanup_old_stats(db: &SqlitePool) -> anyhow::Result<()> {

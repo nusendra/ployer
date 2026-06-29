@@ -5,8 +5,8 @@ use bollard::container::{
 };
 use bollard::image::BuildImageOptions;
 use bollard::models::{
-    ContainerInspectResponse, ContainerSummary, HostConfig, PortBinding, RestartPolicy,
-    RestartPolicyNameEnum,
+    ContainerInspectResponse, ContainerSummary, HostConfig, HostConfigLogConfig, PortBinding,
+    RestartPolicy, RestartPolicyNameEnum,
 };
 use bollard::network::{CreateNetworkOptions, InspectNetworkOptions, ListNetworksOptions};
 use bollard::volume::{CreateVolumeOptions, ListVolumesOptions, RemoveVolumeOptions};
@@ -19,6 +19,13 @@ use std::path::Path;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
 use tar::Builder;
+
+/// Default Docker json-file log rotation applied to every container Ployer
+/// creates. Caps a single container's captured stdout/stderr at
+/// max-size * max-file (10m * 5 = 50MB) so a chatty app cannot fill the host
+/// disk and take down Ployer's own database.
+const DEFAULT_LOG_MAX_SIZE: &str = "10m";
+const DEFAULT_LOG_MAX_FILE: &str = "5";
 
 pub struct DockerClient {
     client: Docker,
@@ -289,9 +296,20 @@ impl DockerClient {
             _ => RestartPolicyNameEnum::UNLESS_STOPPED,
         };
 
+        // Cap captured stdout/stderr logs so no single container can fill the host
+        // disk (which would break Ployer's own SQLite database).
+        let log_config = Some(HostConfigLogConfig {
+            typ: Some("json-file".to_string()),
+            config: Some(HashMap::from([
+                ("max-size".to_string(), DEFAULT_LOG_MAX_SIZE.to_string()),
+                ("max-file".to_string(), DEFAULT_LOG_MAX_FILE.to_string()),
+            ])),
+        });
+
         let host_config = Some(HostConfig {
             port_bindings: Some(port_bindings),
             binds,
+            log_config,
             network_mode: config.network,
             nano_cpus,
             memory,

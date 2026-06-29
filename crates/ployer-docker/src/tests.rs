@@ -11,6 +11,7 @@ fn make_config(cpu: Option<f64>, mem_mb: Option<i64>) -> ContainerConfig {
         cmd: None,
         cpu_limit: cpu,
         memory_limit: mem_mb,
+        restart: None,
     }
 }
 
