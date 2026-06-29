@@ -220,6 +220,27 @@ impl DockerClient {
         Ok(self.client.inspect_container(id, Some(options)).await?)
     }
 
+    /// Return the host port Docker assigned to a container's `container_port`.
+    ///
+    /// When a container is created with an empty host port, Docker picks a free
+    /// ephemeral port. This reads it back from NetworkSettings so the reverse
+    /// proxy can be pointed at `localhost:<host_port>`.
+    pub async fn get_published_host_port(
+        &self,
+        id: &str,
+        container_port: u16,
+    ) -> Result<Option<u16>> {
+        let inspect = self.inspect_container(id).await?;
+        let key = format!("{}/tcp", container_port);
+        let host_port = inspect
+            .network_settings
+            .and_then(|ns| ns.ports)
+            .and_then(|ports| ports.get(&key).cloned().flatten())
+            .and_then(|bindings| bindings.into_iter().find_map(|b| b.host_port))
+            .and_then(|hp| hp.parse::<u16>().ok());
+        Ok(host_port)
+    }
+
     // Create a new container
     pub async fn create_container(&self, config: ContainerConfig) -> Result<String> {
         let name = config.name.clone();

@@ -231,15 +231,10 @@ impl DeploymentService {
             Err(_) => {} // doesn't exist — that's fine
         }
 
-        // Kill any remaining containers still bound to the app's port
-        if let Some(port) = effective_port {
-            match docker.remove_containers_by_port(port).await {
-                Ok(removed) if !removed.is_empty() => {
-                    send_log(format!("Freed port {} (removed: {})", port, removed.join(", "))).await;
-                }
-                _ => {}
-            }
-        }
+        // Note: we no longer kill "containers bound to this port" — app containers
+        // are published on auto-assigned ephemeral host ports, so there is no
+        // fixed host port to free, and matching on the container port (e.g. 80)
+        // would wrongly target the reverse proxy.
 
         // Step 4: Create and start new container with fixed name
         send_log("Creating container...".to_string()).await;
@@ -273,7 +268,11 @@ impl DeploymentService {
             env: env_vars,
             ports: effective_port.map(|p| {
                 let mut ports = HashMap::new();
-                ports.insert(format!("{}/tcp", p), p.to_string());
+                // Empty host port => Docker assigns a free ephemeral port. Never
+                // bind the container's own port (e.g. 80) on the host, or apps
+                // that EXPOSE 80 collide with each other and with the reverse
+                // proxy. Caddy is pointed at the assigned port after start.
+                ports.insert(format!("{}/tcp", p), String::new());
                 ports
             }),
             volumes: None,
@@ -307,12 +306,27 @@ impl DeploymentService {
         // wiped on reinstall even if the domain record already exists in the DB.
         if let Some(ref caddy_client) = caddy {
             if let Some(port) = effective_port {
-                let upstream = format!("localhost:{}", port);
-                if let Err(e) = caddy_client.persist_route(&subdomain, &upstream) {
-                    warn!("Failed to persist Caddy route: {}", e);
-                    send_log(format!("Warning: Caddy route persistence failed: {}", e)).await;
-                } else {
-                    send_log(format!("Caddy configured: http://{}", subdomain)).await;
+                // Resolve the ephemeral host port Docker assigned, then route the
+                // subdomain at it. Caddy runs on the host and reaches the app via
+                // localhost:<host_port>.
+                match docker.get_published_host_port(&container_id, port).await {
+                    Ok(Some(host_port)) => {
+                        let upstream = format!("localhost:{}", host_port);
+                        if let Err(e) = caddy_client.persist_route(&subdomain, &upstream) {
+                            warn!("Failed to persist Caddy route: {}", e);
+                            send_log(format!("Warning: Caddy route persistence failed: {}", e)).await;
+                        } else {
+                            send_log(format!("Caddy configured: http://{} -> {}", subdomain, upstream)).await;
+                        }
+                    }
+                    Ok(None) => {
+                        warn!("No published host port found for container port {}", port);
+                        send_log(format!("Warning: could not determine host port for container port {} — skipping Caddy route", port)).await;
+                    }
+                    Err(e) => {
+                        warn!("Failed to inspect container for host port: {}", e);
+                        send_log(format!("Warning: could not read host port: {} — skipping Caddy route", e)).await;
+                    }
                 }
             }
         }
