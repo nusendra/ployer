@@ -38,6 +38,22 @@ fn persist_route_does_not_duplicate_existing_domain() {
 }
 
 #[test]
+fn persist_route_updates_upstream_on_redeploy() {
+    let (dir, client) = make_client("update-upstream");
+
+    // First deploy assigns one ephemeral port, a redeploy assigns another.
+    client.persist_route("app.example.com", "localhost:32768").unwrap();
+    client.persist_route("app.example.com", "localhost:32771").unwrap();
+
+    let content = fs::read_to_string(client.apps_caddyfile_path()).unwrap();
+    // Stale upstream gone, current one present, domain still single.
+    assert!(!content.contains("localhost:32768"), "stale port not removed:\n{}", content);
+    assert!(content.contains("reverse_proxy localhost:32771"));
+    assert_eq!(content.matches("app.example.com").count(), 1);
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
 fn persist_route_appends_multiple_different_domains() {
     let (dir, client) = make_client("multi-domains");
 

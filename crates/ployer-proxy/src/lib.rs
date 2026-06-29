@@ -24,6 +24,31 @@ pub struct RouteInfo {
     pub ssl_status: String,
 }
 
+/// Remove the `http://<domain> { ... }` block for `domain` from an apps.caddy
+/// file, leaving all other blocks intact. Used to upsert a route so the upstream
+/// can be refreshed on redeploy. Matches the single-line `{` opener and the
+/// lone `}` closer that `persist_route` writes.
+fn remove_domain_block(content: &str, domain: &str) -> String {
+    let opener = format!("http://{} {{", domain);
+    let mut out = String::new();
+    let mut skipping = false;
+    for line in content.lines() {
+        if !skipping && line.trim_start().starts_with(&opener) {
+            skipping = true;
+            continue;
+        }
+        if skipping {
+            if line.trim() == "}" {
+                skipping = false;
+            }
+            continue;
+        }
+        out.push_str(line);
+        out.push('\n');
+    }
+    out
+}
+
 impl CaddyClient {
     pub fn new(admin_url: &str, caddyfile_path: &str) -> Self {
         info!("Caddy client configured for {}", admin_url);
@@ -43,24 +68,30 @@ impl CaddyClient {
 
     /// Write the app route to apps.caddy for persistence across restarts,
     /// then reload Caddy so the route takes effect immediately.
+    ///
+    /// The route is *upserted*: any existing block for this domain is removed
+    /// and rewritten with the current upstream. App containers are published on
+    /// ephemeral host ports that change on every deploy, so a stale route would
+    /// otherwise point at a dead port and return 502 after a redeploy.
     pub fn persist_route(&self, domain: &str, upstream: &str) -> Result<()> {
         let apps_file = self.apps_caddyfile();
 
-        // Read existing content
+        // Read existing content and drop any prior block for this domain.
         let existing = std::fs::read_to_string(&apps_file).unwrap_or_default();
+        let filtered = remove_domain_block(&existing, domain);
 
-        // Only append if this domain isn't already in the file
-        if !existing.contains(domain) {
-            // Use http:// prefix to avoid Let's Encrypt rate-limit issues on shared
-            // wildcard DNS services (nip.io, sslip.io). The main dashboard domain
-            // keeps HTTPS; app subdomains are served over plain HTTP.
-            let block = format!(
-                "\nhttp://{} {{\n    reverse_proxy {}\n}}\n",
-                domain, upstream
-            );
-            std::fs::write(&apps_file, format!("{}{}", existing, block))?;
-            info!("Persisted Caddy route for {} -> {}", domain, upstream);
+        // Use http:// prefix to avoid Let's Encrypt rate-limit issues on shared
+        // wildcard DNS services (nip.io, sslip.io). The main dashboard domain
+        // keeps HTTPS; app subdomains are served over plain HTTP.
+        let block = format!("http://{} {{\n    reverse_proxy {}\n}}\n", domain, upstream);
+        let mut content = filtered.trim_end().to_string();
+        if !content.is_empty() {
+            content.push('\n');
         }
+        content.push('\n');
+        content.push_str(&block);
+        std::fs::write(&apps_file, content)?;
+        info!("Persisted Caddy route for {} -> {}", domain, upstream);
 
         // Reload Caddy to pick up the new config
         let status = std::process::Command::new("caddy")
