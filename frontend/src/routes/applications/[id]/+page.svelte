@@ -72,6 +72,7 @@
 	// Domains
 	let appDomains = $state<any[]>([]);
 	let newDomain = $state('');
+	let newDomainWildcard = $state(false);
 	let loadingDomains = $state(false);
 
 	// Webhooks
@@ -463,9 +464,11 @@
 		try {
 			await api.post(`/applications/${appId}/domains`, {
 				domain: newDomain.trim(),
-				is_primary: appDomains.length === 0
+				is_primary: appDomains.length === 0,
+				wildcard: newDomainWildcard
 			});
 			newDomain = '';
+			newDomainWildcard = false;
 			await loadDomains();
 		} catch (e: any) {
 			error = e.message || 'Failed to add domain';
@@ -971,6 +974,10 @@
 							<input type="text" placeholder="example.com" bind:value={newDomain} class="domain-input-field" />
 							<button class="btn-primary btn-sm" onclick={addDomain}>Add Domain</button>
 						</div>
+						<label class="wildcard-toggle">
+							<input type="checkbox" bind:checked={newDomainWildcard} />
+							<span>Wildcard — also serve <code>*.{newDomain.trim() || 'example.com'}</code> (tenant subdomains). HTTPS needs a Cloudflare token in Settings.</span>
+						</label>
 
 						{#if loadingDomains}
 							<div class="loading-inline">Loading domains...</div>
@@ -987,6 +994,7 @@
 											<span class="domain-name">{domain.domain}</span>
 											<div class="domain-badges">
 												{#if domain.is_primary}<span class="badge badge-primary">Primary</span>{/if}
+												{#if domain.wildcard}<span class="badge badge-info">Wildcard</span>{/if}
 												{#if domain.ssl_active}
 													<span class="badge badge-success">SSL Active</span>
 												{:else}
@@ -1905,6 +1913,34 @@
 	.badge-warning {
 		background: rgba(234, 179, 8, 0.15);
 		color: #ca8a04;
+	}
+
+	.badge-info {
+		background: rgba(139, 92, 246, 0.15);
+		color: #8b5cf6;
+	}
+
+	.wildcard-toggle {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		margin-top: 0.6rem;
+		font-size: 0.8125rem;
+		color: var(--text-muted);
+		line-height: 1.45;
+		cursor: pointer;
+	}
+
+	.wildcard-toggle input {
+		margin-top: 0.15rem;
+		flex-shrink: 0;
+	}
+
+	.wildcard-toggle code {
+		background: var(--bg-tertiary);
+		padding: 0.05rem 0.3rem;
+		border-radius: 4px;
+		font-size: 0.85em;
 	}
 
 	.dns-instructions {
