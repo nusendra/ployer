@@ -1936,10 +1936,10 @@
 	}
 
 	.wildcard-toggle {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.5rem;
-		margin-top: 0.6rem;
+		display: block;
+		width: 100%;
+		margin-top: -0.75rem;
+		margin-bottom: 1.25rem;
 		font-size: 0.8125rem;
 		color: var(--text-muted);
 		line-height: 1.45;
@@ -1947,14 +1947,8 @@
 	}
 
 	.wildcard-toggle input {
-		margin-top: 0.15rem;
-		flex-shrink: 0;
-	}
-
-	.wildcard-toggle span {
-		flex: 1;
-		min-width: 0;
-		overflow-wrap: anywhere;
+		margin-right: 0.4rem;
+		vertical-align: middle;
 	}
 
 	.wildcard-toggle code {
@@ -1962,7 +1956,6 @@
 		padding: 0.05rem 0.3rem;
 		border-radius: 4px;
 		font-size: 0.85em;
-		overflow-wrap: anywhere;
 	}
 
 	.dns-instructions {
