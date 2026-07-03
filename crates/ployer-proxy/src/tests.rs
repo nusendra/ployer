@@ -90,6 +90,25 @@ fn wildcard_cloudflare_block_has_tls_and_apex() {
 }
 
 #[test]
+fn wildcard_block_uses_literal_token_when_set() {
+    let (dir, client) = make_client("wildcard-literal");
+    let client = client.with_cf_token(Some("cf-secret-123".to_string()));
+
+    let spec = RouteSpec {
+        domain: "slw.homes".to_string(),
+        upstream: "localhost:32772".to_string(),
+        wildcard: true,
+        tls: TlsMode::CloudflareDns,
+    };
+    client.persist_route_spec(&spec).unwrap();
+
+    let content = fs::read_to_string(client.apps_caddyfile_path()).unwrap();
+    assert!(content.contains("dns cloudflare cf-secret-123"), "content:\n{}", content);
+    assert!(!content.contains("{env.CF_API_TOKEN}"));
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
 fn tls_mode_for_picks_http_for_nip_io_and_cf_for_real_domain() {
     let (dir, client) = make_client("tls-mode");
     let client = client.with_cf_token(Some("tok".to_string()));

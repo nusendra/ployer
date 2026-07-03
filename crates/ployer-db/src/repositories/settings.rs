@@ -31,4 +31,9 @@ impl SettingsRepository {
         let val = self.get("allow_registration").await?.unwrap_or_else(|| "true".to_string());
         Ok(val == "true")
     }
+
+    /// Cloudflare API token for HTTPS wildcard certs, if configured (non-empty).
+    pub async fn cf_api_token(&self) -> Result<Option<String>> {
+        Ok(self.get("cf_api_token").await?.filter(|s| !s.trim().is_empty()))
+    }
 }

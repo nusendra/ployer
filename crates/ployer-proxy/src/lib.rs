@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
 use tracing::{info, warn};
 
 #[derive(Clone)]
@@ -11,7 +12,10 @@ pub struct CaddyClient {
     /// Cloudflare API token for DNS-01 wildcard certs. When present, real
     /// domains (not nip.io/sslip.io) are served over HTTPS with a Caddy
     /// `tls { dns cloudflare ... }` block instead of plain http://.
-    cf_api_token: Option<String>,
+    ///
+    /// Shared + interior-mutable so it can be updated at runtime (e.g. from the
+    /// settings UI) and seen by every clone of the client.
+    cf_api_token: Arc<RwLock<Option<String>>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -44,7 +48,12 @@ pub struct RouteSpec {
 
 /// Render the apps.caddy block for a route. Each block is preceded by a
 /// `# ployer-route: <domain>` marker so it can be upserted regardless of shape.
-fn render_block(spec: &RouteSpec) -> String {
+///
+/// For Cloudflare TLS the token is written literally when known (so a
+/// UI-configured token applies on a plain `caddy reload` without a service
+/// restart); otherwise it falls back to `{env.CF_API_TOKEN}` for the
+/// install-time env path.
+fn render_block(spec: &RouteSpec, cf_token: Option<&str>) -> String {
     let mut hosts: Vec<String> = Vec::new();
     match spec.tls {
         TlsMode::Http => {
@@ -64,7 +73,11 @@ fn render_block(spec: &RouteSpec) -> String {
 
     let mut block = format!("# ployer-route: {}\n{} {{\n", spec.domain, hosts.join(", "));
     if spec.tls == TlsMode::CloudflareDns {
-        block.push_str("    tls {\n        dns cloudflare {env.CF_API_TOKEN}\n    }\n");
+        let token = match cf_token {
+            Some(t) if !t.is_empty() => t,
+            _ => "{env.CF_API_TOKEN}",
+        };
+        block.push_str(&format!("    tls {{\n        dns cloudflare {}\n    }}\n", token));
     }
     block.push_str(&format!("    reverse_proxy {}\n}}\n", spec.upstream));
     block
@@ -141,14 +154,42 @@ impl CaddyClient {
             admin_url: admin_url.to_string(),
             client: reqwest::Client::new(),
             caddyfile_path: PathBuf::from(caddyfile_path),
-            cf_api_token: None,
+            cf_api_token: Arc::new(RwLock::new(None)),
         }
     }
 
     /// Attach a Cloudflare API token, enabling HTTPS (DNS-01) for real domains.
-    pub fn with_cf_token(mut self, token: Option<String>) -> Self {
-        self.cf_api_token = token.filter(|t| !t.trim().is_empty());
+    pub fn with_cf_token(self, token: Option<String>) -> Self {
+        self.set_cf_token(token);
         self
+    }
+
+    /// Update the Cloudflare token at runtime. Empty/blank clears it. Shared
+    /// across all clones of this client.
+    pub fn set_cf_token(&self, token: Option<String>) {
+        let cleaned = token.filter(|t| !t.trim().is_empty());
+        if let Ok(mut guard) = self.cf_api_token.write() {
+            *guard = cleaned;
+        }
+    }
+
+    /// Current token, if configured.
+    pub fn cf_token(&self) -> Option<String> {
+        self.cf_api_token.read().ok().and_then(|g| g.clone())
+    }
+
+    /// Whether a Cloudflare token is configured.
+    pub fn cf_token_is_set(&self) -> bool {
+        self.cf_token().is_some()
+    }
+
+    /// Whether the running Caddy binary has the Cloudflare DNS provider compiled
+    /// in. Without it, HTTPS wildcard certs cannot be issued.
+    pub fn cloudflare_plugin_available(&self) -> bool {
+        match std::process::Command::new("caddy").arg("list-modules").output() {
+            Ok(out) => String::from_utf8_lossy(&out.stdout).contains("dns.providers.cloudflare"),
+            Err(_) => false,
+        }
     }
 
     /// Choose the TLS mode for a domain. Shared wildcard-DNS services stay on
@@ -157,7 +198,7 @@ impl CaddyClient {
     pub fn tls_mode_for(&self, domain: &str) -> TlsMode {
         let d = domain.trim_end_matches('.');
         let shared_ip_dns = d.ends_with(".nip.io") || d.ends_with(".sslip.io");
-        if !shared_ip_dns && self.cf_api_token.is_some() {
+        if !shared_ip_dns && self.cf_token_is_set() {
             TlsMode::CloudflareDns
         } else {
             TlsMode::Http
@@ -197,7 +238,7 @@ impl CaddyClient {
         let existing = std::fs::read_to_string(&apps_file).unwrap_or_default();
         let filtered = remove_domain_block(&existing, &spec.domain);
 
-        let block = render_block(spec);
+        let block = render_block(spec, self.cf_token().as_deref());
         let mut content = filtered.trim_end().to_string();
         if !content.is_empty() {
             content.push('\n');

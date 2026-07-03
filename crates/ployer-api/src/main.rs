@@ -181,9 +181,16 @@ async fn start_server(config: AppConfig) -> Result<()> {
         }
     };
 
-    // Caddy client
+    // Caddy client. The Cloudflare token is seeded from the settings DB (set via
+    // the UI), falling back to the CF_API_TOKEN env var for install-time config.
     let caddy = CaddyClient::new(&config.caddy.admin_url, &config.caddy.caddyfile_path)
         .with_cf_token(config.caddy.cf_api_token.clone());
+    if let Ok(Some(token)) = ployer_db::repositories::SettingsRepository::new(pool.clone())
+        .cf_api_token()
+        .await
+    {
+        caddy.set_cf_token(Some(token));
+    }
 
     let addr = format!("{}:{}", config.server.host, config.server.port);
     let cors = build_cors(&config.server.allowed_origins);
