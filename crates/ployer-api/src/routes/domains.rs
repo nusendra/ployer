@@ -68,6 +68,31 @@ async fn list_domains(
     Ok(Json(ListDomainsResponse { domains }))
 }
 
+/// Normalize user-entered domains into a bare hostname. Strips a scheme
+/// (`https://`), any path/port, a leading `*.` wildcard label, surrounding
+/// whitespace and a trailing dot, and lowercases. A hostname with slashes would
+/// otherwise inject extra path segments and break the domain's REST routes.
+fn normalize_domain(input: &str) -> String {
+    let s = input.trim();
+    let s = s.strip_prefix("https://").or_else(|| s.strip_prefix("http://")).unwrap_or(s);
+    let s = s.split('/').next().unwrap_or(s); // drop any path
+    let s = s.split(':').next().unwrap_or(s); // drop any port
+    let s = s.strip_prefix("*.").unwrap_or(s); // wildcard is a separate flag
+    s.trim().trim_end_matches('.').to_lowercase()
+}
+
+/// A valid hostname: labels of [a-z0-9-] separated by dots, at least one dot.
+fn is_valid_hostname(host: &str) -> bool {
+    !host.is_empty()
+        && host.contains('.')
+        && host.split('.').all(|label| {
+            !label.is_empty()
+                && !label.starts_with('-')
+                && !label.ends_with('-')
+                && label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+        })
+}
+
 async fn add_domain(
     State(state): State<SharedState>,
     headers: HeaderMap,
@@ -76,21 +101,28 @@ async fn add_domain(
 ) -> Result<(StatusCode, Json<DomainResponse>), (StatusCode, String)> {
     extract_user_id(&headers, &state.config.auth.jwt_secret)?;
 
-    // Validate domain name
-    if req.domain.trim().is_empty() {
+    // Normalize and validate the hostname.
+    let domain_name = normalize_domain(&req.domain);
+    if domain_name.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Domain name is required".to_string()));
+    }
+    if !is_valid_hostname(&domain_name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            format!("'{}' is not a valid domain name. Enter a bare hostname like example.com.", domain_name),
+        ));
     }
 
     let repo = DomainRepository::new(state.db.clone());
 
     // Check if domain already exists
-    if let Some(_) = repo.find_by_domain(&req.domain).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))? {
+    if let Some(_) = repo.find_by_domain(&domain_name).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))? {
         return Err((StatusCode::CONFLICT, "Domain already exists".to_string()));
     }
 
     // Create domain
     let domain = repo
-        .create(&app_id, &req.domain, req.is_primary, req.wildcard)
+        .create(&app_id, &domain_name, req.is_primary, req.wildcard)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -232,4 +264,29 @@ async fn set_wildcard_domain(
 
     // The route is (re)written on the next deploy; redeploy to apply.
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_valid_hostname, normalize_domain};
+
+    #[test]
+    fn normalize_strips_scheme_path_port_and_wildcard() {
+        assert_eq!(normalize_domain("https://slw.homes"), "slw.homes");
+        assert_eq!(normalize_domain("http://SLW.Homes/login"), "slw.homes");
+        assert_eq!(normalize_domain("slw.homes:8080"), "slw.homes");
+        assert_eq!(normalize_domain("*.slw.homes"), "slw.homes");
+        assert_eq!(normalize_domain("  slw.homes.  "), "slw.homes");
+    }
+
+    #[test]
+    fn hostname_validation() {
+        assert!(is_valid_hostname("slw.homes"));
+        assert!(is_valid_hostname("a.b.example.com"));
+        assert!(!is_valid_hostname("nodot"));
+        assert!(!is_valid_hostname(""));
+        assert!(!is_valid_hostname("slw.homes/x"));
+        assert!(!is_valid_hostname("-bad.com"));
+        assert!(!is_valid_hostname("bad-.com"));
+    }
 }
