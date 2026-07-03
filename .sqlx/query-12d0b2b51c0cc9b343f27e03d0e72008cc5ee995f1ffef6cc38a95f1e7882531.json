@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT id, application_id, domain, is_primary, ssl_active, created_at\n            FROM domains\n            WHERE domain = ?\n            ",
+  "query": "\n            SELECT id, application_id, domain, is_primary, ssl_active, wildcard, created_at\n            FROM domains\n            WHERE application_id = ?\n            ORDER BY is_primary DESC, created_at ASC\n            ",
   "describe": {
     "columns": [
       {
@@ -29,8 +29,13 @@
         "type_info": "Int64"
       },
       {
-        "name": "created_at",
+        "name": "wildcard",
         "ordinal": 5,
+        "type_info": "Int64"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
         "type_info": "Text"
       }
     ],
@@ -43,8 +48,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "3175a023dd83cc5f49067d01ae2e219f6435aeb2475e12d112f185ce60c69ab9"
+  "hash": "12d0b2b51c0cc9b343f27e03d0e72008cc5ee995f1ffef6cc38a95f1e7882531"
 }

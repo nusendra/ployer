@@ -3,7 +3,7 @@ use ployer_core::models::{AppStatus, Application, Deployment, DeploymentStatus, 
 use ployer_db::repositories::{ApplicationRepository, DeploymentRepository, DomainRepository, EnvVarRepository};
 use ployer_docker::{DockerClient, ContainerConfig};
 use ployer_git::GitService;
-use ployer_proxy::CaddyClient;
+use ployer_proxy::{CaddyClient, RouteSpec};
 use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -312,11 +312,47 @@ impl DeploymentService {
                 match docker.get_published_host_port(&container_id, port).await {
                     Ok(Some(host_port)) => {
                         let upstream = format!("localhost:{}", host_port);
-                        if let Err(e) = caddy_client.persist_route(&subdomain, &upstream) {
+
+                        // Persist a route for a single domain, logging outcome.
+                        let persist = |domain: &str, wildcard: bool| {
+                            let spec = RouteSpec {
+                                domain: domain.to_string(),
+                                upstream: upstream.clone(),
+                                wildcard,
+                                tls: caddy_client.tls_mode_for(domain),
+                            };
+                            caddy_client.persist_route_spec(&spec)
+                        };
+
+                        // Auto slug subdomain (non-wildcard).
+                        if let Err(e) = persist(&subdomain, false) {
                             warn!("Failed to persist Caddy route: {}", e);
                             send_log(format!("Warning: Caddy route persistence failed: {}", e)).await;
                         } else {
-                            send_log(format!("Caddy configured: http://{} -> {}", subdomain, upstream)).await;
+                            send_log(format!("Caddy configured: {} -> {}", subdomain, upstream)).await;
+                        }
+
+                        // Re-persist every registered custom domain with the fresh
+                        // upstream port. This refreshes wildcard/HTTPS routes on
+                        // each redeploy so they never point at a dead port.
+                        match domain_repo.list_by_application(&application.id).await {
+                            Ok(domains) => {
+                                for d in domains {
+                                    if d.domain == subdomain {
+                                        continue;
+                                    }
+                                    if let Err(e) = persist(&d.domain, d.wildcard) {
+                                        warn!("Failed to persist Caddy route for {}: {}", d.domain, e);
+                                        send_log(format!("Warning: Caddy route persistence failed for {}: {}", d.domain, e)).await;
+                                    } else {
+                                        let label = if d.wildcard { format!("*.{} + {}", d.domain, d.domain) } else { d.domain.clone() };
+                                        send_log(format!("Caddy configured: {} -> {}", label, upstream)).await;
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Failed to list domains for Caddy refresh: {}", e);
+                            }
                         }
                     }
                     Ok(None) => {
@@ -333,7 +369,7 @@ impl DeploymentService {
 
         // Create domain record if it doesn't already exist
         if domain_repo.find_by_domain(&subdomain).await.ok().flatten().is_none() {
-            if let Err(e) = domain_repo.create(&application.id, &subdomain, true).await {
+            if let Err(e) = domain_repo.create(&application.id, &subdomain, true, false).await {
                 warn!("Failed to create subdomain record: {}", e);
             } else {
                 send_log(format!("Subdomain created: {}", subdomain)).await;

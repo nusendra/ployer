@@ -19,21 +19,24 @@ impl DomainRepository {
         application_id: &str,
         domain: &str,
         is_primary: bool,
+        wildcard: bool,
     ) -> Result<Domain> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now();
         let now_str = now.to_rfc3339();
         let is_primary_int = if is_primary { 1 } else { 0 };
+        let wildcard_int = if wildcard { 1 } else { 0 };
 
         sqlx::query!(
             r#"
-            INSERT INTO domains (id, application_id, domain, is_primary, ssl_active, created_at)
-            VALUES (?, ?, ?, ?, 0, ?)
+            INSERT INTO domains (id, application_id, domain, is_primary, ssl_active, wildcard, created_at)
+            VALUES (?, ?, ?, ?, 0, ?, ?)
             "#,
             id,
             application_id,
             domain,
             is_primary_int,
+            wildcard_int,
             now_str
         )
         .execute(&self.pool)
@@ -45,6 +48,7 @@ impl DomainRepository {
             domain: domain.to_string(),
             is_primary,
             ssl_active: false,
+            wildcard,
             created_at: now,
         })
     }
@@ -53,7 +57,7 @@ impl DomainRepository {
     pub async fn find_by_id(&self, id: &str) -> Result<Option<Domain>> {
         let row = sqlx::query!(
             r#"
-            SELECT id, application_id, domain, is_primary, ssl_active, created_at
+            SELECT id, application_id, domain, is_primary, ssl_active, wildcard, created_at
             FROM domains
             WHERE id = ?
             "#,
@@ -68,6 +72,7 @@ impl DomainRepository {
             domain: r.domain,
             is_primary: r.is_primary != 0,
             ssl_active: r.ssl_active != 0,
+            wildcard: r.wildcard != 0,
             created_at: r.created_at.parse().unwrap(),
         }))
     }
@@ -76,7 +81,7 @@ impl DomainRepository {
     pub async fn find_by_domain(&self, domain: &str) -> Result<Option<Domain>> {
         let row = sqlx::query!(
             r#"
-            SELECT id, application_id, domain, is_primary, ssl_active, created_at
+            SELECT id, application_id, domain, is_primary, ssl_active, wildcard, created_at
             FROM domains
             WHERE domain = ?
             "#,
@@ -91,6 +96,7 @@ impl DomainRepository {
             domain: r.domain,
             is_primary: r.is_primary != 0,
             ssl_active: r.ssl_active != 0,
+            wildcard: r.wildcard != 0,
             created_at: r.created_at.parse().unwrap(),
         }))
     }
@@ -99,7 +105,7 @@ impl DomainRepository {
     pub async fn list_by_application(&self, application_id: &str) -> Result<Vec<Domain>> {
         let rows = sqlx::query!(
             r#"
-            SELECT id, application_id, domain, is_primary, ssl_active, created_at
+            SELECT id, application_id, domain, is_primary, ssl_active, wildcard, created_at
             FROM domains
             WHERE application_id = ?
             ORDER BY is_primary DESC, created_at ASC
@@ -117,6 +123,7 @@ impl DomainRepository {
                 domain: r.domain,
                 is_primary: r.is_primary != 0,
                 ssl_active: r.ssl_active != 0,
+                wildcard: r.wildcard != 0,
                 created_at: r.created_at.parse().unwrap(),
             })
             .collect())

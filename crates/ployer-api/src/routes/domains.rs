@@ -26,6 +26,11 @@ struct AddDomainRequest {
     domain: String,
     #[serde(default)]
     is_primary: bool,
+    /// Serve as a wildcard (`*.<domain>`) plus the apex, for tenant subdomains.
+    /// The route (with HTTPS if a Cloudflare token is configured) is applied on
+    /// the next deploy.
+    #[serde(default)]
+    wildcard: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -84,13 +89,12 @@ async fn add_domain(
 
     // Create domain
     let domain = repo
-        .create(&app_id, &req.domain, req.is_primary)
+        .create(&app_id, &req.domain, req.is_primary, req.wildcard)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // TODO: Configure Caddy reverse proxy
-    // For now, we'll skip Caddy configuration until we have container info
-    // This will be handled in the deployment service
+    // Caddy route is written by the deployment service on the next deploy,
+    // where the running container's host port is known. Redeploy to apply.
 
     Ok((StatusCode::CREATED, Json(DomainResponse { domain })))
 }

@@ -8,6 +8,10 @@ pub struct CaddyClient {
     admin_url: String,
     client: reqwest::Client,
     caddyfile_path: PathBuf,
+    /// Cloudflare API token for DNS-01 wildcard certs. When present, real
+    /// domains (not nip.io/sslip.io) are served over HTTPS with a Caddy
+    /// `tls { dns cloudflare ... }` block instead of plain http://.
+    cf_api_token: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -17,6 +21,55 @@ pub struct ReverseProxyConfig {
     pub enable_https: bool,
 }
 
+/// How a route terminates TLS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TlsMode {
+    /// Plain HTTP (no cert). Used for shared wildcard-DNS services like
+    /// nip.io/sslip.io where per-host Let's Encrypt hits rate limits.
+    Http,
+    /// HTTPS via Let's Encrypt DNS-01 using the Cloudflare provider. Works for
+    /// wildcard certs (`*.example.com`) which HTTP-01 cannot issue.
+    CloudflareDns,
+}
+
+/// A single Caddy route to persist.
+#[derive(Debug, Clone)]
+pub struct RouteSpec {
+    pub domain: String,
+    pub upstream: String,
+    /// Also serve `*.<domain>` (tenant subdomains) alongside the apex.
+    pub wildcard: bool,
+    pub tls: TlsMode,
+}
+
+/// Render the apps.caddy block for a route. Each block is preceded by a
+/// `# ployer-route: <domain>` marker so it can be upserted regardless of shape.
+fn render_block(spec: &RouteSpec) -> String {
+    let mut hosts: Vec<String> = Vec::new();
+    match spec.tls {
+        TlsMode::Http => {
+            // http:// prefix keeps Caddy from auto-upgrading to HTTPS.
+            if spec.wildcard {
+                hosts.push(format!("http://*.{}", spec.domain));
+            }
+            hosts.push(format!("http://{}", spec.domain));
+        }
+        TlsMode::CloudflareDns => {
+            if spec.wildcard {
+                hosts.push(format!("*.{}", spec.domain));
+            }
+            hosts.push(spec.domain.clone());
+        }
+    }
+
+    let mut block = format!("# ployer-route: {}\n{} {{\n", spec.domain, hosts.join(", "));
+    if spec.tls == TlsMode::CloudflareDns {
+        block.push_str("    tls {\n        dns cloudflare {env.CF_API_TOKEN}\n    }\n");
+    }
+    block.push_str(&format!("    reverse_proxy {}\n}}\n", spec.upstream));
+    block
+}
+
 #[derive(Debug, Deserialize)]
 pub struct RouteInfo {
     pub domain: String,
@@ -24,25 +77,57 @@ pub struct RouteInfo {
     pub ssl_status: String,
 }
 
-/// Remove the `http://<domain> { ... }` block for `domain` from an apps.caddy
-/// file, leaving all other blocks intact. Used to upsert a route so the upstream
-/// can be refreshed on redeploy. Matches the single-line `{` opener and the
-/// lone `}` closer that `persist_route` writes.
+/// Remove any existing block for `domain` from an apps.caddy file, leaving all
+/// other blocks intact. Used to upsert a route so the upstream can be refreshed
+/// on redeploy.
+///
+/// Handles two shapes:
+///   * Marker blocks written by the current code: a `# ployer-route: <domain>`
+///     line followed by a block whose braces may nest (e.g. a `tls { ... }`
+///     directive). Removal is brace-balanced.
+///   * Legacy blocks written by older versions: a single-line `http://<domain> {`
+///     opener closed by a lone `}` line, with no marker.
 fn remove_domain_block(content: &str, domain: &str) -> String {
-    let opener = format!("http://{} {{", domain);
+    let marker = format!("# ployer-route: {}", domain);
+    let legacy_opener = format!("http://{} {{", domain);
     let mut out = String::new();
-    let mut skipping = false;
-    for line in content.lines() {
-        if !skipping && line.trim_start().starts_with(&opener) {
-            skipping = true;
-            continue;
-        }
-        if skipping {
-            if line.trim() == "}" {
-                skipping = false;
+    let mut lines = content.lines();
+
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim();
+
+        // Marker block: skip the marker and the following brace-balanced block.
+        if trimmed == marker {
+            let mut depth: i32 = 0;
+            let mut opened = false;
+            for bl in lines.by_ref() {
+                for c in bl.chars() {
+                    match c {
+                        '{' => {
+                            depth += 1;
+                            opened = true;
+                        }
+                        '}' => depth -= 1,
+                        _ => {}
+                    }
+                }
+                if opened && depth <= 0 {
+                    break;
+                }
             }
             continue;
         }
+
+        // Legacy block: single-line opener closed by a lone `}`.
+        if line.trim_start().starts_with(&legacy_opener) {
+            for bl in lines.by_ref() {
+                if bl.trim() == "}" {
+                    break;
+                }
+            }
+            continue;
+        }
+
         out.push_str(line);
         out.push('\n');
     }
@@ -56,6 +141,26 @@ impl CaddyClient {
             admin_url: admin_url.to_string(),
             client: reqwest::Client::new(),
             caddyfile_path: PathBuf::from(caddyfile_path),
+            cf_api_token: None,
+        }
+    }
+
+    /// Attach a Cloudflare API token, enabling HTTPS (DNS-01) for real domains.
+    pub fn with_cf_token(mut self, token: Option<String>) -> Self {
+        self.cf_api_token = token.filter(|t| !t.trim().is_empty());
+        self
+    }
+
+    /// Choose the TLS mode for a domain. Shared wildcard-DNS services stay on
+    /// plain HTTP (LE rate limits); real domains use Cloudflare DNS-01 when a
+    /// token is configured, otherwise fall back to HTTP.
+    pub fn tls_mode_for(&self, domain: &str) -> TlsMode {
+        let d = domain.trim_end_matches('.');
+        let shared_ip_dns = d.ends_with(".nip.io") || d.ends_with(".sslip.io");
+        if !shared_ip_dns && self.cf_api_token.is_some() {
+            TlsMode::CloudflareDns
+        } else {
+            TlsMode::Http
         }
     }
 
@@ -66,34 +171,8 @@ impl CaddyClient {
             .join("apps.caddy")
     }
 
-    /// Write the app route to apps.caddy for persistence across restarts,
-    /// then reload Caddy so the route takes effect immediately.
-    ///
-    /// The route is *upserted*: any existing block for this domain is removed
-    /// and rewritten with the current upstream. App containers are published on
-    /// ephemeral host ports that change on every deploy, so a stale route would
-    /// otherwise point at a dead port and return 502 after a redeploy.
-    pub fn persist_route(&self, domain: &str, upstream: &str) -> Result<()> {
-        let apps_file = self.apps_caddyfile();
-
-        // Read existing content and drop any prior block for this domain.
-        let existing = std::fs::read_to_string(&apps_file).unwrap_or_default();
-        let filtered = remove_domain_block(&existing, domain);
-
-        // Use http:// prefix to avoid Let's Encrypt rate-limit issues on shared
-        // wildcard DNS services (nip.io, sslip.io). The main dashboard domain
-        // keeps HTTPS; app subdomains are served over plain HTTP.
-        let block = format!("http://{} {{\n    reverse_proxy {}\n}}\n", domain, upstream);
-        let mut content = filtered.trim_end().to_string();
-        if !content.is_empty() {
-            content.push('\n');
-        }
-        content.push('\n');
-        content.push_str(&block);
-        std::fs::write(&apps_file, content)?;
-        info!("Persisted Caddy route for {} -> {}", domain, upstream);
-
-        // Reload Caddy to pick up the new config
+    /// Reload Caddy so config changes take effect immediately.
+    fn reload(&self) {
         let status = std::process::Command::new("caddy")
             .args(["reload", "--config", self.caddyfile_path.to_str().unwrap_or("/opt/ployer/Caddyfile")])
             .status();
@@ -103,8 +182,46 @@ impl CaddyClient {
             Ok(s) => warn!("Caddy reload exited with status {}", s),
             Err(e) => warn!("Failed to run caddy reload: {}", e),
         }
+    }
 
+    /// Upsert a route into apps.caddy and reload Caddy.
+    ///
+    /// Any existing block for this domain is removed and rewritten with the
+    /// current upstream. App containers are published on ephemeral host ports
+    /// that change on every deploy, so a stale route would otherwise point at a
+    /// dead port and return 502 after a redeploy.
+    pub fn persist_route_spec(&self, spec: &RouteSpec) -> Result<()> {
+        let apps_file = self.apps_caddyfile();
+
+        // Read existing content and drop any prior block for this domain.
+        let existing = std::fs::read_to_string(&apps_file).unwrap_or_default();
+        let filtered = remove_domain_block(&existing, &spec.domain);
+
+        let block = render_block(spec);
+        let mut content = filtered.trim_end().to_string();
+        if !content.is_empty() {
+            content.push('\n');
+        }
+        content.push('\n');
+        content.push_str(&block);
+        std::fs::write(&apps_file, content)?;
+        info!(
+            "Persisted Caddy route for {} -> {} (wildcard={}, tls={:?})",
+            spec.domain, spec.upstream, spec.wildcard, spec.tls
+        );
+
+        self.reload();
         Ok(())
+    }
+
+    /// Convenience: persist a plain HTTP, non-wildcard route.
+    pub fn persist_route(&self, domain: &str, upstream: &str) -> Result<()> {
+        self.persist_route_spec(&RouteSpec {
+            domain: domain.to_string(),
+            upstream: upstream.to_string(),
+            wildcard: false,
+            tls: TlsMode::Http,
+        })
     }
 
     pub async fn ping(&self) -> Result<bool> {

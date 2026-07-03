@@ -294,7 +294,7 @@ async fn domain_create_and_find_by_domain() {
     let app = app_repo.create("dom-app", &server_id, None, "main", BuildStrategy::Dockerfile, None, None, false, None, None).await.unwrap();
 
     let domain_repo = DomainRepository::new(pool);
-    domain_repo.create(&app.id, "myapp.example.com", true).await.unwrap();
+    domain_repo.create(&app.id, "myapp.example.com", true, false).await.unwrap();
 
     let found = domain_repo.find_by_domain("myapp.example.com").await.unwrap();
     assert!(found.is_some());
@@ -309,11 +309,14 @@ async fn domain_list_by_application() {
     let app = app_repo.create("dom-app2", &server_id, None, "main", BuildStrategy::Dockerfile, None, None, false, None, None).await.unwrap();
 
     let domain_repo = DomainRepository::new(pool);
-    domain_repo.create(&app.id, "app1.example.com", true).await.unwrap();
-    domain_repo.create(&app.id, "app2.example.com", false).await.unwrap();
+    domain_repo.create(&app.id, "app1.example.com", true, false).await.unwrap();
+    domain_repo.create(&app.id, "app2.example.com", false, true).await.unwrap();
 
     let domains = domain_repo.list_by_application(&app.id).await.unwrap();
     assert_eq!(domains.len(), 2);
+    // wildcard flag round-trips
+    let w = domain_repo.find_by_domain("app2.example.com").await.unwrap().unwrap();
+    assert!(w.wildcard);
 }
 
 // ── DeployKey Repository ──────────────────────────────────────────────────

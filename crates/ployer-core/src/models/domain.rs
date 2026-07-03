@@ -8,5 +8,8 @@ pub struct Domain {
     pub domain: String,
     pub is_primary: bool,
     pub ssl_active: bool,
+    /// Serve as a wildcard (*.<domain>) plus the apex, for tenant subdomains.
+    #[serde(default)]
+    pub wildcard: bool,
     pub created_at: DateTime<Utc>,
 }

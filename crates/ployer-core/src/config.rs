@@ -76,6 +76,10 @@ impl Default for TemplatesConfig {
 pub struct CaddyConfig {
     pub admin_url: String,
     pub caddyfile_path: String,
+    /// Cloudflare API token for DNS-01 wildcard certificates. When set, real
+    /// custom domains are served over HTTPS instead of plain HTTP.
+    #[serde(default)]
+    pub cf_api_token: Option<String>,
 }
 
 impl Default for AppConfig {
@@ -101,6 +105,7 @@ impl Default for AppConfig {
             caddy: CaddyConfig {
                 admin_url: "http://localhost:2019".to_string(),
                 caddyfile_path: "/opt/ployer/Caddyfile".to_string(),
+                cf_api_token: None,
             },
             templates: TemplatesConfig::default(),
         }
@@ -128,6 +133,7 @@ impl AppConfig {
         if let Ok(v) = std::env::var("PLOYER_DOCKER_SOCKET")   { cfg.docker.socket_path = v; }
         if let Ok(v) = std::env::var("PLOYER_CADDY_URL")        { cfg.caddy.admin_url = v; }
         if let Ok(v) = std::env::var("PLOYER_CADDYFILE")        { cfg.caddy.caddyfile_path = v; }
+        if let Ok(v) = std::env::var("CF_API_TOKEN")            { if !v.trim().is_empty() { cfg.caddy.cf_api_token = Some(v); } }
         if let Ok(v) = std::env::var("PLOYER_TEMPLATES_URL")    { cfg.templates.registry_url = v; }
         if let Ok(v) = std::env::var("PLOYER_TEMPLATES_CACHE_DIR") { cfg.templates.cache_dir = v; }
         if let Ok(v) = std::env::var("PLOYER_TEMPLATES_INDEX_TTL_SECONDS") { if let Ok(s) = v.parse() { cfg.templates.index_ttl_seconds = s; } }

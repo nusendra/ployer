@@ -254,6 +254,18 @@ prompt_config() {
   log "Dashboard will be at: ${PUBLIC_URL}"
 }
 
+# Resolve the Cloudflare API token from the install environment or a previous
+# install. Enables HTTPS wildcard certs (DNS-01) for real custom domains.
+resolve_cf_token() {
+  if [[ -n "${CF_API_TOKEN:-}" ]]; then
+    printf '%s' "${CF_API_TOKEN}"
+    return
+  fi
+  if [[ -f "${PLOYER_DIR}/ployer.env" ]]; then
+    grep "^CF_API_TOKEN=" "${PLOYER_DIR}/ployer.env" 2>/dev/null | cut -d'=' -f2- || true
+  fi
+}
+
 write_config() {
   local env_file="${PLOYER_DIR}/ployer.env"
 
@@ -263,6 +275,10 @@ write_config() {
     jwt_secret=$(grep "^PLOYER_JWT_SECRET=" "$env_file" 2>/dev/null | cut -d'=' -f2- || true)
   fi
   [[ -z "$jwt_secret" ]] && jwt_secret=$(generate_secret)
+
+  # Preserve the Cloudflare token across upgrades (read before rewriting).
+  local cf_token
+  cf_token=$(resolve_cf_token)
 
   cat > "$env_file" <<EOF
 PLOYER_HOST=0.0.0.0
@@ -279,6 +295,9 @@ PLOYER_CADDYFILE=${PLOYER_DIR}/Caddyfile
 FRONTEND_DIR=${PLOYER_DIR}/public
 EOF
 
+  # Cloudflare token for HTTPS wildcard custom domains (optional).
+  [[ -n "$cf_token" ]] && echo "CF_API_TOKEN=${cf_token}" >> "$env_file"
+
   chmod 600 "$env_file"
   log "Config written: ${env_file}"
 }
@@ -286,15 +305,34 @@ EOF
 # ── Caddy (reverse proxy) ─────────────────────
 
 install_caddy() {
+  local caddy_arch="amd64"
+  [[ "$BINARY_ARCH" == "arm64" ]] && caddy_arch="arm64"
+
+  # HTTPS wildcard custom domains need the Cloudflare DNS provider compiled in.
+  local need_cloudflare=0
+  [[ -n "$(resolve_cf_token)" ]] && need_cloudflare=1
+
   if command -v caddy &>/dev/null; then
-    log "Caddy already installed: $(caddy version | head -1)"
-    return
+    # Already fine unless we need the Cloudflare plugin and it's missing.
+    if [[ "$need_cloudflare" == "0" ]] || caddy list-modules 2>/dev/null | grep -q 'dns.providers.cloudflare'; then
+      log "Caddy already installed: $(caddy version | head -1)"
+      return
+    fi
+    info "Existing Caddy lacks the Cloudflare DNS plugin — installing a plugin build..."
   fi
 
   step "Installing Caddy"
 
-  local caddy_arch="amd64"
-  [[ "$BINARY_ARCH" == "arm64" ]] && caddy_arch="arm64"
+  if [[ "$need_cloudflare" == "1" ]]; then
+    # Prebuilt binary with the Cloudflare DNS provider — no Go toolchain needed.
+    local caddy_url="https://caddyserver.com/api/download?os=linux&arch=${caddy_arch}&p=github.com/caddy-dns/cloudflare"
+    info "Downloading Caddy with Cloudflare DNS plugin..."
+    curl -fsSL "$caddy_url" -o /usr/local/bin/caddy \
+      || error "Failed to download Caddy (cloudflare) from ${caddy_url}"
+    chmod +x /usr/local/bin/caddy
+    log "Caddy (with Cloudflare DNS plugin) installed"
+    return
+  fi
 
   info "Fetching latest Caddy release..."
   local caddy_version
@@ -383,6 +421,9 @@ After=network.target
 [Service]
 Type=simple
 User=root
+# Loads CF_API_TOKEN (if set) so Caddy can resolve {env.CF_API_TOKEN} for
+# Cloudflare DNS-01 wildcard certs. Optional — the leading '-' tolerates absence.
+EnvironmentFile=-${PLOYER_DIR}/ployer.env
 ExecStart=/usr/local/bin/caddy run --config ${PLOYER_DIR}/Caddyfile
 ExecReload=/usr/local/bin/caddy reload --config ${PLOYER_DIR}/Caddyfile
 Restart=on-failure
