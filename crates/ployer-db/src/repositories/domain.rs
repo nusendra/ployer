@@ -144,6 +144,19 @@ impl DomainRepository {
         Ok(())
     }
 
+    /// Toggle the wildcard flag for a domain.
+    pub async fn set_wildcard(&self, id: &str, wildcard: bool) -> Result<()> {
+        let wildcard_int = if wildcard { 1 } else { 0 };
+        sqlx::query!(
+            "UPDATE domains SET wildcard = ? WHERE id = ?",
+            wildcard_int,
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
     /// Set a domain as primary (and unset others for the same app)
     pub async fn set_primary(&self, id: &str) -> Result<()> {
         // First, get the application_id for this domain

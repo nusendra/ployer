@@ -475,6 +475,18 @@
 		}
 	}
 
+	async function toggleWildcard(domain: string, current: boolean) {
+		error = '';
+		try {
+			await api.post(`/applications/${appId}/domains/${domain}/wildcard`, {
+				wildcard: !current
+			});
+			await loadDomains();
+		} catch (e: any) {
+			error = e.message || 'Failed to update wildcard';
+		}
+	}
+
 	async function removeDomain(domain: string) {
 		showConfirm(`Remove domain "${domain}"?`, async () => {
 			error = '';
@@ -976,7 +988,7 @@
 						</div>
 						<label class="wildcard-toggle">
 							<input type="checkbox" bind:checked={newDomainWildcard} />
-							<span>Wildcard — also serve <code>*.{newDomain.trim() || 'example.com'}</code> (tenant subdomains). HTTPS needs a Cloudflare token in Settings.</span>
+							<span>Wildcard — also serve <code>*.{newDomain.trim() || 'example.com'}</code> (tenant subdomains). Applied when you click Add Domain. HTTPS needs a Cloudflare token in Settings.</span>
 						</label>
 
 						{#if loadingDomains}
@@ -1006,6 +1018,9 @@
 											{#if !domain.is_primary}
 												<button class="btn-sm-ghost" onclick={() => setPrimaryDomain(domain.domain)}>Set Primary</button>
 											{/if}
+											<button class="btn-sm-ghost" onclick={() => toggleWildcard(domain.domain, domain.wildcard)}>
+												{domain.wildcard ? 'Disable Wildcard' : 'Enable Wildcard'}
+											</button>
 											{#if !domain.ssl_active}
 												<button class="btn-sm-ghost" onclick={() => verifyDomain(domain.domain)}>Verify</button>
 											{/if}
@@ -1936,11 +1951,18 @@
 		flex-shrink: 0;
 	}
 
+	.wildcard-toggle span {
+		flex: 1;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
 	.wildcard-toggle code {
 		background: var(--bg-tertiary);
 		padding: 0.05rem 0.3rem;
 		border-radius: 4px;
 		font-size: 0.85em;
+		overflow-wrap: anywhere;
 	}
 
 	.dns-instructions {

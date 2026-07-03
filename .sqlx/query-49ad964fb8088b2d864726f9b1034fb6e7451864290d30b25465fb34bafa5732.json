@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE domains SET wildcard = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "49ad964fb8088b2d864726f9b1034fb6e7451864290d30b25465fb34bafa5732"
+}

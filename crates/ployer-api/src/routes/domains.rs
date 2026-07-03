@@ -17,6 +17,7 @@ pub fn router() -> Router<SharedState> {
         .route("/applications/:app_id/domains/:domain", delete(remove_domain))
         .route("/applications/:app_id/domains/:domain/verify", post(verify_domain))
         .route("/applications/:app_id/domains/:domain/primary", post(set_primary_domain))
+        .route("/applications/:app_id/domains/:domain/wildcard", post(set_wildcard_domain))
 }
 
 // ===== Request/Response Types =====
@@ -197,5 +198,38 @@ async fn set_primary_domain(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Debug, Deserialize)]
+struct SetWildcardRequest {
+    wildcard: bool,
+}
+
+async fn set_wildcard_domain(
+    State(state): State<SharedState>,
+    headers: HeaderMap,
+    Path((app_id, domain)): Path<(String, String)>,
+    Json(req): Json<SetWildcardRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    extract_user_id(&headers, &state.config.auth.jwt_secret)?;
+
+    let repo = DomainRepository::new(state.db.clone());
+
+    let domain_record = repo
+        .find_by_domain(&domain)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "Domain not found".to_string()))?;
+
+    if domain_record.application_id != app_id {
+        return Err((StatusCode::FORBIDDEN, "Domain does not belong to this application".to_string()));
+    }
+
+    repo.set_wildcard(&domain_record.id, req.wildcard)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // The route is (re)written on the next deploy; redeploy to apply.
     Ok(StatusCode::NO_CONTENT)
 }
