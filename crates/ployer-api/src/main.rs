@@ -169,6 +169,12 @@ async fn start_server(config: AppConfig) -> Result<()> {
         Ok(client) => {
             if client.ping().await.unwrap_or(false) {
                 info!("Docker connected");
+                // Self-heal: upgrade any Ployer-managed container still on
+                // Docker's `no` restart policy (created by older Ployer
+                // versions) to `unless-stopped` so they survive host reboots.
+                if let Err(e) = client.reconcile_restart_policies().await {
+                    tracing::warn!("Restart-policy reconcile failed: {}", e);
+                }
                 Some(client)
             } else {
                 tracing::warn!("Docker socket found but ping failed");

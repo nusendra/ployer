@@ -2,6 +2,7 @@ use anyhow::Result;
 use bollard::container::{
     Config, CreateContainerOptions, InspectContainerOptions, ListContainersOptions,
     LogsOptions, RemoveContainerOptions, StartContainerOptions, StatsOptions, StopContainerOptions,
+    UpdateContainerOptions,
 };
 use bollard::image::BuildImageOptions;
 use bollard::models::{
@@ -26,6 +27,11 @@ use tar::Builder;
 /// disk and take down Ployer's own database.
 const DEFAULT_LOG_MAX_SIZE: &str = "10m";
 const DEFAULT_LOG_MAX_FILE: &str = "5";
+
+/// Name prefix Ployer gives every container it creates (`ployer-<slug>` for
+/// apps, `ployer-<slug>-<service>` for compose services). Used to scope
+/// maintenance operations to Ployer-managed containers only.
+const MANAGED_CONTAINER_PREFIX: &str = "ployer-";
 
 pub struct DockerClient {
     client: Docker,
@@ -355,6 +361,89 @@ impl DockerClient {
     pub async fn restart_container(&self, id: &str) -> Result<()> {
         self.client.restart_container(id, None).await?;
         Ok(())
+    }
+
+    /// Ensure every Ployer-managed container survives a host reboot.
+    ///
+    /// Ployer defaults new containers to `unless-stopped`, but containers
+    /// created by older Ployer versions (before that default existed) carry
+    /// Docker's `no` policy and stay dead after a power loss or reboot. This
+    /// scans all `ployer-`-prefixed containers and upgrades any whose policy is
+    /// missing, empty, or `no` to `unless-stopped`. It never downgrades a
+    /// container the operator deliberately set to `always`/`on-failure`.
+    ///
+    /// Runs once at startup and is idempotent — a fully reconciled host is a
+    /// no-op. Returns the number of containers upgraded.
+    pub async fn reconcile_restart_policies(&self) -> Result<usize> {
+        let containers = self
+            .client
+            .list_containers(Some(ListContainersOptions::<String> {
+                all: true,
+                ..Default::default()
+            }))
+            .await?;
+
+        let mut fixed = 0usize;
+        for c in containers {
+            let name = c
+                .names
+                .as_ref()
+                .and_then(|n| n.first())
+                .map(|n| n.trim_start_matches('/').to_string())
+                .unwrap_or_default();
+            if !name.starts_with(MANAGED_CONTAINER_PREFIX) {
+                continue;
+            }
+
+            let id = match c.id {
+                Some(id) => id,
+                None => continue,
+            };
+
+            // Read the current restart policy from the container's HostConfig.
+            let policy = self
+                .inspect_container(&id)
+                .await
+                .ok()
+                .and_then(|i| i.host_config)
+                .and_then(|h| h.restart_policy)
+                .and_then(|r| r.name);
+
+            let needs_fix = matches!(
+                policy,
+                None | Some(RestartPolicyNameEnum::EMPTY) | Some(RestartPolicyNameEnum::NO)
+            );
+            if !needs_fix {
+                continue;
+            }
+
+            let options = UpdateContainerOptions::<String> {
+                restart_policy: Some(RestartPolicy {
+                    name: Some(RestartPolicyNameEnum::UNLESS_STOPPED),
+                    maximum_retry_count: None,
+                }),
+                ..Default::default()
+            };
+
+            match self.client.update_container(&name, options).await {
+                Ok(_) => {
+                    info!(
+                        "Upgraded restart policy to unless-stopped for container '{}'",
+                        name
+                    );
+                    fixed += 1;
+                }
+                Err(e) => warn!("Failed to update restart policy for '{}': {}", name, e),
+            }
+        }
+
+        if fixed > 0 {
+            info!(
+                "Restart-policy reconcile: upgraded {} container(s) to unless-stopped",
+                fixed
+            );
+        }
+        Ok(fixed)
     }
 
     // Remove a container
