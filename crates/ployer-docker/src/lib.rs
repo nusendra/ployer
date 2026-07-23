@@ -4,7 +4,7 @@ use bollard::container::{
     LogsOptions, RemoveContainerOptions, StartContainerOptions, StatsOptions, StopContainerOptions,
     UpdateContainerOptions,
 };
-use bollard::image::BuildImageOptions;
+use bollard::image::{BuildImageOptions, PruneImagesOptions};
 use bollard::models::{
     ContainerInspectResponse, ContainerSummary, HostConfig, HostConfigLogConfig, PortBinding,
     RestartPolicy, RestartPolicyNameEnum,
@@ -171,6 +171,36 @@ impl DockerClient {
         });
 
         Ok(rx)
+    }
+
+    /// Remove dangling images (untagged `<none>:<none>` layers left behind when
+    /// a rebuild overwrites a fixed tag like `ployer-<slug>:latest`). Each
+    /// redeploy orphans the previous image; without this they accumulate and
+    /// silently fill the host disk. Only dangling images are removed, so nothing
+    /// tagged or in use by a running container is touched.
+    ///
+    /// Returns bytes reclaimed. Intended to be fire-and-forget after a deploy:
+    /// callers should log rather than fail the deploy if this errors.
+    pub async fn prune_dangling_images(&self) -> Result<u64> {
+        let mut filters = HashMap::new();
+        filters.insert("dangling", vec!["true"]);
+
+        let response = self
+            .client
+            .prune_images(Some(PruneImagesOptions { filters }))
+            .await?;
+
+        let reclaimed = response.space_reclaimed.unwrap_or(0).max(0) as u64;
+        let deleted = response
+            .images_deleted
+            .as_ref()
+            .map(|d| d.len())
+            .unwrap_or(0);
+        info!(
+            "Pruned {} dangling image(s), reclaimed {} bytes",
+            deleted, reclaimed
+        );
+        Ok(reclaimed)
     }
 
     /// Create a tar archive of the build context directory

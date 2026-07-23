@@ -392,6 +392,21 @@ impl DeploymentService {
         // Clean up build directory
         let _ = tokio::fs::remove_dir_all(context_path).await;
 
+        // Prune the now-dangling previous image left by overwriting the fixed
+        // `:latest` tag. Fire-and-forget: a prune failure must never fail an
+        // otherwise-successful deploy.
+        match docker.prune_dangling_images().await {
+            Ok(reclaimed) if reclaimed > 0 => {
+                send_log(format!(
+                    "Reclaimed {} MB from old images",
+                    reclaimed / 1_048_576
+                ))
+                .await;
+            }
+            Ok(_) => {}
+            Err(e) => warn!("Image prune after deploy failed: {}", e),
+        }
+
         Ok(())
     }
 
@@ -564,6 +579,20 @@ impl DeploymentService {
             .await?;
 
         send_log("Service installed successfully".to_string()).await;
+
+        // Prune dangling images orphaned by a rebuild of this service.
+        // Fire-and-forget: never fail a successful install on prune error.
+        match docker.prune_dangling_images().await {
+            Ok(reclaimed) if reclaimed > 0 => {
+                send_log(format!(
+                    "Reclaimed {} MB from old images",
+                    reclaimed / 1_048_576
+                ))
+                .await;
+            }
+            Ok(_) => {}
+            Err(e) => warn!("Image prune after deploy failed: {}", e),
+        }
 
         let _ = ws_broadcast.send(WsEvent::DeploymentStatus {
             deployment_id,
