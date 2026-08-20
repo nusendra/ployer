@@ -148,8 +148,14 @@ install_packages() {
 get_latest_version() {
   # Extract all tag names, sort by version (handles alpha.9 < alpha.10 < alpha.11),
   # and take the highest — GitHub API does not guarantee chronological ordering.
+  #
+  # `grep -o` pulls out each "tag_name":"..." pair individually so this works
+  # whether the API returns pretty-printed JSON (one field per line) or compact
+  # single-line JSON. A plain `grep '"tag_name"' | cut -f4` breaks on compact
+  # JSON — the whole array is one line, so cut returns the first release's URL.
   curl -fsSL "https://api.github.com/repos/${PLOYER_REPO}/releases" \
-    | grep '"tag_name"' | cut -d'"' -f4 | sort -V | tail -1
+    | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' \
+    | cut -d'"' -f4 | sort -V | tail -1
 }
 
 download_release() {
@@ -337,7 +343,7 @@ install_caddy() {
   info "Fetching latest Caddy release..."
   local caddy_version
   caddy_version=$(curl -fsSL https://api.github.com/repos/caddyserver/caddy/releases/latest \
-    | grep '"tag_name"' | cut -d'"' -f4)
+    | grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
   [[ -n "$caddy_version" ]] || error "Could not determine latest Caddy version."
 
   local caddy_url="https://github.com/caddyserver/caddy/releases/download/${caddy_version}/caddy_${caddy_version#v}_linux_${caddy_arch}.tar.gz"
