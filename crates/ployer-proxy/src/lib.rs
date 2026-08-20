@@ -255,6 +255,48 @@ impl CaddyClient {
         Ok(())
     }
 
+    /// Read the `reverse_proxy` upstream currently persisted for `domain` in
+    /// apps.caddy, if any.
+    ///
+    /// Used by the boot-time reconcile to detect a stale upstream — e.g. after
+    /// a reboot reshuffled the container's ephemeral host port — so a route is
+    /// only rewritten (and Caddy only reloaded) when the port actually drifted.
+    /// Returns `None` when the file is missing, the domain has no block, or the
+    /// block carries no `reverse_proxy` directive.
+    pub fn current_upstream(&self, domain: &str) -> Option<String> {
+        let content = std::fs::read_to_string(self.apps_caddyfile()).ok()?;
+        let marker = format!("# ployer-route: {}", domain);
+        let mut lines = content.lines();
+        while let Some(line) = lines.next() {
+            if line.trim() != marker {
+                continue;
+            }
+            // Scan this brace-balanced block for its reverse_proxy directive.
+            let mut depth: i32 = 0;
+            let mut opened = false;
+            for bl in lines.by_ref() {
+                if let Some(rest) = bl.trim().strip_prefix("reverse_proxy ") {
+                    return Some(rest.trim().to_string());
+                }
+                for c in bl.chars() {
+                    match c {
+                        '{' => {
+                            depth += 1;
+                            opened = true;
+                        }
+                        '}' => depth -= 1,
+                        _ => {}
+                    }
+                }
+                if opened && depth <= 0 {
+                    break;
+                }
+            }
+            return None;
+        }
+        None
+    }
+
     /// Convenience: persist a plain HTTP, non-wildcard route.
     pub fn persist_route(&self, domain: &str, upstream: &str) -> Result<()> {
         self.persist_route_spec(&RouteSpec {

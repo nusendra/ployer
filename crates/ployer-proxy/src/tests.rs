@@ -148,6 +148,61 @@ fn upsert_replaces_legacy_block() {
 }
 
 #[test]
+fn current_upstream_reads_persisted_http_port() {
+    let (dir, client) = make_client("current-upstream-http");
+    client.persist_route("app.1.2.3.4.nip.io", "localhost:32768").unwrap();
+
+    assert_eq!(
+        client.current_upstream("app.1.2.3.4.nip.io").as_deref(),
+        Some("localhost:32768")
+    );
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn current_upstream_reads_through_tls_block() {
+    let (dir, client) = make_client("current-upstream-tls");
+    let spec = RouteSpec {
+        domain: "slw.homes".to_string(),
+        upstream: "localhost:32768".to_string(),
+        wildcard: true,
+        tls: TlsMode::CloudflareDns,
+    };
+    client.persist_route_spec(&spec).unwrap();
+
+    // Must skip the nested `tls { dns cloudflare ... }` directive and return the
+    // reverse_proxy upstream — this is the exact INC-2026-08-20 shape.
+    assert_eq!(
+        client.current_upstream("slw.homes").as_deref(),
+        Some("localhost:32768")
+    );
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn current_upstream_none_for_unknown_domain() {
+    let (dir, client) = make_client("current-upstream-none");
+    client.persist_route("app.example.com", "localhost:3000").unwrap();
+
+    assert_eq!(client.current_upstream("other.example.com"), None);
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn current_upstream_tracks_drift_after_repoint() {
+    let (dir, client) = make_client("current-upstream-drift");
+    // Stale port from before a reboot, then repointed to the live port.
+    client.persist_route("app.example.com", "localhost:32784").unwrap();
+    client.persist_route("app.example.com", "localhost:32768").unwrap();
+
+    assert_eq!(
+        client.current_upstream("app.example.com").as_deref(),
+        Some("localhost:32768")
+    );
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
 fn caddy_client_admin_url() {
     let (dir, client) = make_client("admin-url");
     assert_eq!(client.admin_url(), "http://localhost:2019");

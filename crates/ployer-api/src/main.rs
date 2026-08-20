@@ -198,6 +198,27 @@ async fn start_server(config: AppConfig) -> Result<()> {
         caddy.set_cf_token(Some(token));
     }
 
+    // Self-heal Caddy upstreams: after a reboot, managed containers restart on
+    // new ephemeral host ports while apps.caddy still points at the old port —
+    // every request 502s. Re-point each app's routes at its live port so
+    // routing survives reboots/restarts (INC-2026-08-20-slw-homes-502).
+    if let Some(ref docker_client) = docker {
+        match services::caddy_reconcile::reconcile_caddy_upstreams(
+            &pool,
+            docker_client,
+            &caddy,
+            &config.server.base_domain,
+        )
+        .await
+        {
+            Ok(n) if n > 0 => {
+                info!("Caddy upstream reconcile: repointed {} route(s) to live ports", n)
+            }
+            Ok(_) => {}
+            Err(e) => tracing::warn!("Caddy upstream reconcile failed: {}", e),
+        }
+    }
+
     let addr = format!("{}:{}", config.server.host, config.server.port);
     let cors = build_cors(&config.server.allowed_origins);
 
