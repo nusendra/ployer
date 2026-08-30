@@ -72,7 +72,7 @@ async fn list_domains(
 /// (`https://`), any path/port, a leading `*.` wildcard label, surrounding
 /// whitespace and a trailing dot, and lowercases. A hostname with slashes would
 /// otherwise inject extra path segments and break the domain's REST routes.
-fn normalize_domain(input: &str) -> String {
+pub(crate) fn normalize_domain(input: &str) -> String {
     let s = input.trim();
     let s = s.strip_prefix("https://").or_else(|| s.strip_prefix("http://")).unwrap_or(s);
     let s = s.split('/').next().unwrap_or(s); // drop any path
@@ -82,7 +82,7 @@ fn normalize_domain(input: &str) -> String {
 }
 
 /// A valid hostname: labels of [a-z0-9-] separated by dots, at least one dot.
-fn is_valid_hostname(host: &str) -> bool {
+pub(crate) fn is_valid_hostname(host: &str) -> bool {
     !host.is_empty()
         && host.contains('.')
         && host.split('.').all(|label| {

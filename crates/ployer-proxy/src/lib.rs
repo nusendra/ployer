@@ -1,3 +1,5 @@
+pub mod cloudflare;
+
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -81,6 +83,41 @@ fn render_block(spec: &RouteSpec, cf_token: Option<&str>) -> String {
     }
     block.push_str(&format!("    reverse_proxy {}\n}}\n", spec.upstream));
     block
+}
+
+/// Render the base Caddyfile: the dashboard site block, the plain-HTTP
+/// LAN/direct-IP catch-all, and the import of the app routes file.
+///
+/// `hosts` are the dashboard's addresses, in order. More than one is the norm
+/// after moving to a custom domain: the install-time `<ip>.nip.io` address is
+/// kept alongside it so the dashboard stays reachable over HTTPS while the new
+/// domain's DNS propagates (and if it never does).
+///
+/// With a single host this is byte-compatible with the template `install.sh`
+/// writes, so a self-update — which re-runs the installer — produces the same
+/// file for the same domain.
+fn render_base_caddyfile(hosts: &[String], apps_caddy_path: &str) -> String {
+    let domain = hosts.join(", ");
+    format!(
+        r#"{{
+    # Disable Caddy's catch-all HTTP→HTTPS redirect so app subdomains
+    # served with http:// prefix are not silently upgraded to HTTPS.
+    auto_https disable_redirects
+}}
+
+{domain} {{
+    reverse_proxy localhost:3001
+}}
+
+# LAN / direct-IP access (HTTP only — no cert possible for private IPs).
+# Catches any host not matched above (e.g. http://192.168.x.x, http://hostname.local).
+http:// {{
+    reverse_proxy localhost:3001
+}}
+
+import {apps_caddy_path}
+"#
+    )
 }
 
 #[derive(Debug, Deserialize)]
@@ -305,6 +342,134 @@ impl CaddyClient {
             wildcard: false,
             tls: TlsMode::Http,
         })
+    }
+
+    // ── Dashboard domain ─────────────────────────────────────────────
+    //
+    // The dashboard's own hostname lives in the base Caddyfile (written by
+    // install.sh) rather than in apps.caddy, so moving Ployer off the
+    // install-time `<ip>.nip.io` default means rewriting that file and the
+    // `ployer.env` values a restart would otherwise read back.
+
+    /// Directory holding the Caddyfile — also where `ployer.env`, `apps.caddy`
+    /// and the rest of the install live.
+    fn ployer_dir(&self) -> PathBuf {
+        self.caddyfile_path
+            .parent()
+            .unwrap_or(Path::new("/opt/ployer"))
+            .to_path_buf()
+    }
+
+    fn env_file(&self) -> PathBuf {
+        self.ployer_dir().join("ployer.env")
+    }
+
+    /// Every hostname the base Caddyfile currently serves the dashboard on, in
+    /// file order. These come from the first top-level site block that isn't
+    /// the `http://` LAN catch-all or the global-options block.
+    pub fn dashboard_hosts(&self) -> Vec<String> {
+        let Ok(content) = std::fs::read_to_string(&self.caddyfile_path) else {
+            return Vec::new();
+        };
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with('#') {
+                continue;
+            }
+            let Some(addr) = trimmed.strip_suffix('{') else { continue };
+            let addr = addr.trim();
+            if addr.is_empty() || addr == "http://" {
+                continue;
+            }
+            return addr
+                .split(',')
+                .map(|h| h.trim().to_string())
+                .filter(|h| !h.is_empty())
+                .collect();
+        }
+        Vec::new()
+    }
+
+    /// The primary dashboard hostname currently served, if any.
+    pub fn dashboard_domain(&self) -> Option<String> {
+        self.dashboard_hosts().into_iter().next()
+    }
+
+    /// Point the dashboard at `domain` and reload Caddy.
+    ///
+    /// `keep_hosts` are additional addresses to keep serving the dashboard on —
+    /// normally the install-time `<ip>.nip.io` fallback, so a domain whose DNS
+    /// isn't live yet can't lock the user out of their own dashboard.
+    ///
+    /// The base Caddyfile is regenerated from the same template `install.sh`
+    /// writes (which also overwrites it on every self-update), preserving the
+    /// `import` of `apps.caddy` so deployed app routes are untouched.
+    pub fn set_dashboard_domain(&self, domain: &str, keep_hosts: &[String]) -> Result<()> {
+        let mut hosts = vec![domain.to_string()];
+        for host in keep_hosts {
+            let host = host.trim();
+            if !host.is_empty() && !hosts.iter().any(|h| h.eq_ignore_ascii_case(host)) {
+                hosts.push(host.to_string());
+            }
+        }
+
+        let apps_import = self.apps_caddyfile();
+        let content = render_base_caddyfile(&hosts, &apps_import.to_string_lossy());
+
+        // Keep a copy of the file we are replacing so a bad domain can be
+        // restored by hand without re-running the installer.
+        if let Ok(previous) = std::fs::read_to_string(&self.caddyfile_path) {
+            let _ = std::fs::write(self.caddyfile_path.with_extension("bak"), previous);
+        }
+
+        std::fs::write(&self.caddyfile_path, content)?;
+        info!("Dashboard domain set to {}", domain);
+        self.reload();
+        Ok(())
+    }
+
+    /// Persist the dashboard domain into `ployer.env` so a restart — and the
+    /// installer's "preserve existing domain" path on self-update — keep it.
+    ///
+    /// Only the three domain-derived keys are rewritten; every other line is
+    /// left byte-for-byte intact so secrets are never reformatted.
+    pub fn persist_dashboard_domain_env(&self, domain: &str) -> Result<()> {
+        let path = self.env_file();
+        let Ok(existing) = std::fs::read_to_string(&path) else {
+            // No env file (dev runs, container installs) — nothing to persist.
+            return Ok(());
+        };
+
+        let public_url = format!("https://{}", domain);
+        let mut out = String::new();
+        let mut seen_base = false;
+        for line in existing.lines() {
+            let replacement = match line.split_once('=').map(|(k, _)| k.trim()) {
+                Some("PLOYER_BASE_DOMAIN") => {
+                    seen_base = true;
+                    Some(format!("PLOYER_BASE_DOMAIN={}", domain))
+                }
+                Some("PLOYER_PUBLIC_URL") => Some(format!("PLOYER_PUBLIC_URL={}", public_url)),
+                Some("PLOYER_ALLOWED_ORIGINS") => {
+                    Some(format!("PLOYER_ALLOWED_ORIGINS={}", public_url))
+                }
+                _ => None,
+            };
+            out.push_str(replacement.as_deref().unwrap_or(line));
+            out.push('\n');
+        }
+        if !seen_base {
+            out.push_str(&format!("PLOYER_BASE_DOMAIN={}\n", domain));
+        }
+
+        std::fs::write(&path, out)?;
+        // The file carries the JWT secret and Cloudflare token.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+        }
+        Ok(())
     }
 
     pub async fn ping(&self) -> Result<bool> {

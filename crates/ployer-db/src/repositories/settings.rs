@@ -36,4 +36,25 @@ impl SettingsRepository {
     pub async fn cf_api_token(&self) -> Result<Option<String>> {
         Ok(self.get("cf_api_token").await?.filter(|s| !s.trim().is_empty()))
     }
+
+    /// The server's public IPv4 address, as detected on boot or overridden by
+    /// the user. Used as the target of the `A` records Ployer creates in
+    /// Cloudflare, and shown in the UI for the manual path.
+    pub async fn server_public_ip(&self) -> Result<Option<String>> {
+        Ok(self.get("server_public_ip").await?.filter(|s| !s.trim().is_empty()))
+    }
+
+    pub async fn set_server_public_ip(&self, ip: &str) -> Result<()> {
+        self.set("server_public_ip", ip).await
+    }
+
+    /// The custom dashboard domain configured through the UI, if any. Absent
+    /// means the dashboard is still on the install-time `<ip>.nip.io` default.
+    pub async fn dashboard_domain(&self) -> Result<Option<String>> {
+        Ok(self.get("dashboard_domain").await?.filter(|s| !s.trim().is_empty()))
+    }
+
+    pub async fn set_dashboard_domain(&self, domain: &str) -> Result<()> {
+        self.set("dashboard_domain", domain).await
+    }
 }

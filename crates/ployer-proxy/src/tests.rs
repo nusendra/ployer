@@ -208,3 +208,127 @@ fn caddy_client_admin_url() {
     assert_eq!(client.admin_url(), "http://localhost:2019");
     let _ = fs::remove_dir_all(dir);
 }
+
+// ── Dashboard domain ────────────────────────────────────────────────
+
+/// The installer's Caddyfile shape, for the "existing install" starting point.
+fn write_installer_caddyfile(dir: &std::path::Path, domain: &str) {
+    fs::write(
+        dir.join("Caddyfile"),
+        render_base_caddyfile(&[domain.to_string()], dir.join("apps.caddy").to_str().unwrap()),
+    )
+    .unwrap();
+}
+
+#[test]
+fn dashboard_hosts_reads_the_site_block() {
+    let (dir, client) = make_client("dashboard-hosts-read");
+    write_installer_caddyfile(&dir, "3.144.143.144.nip.io");
+
+    assert_eq!(client.dashboard_hosts(), vec!["3.144.143.144.nip.io"]);
+    assert_eq!(client.dashboard_domain().as_deref(), Some("3.144.143.144.nip.io"));
+}
+
+#[test]
+fn dashboard_hosts_ignores_catch_all_and_globals() {
+    let (dir, client) = make_client("dashboard-hosts-ignores");
+    // No named site at all: only the global block and the http:// catch-all.
+    fs::write(
+        dir.join("Caddyfile"),
+        "{\n    auto_https disable_redirects\n}\n\nhttp:// {\n    reverse_proxy localhost:3001\n}\n",
+    )
+    .unwrap();
+
+    assert!(client.dashboard_hosts().is_empty());
+}
+
+#[test]
+fn set_dashboard_domain_keeps_nip_io_fallback() {
+    let (dir, client) = make_client("dashboard-set-keeps-fallback");
+    write_installer_caddyfile(&dir, "3.144.143.144.nip.io");
+
+    client
+        .set_dashboard_domain("ployer.example.com", &["3.144.143.144.nip.io".to_string()])
+        .unwrap();
+
+    let content = fs::read_to_string(dir.join("Caddyfile")).unwrap();
+    assert!(content.contains("ployer.example.com, 3.144.143.144.nip.io {"));
+    assert_eq!(
+        client.dashboard_hosts(),
+        vec!["ployer.example.com", "3.144.143.144.nip.io"]
+    );
+    // App routes must survive the rewrite.
+    assert!(content.contains(&format!("import {}", dir.join("apps.caddy").display())));
+}
+
+#[test]
+fn set_dashboard_domain_does_not_duplicate_the_new_host() {
+    let (dir, client) = make_client("dashboard-set-no-dupes");
+    write_installer_caddyfile(&dir, "ployer.example.com");
+
+    client
+        .set_dashboard_domain("ployer.example.com", &["Ployer.Example.com".to_string()])
+        .unwrap();
+
+    assert_eq!(client.dashboard_hosts(), vec!["ployer.example.com"]);
+}
+
+#[test]
+fn set_dashboard_domain_backs_up_the_previous_caddyfile() {
+    let (dir, client) = make_client("dashboard-set-backup");
+    write_installer_caddyfile(&dir, "3.144.143.144.nip.io");
+
+    client.set_dashboard_domain("ployer.example.com", &[]).unwrap();
+
+    let backup = fs::read_to_string(dir.join("Caddyfile.bak")).unwrap();
+    assert!(backup.contains("3.144.143.144.nip.io"));
+}
+
+#[test]
+fn single_host_render_matches_the_installer_template() {
+    let (dir, client) = make_client("dashboard-installer-parity");
+    write_installer_caddyfile(&dir, "3.144.143.144.nip.io");
+    let before = fs::read_to_string(dir.join("Caddyfile")).unwrap();
+
+    // Re-setting the same domain with no extra hosts must be a no-op on content,
+    // so a self-update (which rewrites this file) doesn't churn it.
+    client.set_dashboard_domain("3.144.143.144.nip.io", &[]).unwrap();
+
+    assert_eq!(before, fs::read_to_string(dir.join("Caddyfile")).unwrap());
+}
+
+#[test]
+fn persist_env_rewrites_only_domain_keys() {
+    let (dir, client) = make_client("dashboard-env-rewrite");
+    fs::write(
+        dir.join("ployer.env"),
+        "PLOYER_HOST=0.0.0.0\n\
+         PLOYER_BASE_DOMAIN=3.144.143.144.nip.io\n\
+         PLOYER_PUBLIC_URL=https://3.144.143.144.nip.io\n\
+         PLOYER_ALLOWED_ORIGINS=https://3.144.143.144.nip.io\n\
+         PLOYER_JWT_SECRET=super-secret\n\
+         CF_API_TOKEN=cf-token\n",
+    )
+    .unwrap();
+
+    client.persist_dashboard_domain_env("ployer.example.com").unwrap();
+
+    let env = fs::read_to_string(dir.join("ployer.env")).unwrap();
+    assert!(env.contains("PLOYER_BASE_DOMAIN=ployer.example.com"));
+    assert!(env.contains("PLOYER_PUBLIC_URL=https://ployer.example.com"));
+    assert!(env.contains("PLOYER_ALLOWED_ORIGINS=https://ployer.example.com"));
+    // Secrets untouched.
+    assert!(env.contains("PLOYER_JWT_SECRET=super-secret"));
+    assert!(env.contains("CF_API_TOKEN=cf-token"));
+    assert!(env.contains("PLOYER_HOST=0.0.0.0"));
+}
+
+#[test]
+fn persist_env_is_a_no_op_without_an_env_file() {
+    let (dir, client) = make_client("dashboard-env-missing");
+    let _ = fs::remove_file(dir.join("ployer.env"));
+
+    client.persist_dashboard_domain_env("ployer.example.com").unwrap();
+
+    assert!(!dir.join("ployer.env").exists());
+}

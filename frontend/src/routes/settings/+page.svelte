@@ -7,6 +7,28 @@
 		allow_registration: boolean;
 		cf_api_token_set: boolean;
 		cloudflare_plugin_available: boolean;
+		dashboard_domain: string;
+		dashboard_hosts: string[];
+		dashboard_domain_custom: boolean;
+		server_ip: string | null;
+	}
+
+	interface DnsResult {
+		status: 'created' | 'updated' | 'unchanged' | 'skipped' | 'failed';
+		message: string;
+	}
+
+	interface DashboardDomainResponse {
+		domain: string;
+		url: string;
+		hosts: string[];
+		server_ip: string | null;
+		dns: DnsResult;
+	}
+
+	interface Zone {
+		id: string;
+		name: string;
 	}
 
 	let settings = $state<Settings | null>(null);
@@ -17,16 +39,87 @@
 	let cfToken = $state('');
 	let cfSaving = $state(false);
 
+	// Dashboard domain
+	let domainInput = $state('');
+	let createDnsRecord = $state(true);
+	let domainSaving = $state(false);
+	let domainResult = $state<DashboardDomainResponse | null>(null);
+	let serverIpInput = $state('');
+	let ipSaving = $state(false);
+	let zones = $state<Zone[]>([]);
+
 	onMount(async () => {
 		try {
 			const res = await api.get<Settings>('/settings');
 			settings = res;
+			serverIpInput = res.server_ip ?? '';
+			if (res.cf_api_token_set) loadZones();
 		} catch (e: any) {
 			error = e.message || 'Failed to load settings';
 		} finally {
 			loading = false;
 		}
 	});
+
+	async function loadZones() {
+		try {
+			const res = await api.get<{ zones: Zone[] }>('/settings/cloudflare/zones');
+			zones = res?.zones ?? [];
+		} catch {
+			// A token that can't list zones can still be valid for DNS-01 certs,
+			// so a failure here is informational only.
+			zones = [];
+		}
+	}
+
+	async function saveServerIp() {
+		ipSaving = true;
+		try {
+			settings = await api.put<Settings>('/settings', { server_ip: serverIpInput.trim() });
+			toast.success('Server IP saved');
+		} catch (e: any) {
+			toast.error(e.message || 'Failed to save server IP');
+		} finally {
+			ipSaving = false;
+		}
+	}
+
+	async function saveDashboardDomain() {
+		domainSaving = true;
+		domainResult = null;
+		try {
+			const res = await api.post<DashboardDomainResponse>('/settings/dashboard-domain', {
+				domain: domainInput,
+				create_dns_record: createDnsRecord
+			});
+			domainResult = res;
+			domainInput = '';
+			settings = await api.get<Settings>('/settings');
+			if (res.dns.status === 'failed') {
+				toast.error(res.dns.message);
+			} else {
+				toast.success(`Dashboard now served on ${res.domain}`);
+			}
+		} catch (e: any) {
+			toast.error(e.message || 'Failed to set dashboard domain');
+		} finally {
+			domainSaving = false;
+		}
+	}
+
+	async function revertDashboardDomain() {
+		domainSaving = true;
+		domainResult = null;
+		try {
+			const res = await api.delete<DashboardDomainResponse>('/settings/dashboard-domain');
+			settings = await api.get<Settings>('/settings');
+			toast.success(`Dashboard back on ${res.domain}`);
+		} catch (e: any) {
+			toast.error(e.message || 'Failed to revert dashboard domain');
+		} finally {
+			domainSaving = false;
+		}
+	}
 
 	async function toggleRegistration() {
 		if (!settings) return;
@@ -104,6 +197,120 @@
 						<span class="toggle-switch"></span>
 					</div>
 				</label>
+			</div>
+
+			<div class="settings-section cf-section">
+				<h3>Dashboard Domain</h3>
+				<p class="section-hint">
+					Ployer serves its dashboard on <code>&lt;server-ip&gt;.nip.io</code> by
+					default. Point your own domain or subdomain at this server to use that
+					instead — with a Cloudflare token configured below, Ployer creates the
+					<code>A</code> record for you.
+				</p>
+
+				<div class="fact-row">
+					<span class="fact-label">Currently served on</span>
+					<span class="fact-value">
+						{settings.dashboard_domain}
+						{#if settings.dashboard_domain_custom}
+							<span class="badge">custom</span>
+						{:else}
+							<span class="badge muted">default</span>
+						{/if}
+					</span>
+				</div>
+				{#if settings.dashboard_hosts.length > 1}
+					<div class="fact-row">
+						<span class="fact-label">Also reachable on</span>
+						<span class="fact-value">{settings.dashboard_hosts.slice(1).join(', ')}</span>
+					</div>
+				{/if}
+
+				<div class="ip-row">
+					<label for="server-ip">Server public IP</label>
+					<input
+						id="server-ip"
+						type="text"
+						placeholder="Not detected — enter it manually"
+						bind:value={serverIpInput}
+						disabled={ipSaving}
+					/>
+					<button
+						class="btn-ghost"
+						onclick={saveServerIp}
+						disabled={ipSaving || serverIpInput.trim() === (settings.server_ip ?? '')}
+					>
+						{ipSaving ? 'Saving…' : 'Save IP'}
+					</button>
+				</div>
+				<p class="section-hint small">
+					The address DNS records point at. Detected automatically on startup —
+					override it for NAT, floating, or multi-homed setups.
+				</p>
+
+				<div class="token-row domain-row">
+					<input
+						type="text"
+						placeholder="ployer.yourdomain.com"
+						bind:value={domainInput}
+						disabled={domainSaving}
+						autocomplete="off"
+					/>
+					<button
+						class="btn-primary"
+						onclick={saveDashboardDomain}
+						disabled={domainSaving || domainInput.trim() === ''}
+					>
+						{domainSaving ? 'Applying…' : 'Set Domain'}
+					</button>
+					{#if settings.dashboard_domain_custom}
+						<button
+							class="btn-ghost"
+							onclick={revertDashboardDomain}
+							disabled={domainSaving}
+							title="Move the dashboard back to the nip.io address"
+						>
+							Revert
+						</button>
+					{/if}
+				</div>
+
+				<label class="check-row">
+					<input
+						type="checkbox"
+						bind:checked={createDnsRecord}
+						disabled={domainSaving || !settings.cf_api_token_set}
+					/>
+					<span>
+						Create the <code>A</code> record in Cloudflare
+						{#if !settings.cf_api_token_set}
+							<em>— needs a Cloudflare token (below)</em>
+						{:else if zones.length}
+							<em>— zones: {zones.map((z) => z.name).join(', ')}</em>
+						{/if}
+					</span>
+				</label>
+
+				{#if domainResult}
+					<div class="warn-banner" class:ok-banner={domainResult.dns.status !== 'failed'}>
+						<strong>Dashboard now on {domainResult.domain}.</strong>
+						{domainResult.dns.message}
+						{#if domainResult.dns.status === 'skipped' && domainResult.server_ip}
+							Add an <code>A</code> record for
+							<code>{domainResult.domain}</code> → <code>{domainResult.server_ip}</code>
+							(DNS only / grey cloud), then open
+							<a href={domainResult.url}>{domainResult.url}</a>.
+						{:else if domainResult.dns.status !== 'failed'}
+							Once DNS resolves, open <a href={domainResult.url}>{domainResult.url}</a>.
+							The old address keeps working meanwhile.
+						{/if}
+					</div>
+				{:else if !settings.dashboard_domain_custom}
+					<p class="section-hint small">
+						The nip.io address stays active as a fallback after you switch, so a
+						domain that isn't resolving yet can't lock you out.
+					</p>
+				{/if}
 			</div>
 
 			<div class="settings-section cf-section">
@@ -362,6 +569,113 @@
 		overflow-x: auto;
 		white-space: pre-wrap;
 		word-break: break-all;
+	}
+
+	.fact-row {
+		display: flex;
+		align-items: baseline;
+		gap: 0.75rem;
+		font-size: 0.8125rem;
+		margin-bottom: 0.4rem;
+	}
+
+	.fact-label {
+		color: var(--text-muted);
+		min-width: 9.5rem;
+	}
+
+	.fact-value {
+		color: var(--text);
+		font-weight: 600;
+		word-break: break-all;
+	}
+
+	.badge {
+		display: inline-block;
+		margin-left: 0.4rem;
+		padding: 0.1rem 0.4rem;
+		border-radius: 999px;
+		font-size: 0.6875rem;
+		font-weight: 600;
+		background: rgba(34, 197, 94, 0.15);
+		color: var(--success, #22c55e);
+	}
+
+	.badge.muted {
+		background: var(--bg-tertiary);
+		color: var(--text-muted);
+	}
+
+	.ip-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		margin: 1rem 0 0;
+	}
+
+	.ip-row label {
+		font-size: 0.8125rem;
+		color: var(--text-muted);
+		min-width: 9.5rem;
+	}
+
+	.ip-row input {
+		flex: 1;
+		min-width: 180px;
+		padding: 0.6rem 0.75rem;
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		color: var(--text);
+		font-size: 0.875rem;
+	}
+
+	.ip-row input:focus {
+		outline: none;
+		border-color: var(--primary);
+	}
+
+	.domain-row {
+		margin-top: 1rem;
+	}
+
+	.check-row {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		margin-top: 0.75rem;
+		font-size: 0.8125rem;
+		color: var(--text-muted);
+		line-height: 1.5;
+		cursor: pointer;
+	}
+
+	.check-row input {
+		margin-top: 0.15rem;
+	}
+
+	.check-row code {
+		background: var(--bg-tertiary);
+		padding: 0.1rem 0.3rem;
+		border-radius: 4px;
+		font-size: 0.8em;
+	}
+
+	.ok-banner {
+		background: rgba(34, 197, 94, 0.12);
+		border-color: rgba(34, 197, 94, 0.35);
+	}
+
+	.warn-banner a {
+		color: var(--primary);
+	}
+
+	.warn-banner code {
+		background: var(--bg-tertiary);
+		padding: 0.1rem 0.3rem;
+		border-radius: 4px;
+		font-size: 0.8em;
 	}
 
 	.token-row {

@@ -137,6 +137,26 @@ async fn register_local_server(pool: &sqlx::SqlitePool) -> Result<()> {
     Ok(())
 }
 
+/// Store the server's public IPv4 in settings if it isn't recorded yet.
+/// Best-effort: a probe failure just leaves the value unset, and the settings
+/// UI asks the user for it.
+async fn seed_public_ip(pool: sqlx::SqlitePool) {
+    use ployer_db::repositories::SettingsRepository;
+
+    let repo = SettingsRepository::new(pool);
+    if matches!(repo.server_public_ip().await, Ok(Some(_))) {
+        return;
+    }
+    if let Some(ip) = ployer_proxy::cloudflare::detect_public_ip().await {
+        match repo.set_server_public_ip(&ip).await {
+            Ok(()) => info!("Detected public IP: {}", ip),
+            Err(e) => tracing::warn!("Failed to store detected public IP: {}", e),
+        }
+    } else {
+        tracing::warn!("Could not detect this server's public IP");
+    }
+}
+
 /// Build a CorsLayer from the configured allowed_origins string.
 fn build_cors(allowed_origins: &str) -> CorsLayer {
     if allowed_origins == "*" {
@@ -218,6 +238,12 @@ async fn start_server(config: AppConfig) -> Result<()> {
             Err(e) => tracing::warn!("Caddy upstream reconcile failed: {}", e),
         }
     }
+
+    // Detect this server's public IP once, in the background, so the settings
+    // UI can show what a custom dashboard domain's A record must point at (and
+    // so Ployer can write that record itself via Cloudflare). A user-supplied
+    // override already in the DB always wins.
+    tokio::spawn(seed_public_ip(pool.clone()));
 
     let addr = format!("{}:{}", config.server.host, config.server.port);
     let cors = build_cors(&config.server.allowed_origins);

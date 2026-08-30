@@ -502,7 +502,8 @@ print_success() {
   echo -e "    Upgrade:  ${YELLOW}curl -fsSL https://ployer.nusendra.com/install.sh | sudo bash${NC}"
   echo ""
   if [[ "$DOMAIN" =~ \.nip\.io$ ]]; then
-    echo -e "  ${YELLOW}Tip: For a permanent URL, point your own domain to this server and re-run the installer.${NC}"
+    echo -e "  ${YELLOW}Tip: For a permanent URL, set your own domain in Settings → Dashboard Domain.${NC}"
+    echo -e "  ${YELLOW}     With a Cloudflare token saved there, Ployer creates the A record for you.${NC}"
     echo ""
   fi
 }

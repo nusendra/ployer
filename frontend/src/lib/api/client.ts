@@ -28,8 +28,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	}
 
 	if (!res.ok) {
-		const body = await res.json().catch(() => ({}));
-		const message = body.error || `Request failed: ${res.status}`;
+		// Handlers return either a JSON error envelope or a bare text message
+		// (axum's `(StatusCode, String)`), so try both before falling back.
+		const raw = await res.text().catch(() => '');
+		let message = `Request failed: ${res.status}`;
+		try {
+			message = JSON.parse(raw).error || message;
+		} catch {
+			if (raw.trim()) message = raw.trim();
+		}
 		throw new Error(message);
 	}
 

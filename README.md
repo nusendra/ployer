@@ -11,6 +11,7 @@ A lightweight, self-hosted PaaS — deploy your apps from Git with automatic SSL
 - **One-command deploy** — push to Git, Ployer builds and deploys automatically
 - **Automatic SSL** — via Caddy + Let's Encrypt, zero config
 - **Wildcard / multitenant domains** — serve `*.yourdomain.com` from one app for unbounded tenant subdomains, with HTTPS via Cloudflare DNS-01 ([guide](docs/wildcard-domains.md))
+- **Dashboard domain** — move the dashboard off the default `<ip>.nip.io` onto your own domain from Settings; with a Cloudflare token, Ployer creates the DNS record too ([guide](docs/dashboard-domain.md))
 - **Webhooks** — GitHub and GitLab push events trigger auto-deploys
 - **Health checks** — HTTP polling with auto-restart on failure
 - **Container stats** — CPU, memory, and network I/O monitoring
@@ -44,7 +45,7 @@ Point your domain's DNS `A record` to your server IP first, then run:
 curl -fsSL https://ployer.nusendra.com/install.sh | sudo bash
 ```
 
-> **Note:** `curl | bash` runs in non-interactive mode and will auto-detect your server IP. To use a custom domain with HTTPS, download and run the script directly:
+> **Note:** `curl | bash` runs in non-interactive mode and will auto-detect your server IP, serving the dashboard on `<ip>.nip.io`. You can move it to your own domain later from **Settings → Dashboard Domain** ([guide](docs/dashboard-domain.md)) — or set it at install time by downloading and running the script directly:
 > ```bash
 > curl -fsSL https://ployer.nusendra.com/install.sh -o install.sh
 > sudo bash install.sh
