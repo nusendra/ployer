@@ -322,8 +322,8 @@
 
 	.icon-apps { background: var(--primary); }
 	.icon-servers { background: var(--success); }
-	.icon-deploys { background: #00C2FF; }
-	.icon-health { background: #ef4444; }
+	.icon-deploys { background: var(--accent-text); }
+	.icon-health { background: var(--danger); }
 
 	.stat-label {
 		font-size: 0.8125rem;
@@ -344,7 +344,7 @@
 	}
 
 	.stat-healthy {
-		color: var(--success);
+		color: var(--success-text);
 		font-size: 1.25rem;
 	}
 
@@ -357,7 +357,7 @@
 
 	.badge-success {
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success);
+		color: var(--success-text);
 	}
 
 	.badge-info {
@@ -478,7 +478,7 @@
 
 	.dot-running { background: var(--success); box-shadow: 0 0 6px rgba(34, 197, 94, 0.4); }
 	.dot-stopped { background: var(--danger); }
-	.dot-building, .dot-deploying { background: #00C2FF; }
+	.dot-building, .dot-deploying { background: var(--accent-text); }
 	.dot-pending { background: var(--warning); }
 
 	.item-info {
@@ -509,27 +509,27 @@
 
 	.status-running {
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success);
+		color: var(--success-text);
 	}
 
 	.status-stopped {
 		background: rgba(239, 68, 68, 0.15);
-		color: var(--danger);
+		color: var(--danger-text);
 	}
 
 	.status-green {
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success);
+		color: var(--success-text);
 	}
 
 	.status-red {
 		background: rgba(239, 68, 68, 0.15);
-		color: var(--danger);
+		color: var(--danger-text);
 	}
 
 	.status-blue {
 		background: rgba(0, 194, 255, 0.15);
-		color: #00C2FF;
+		color: var(--accent-text);
 	}
 
 	.status-gray {
@@ -539,7 +539,7 @@
 
 	.status-pending {
 		background: rgba(245, 158, 11, 0.15);
-		color: var(--warning);
+		color: var(--warning-text);
 	}
 
 	/* Table */

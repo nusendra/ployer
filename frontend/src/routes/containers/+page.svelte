@@ -355,7 +355,7 @@
 		background: rgba(239, 68, 68, 0.1);
 		border: 1px solid var(--danger);
 		border-radius: var(--radius);
-		color: var(--danger);
+		color: var(--danger-text);
 	}
 
 	.text-muted {
@@ -532,12 +532,12 @@
 
 	.status-running {
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success);
+		color: var(--success-text);
 	}
 
 	.status-stopped {
 		background: rgba(239, 68, 68, 0.15);
-		color: var(--danger);
+		color: var(--danger-text);
 	}
 
 	.status-unknown {
@@ -633,7 +633,7 @@
 	}
 
 	.btn-action.btn-delete {
-		color: var(--danger);
+		color: var(--danger-text);
 		border-color: rgba(239, 68, 68, 0.3);
 	}
 
@@ -711,7 +711,7 @@
 	}
 
 	.logs-container {
-		background: #1a1a1a;
+		background: var(--surface-terminal);
 		border-radius: var(--radius);
 		padding: 1rem;
 		max-height: 500px;
@@ -721,7 +721,7 @@
 	}
 
 	.log-line {
-		color: #e0e0e0;
+		color: var(--surface-terminal-text);
 		margin: 0.25rem 0;
 		white-space: pre-wrap;
 		word-break: break-all;

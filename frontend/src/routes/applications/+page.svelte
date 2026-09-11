@@ -401,7 +401,7 @@
 	.error-banner {
 		background: rgba(239, 68, 68, 0.15);
 		border: 1px solid rgba(239, 68, 68, 0.3);
-		color: var(--danger);
+		color: var(--danger-text);
 		padding: 0.75rem 1rem;
 		border-radius: var(--radius);
 		margin-bottom: 1.25rem;
@@ -542,7 +542,7 @@
 
 	.status-green {
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success);
+		color: var(--success-text);
 	}
 
 	.status-blue {
@@ -557,7 +557,7 @@
 
 	.status-red {
 		background: rgba(239, 68, 68, 0.15);
-		color: var(--danger);
+		color: var(--danger-text);
 	}
 
 	/* ── Meta grid ── */
@@ -668,7 +668,7 @@
 	}
 
 	.btn-action.btn-delete {
-		color: var(--danger);
+		color: var(--danger-text);
 		border-color: rgba(239, 68, 68, 0.3);
 	}
 
@@ -721,7 +721,7 @@
 	.input-warn {
 		margin-top: 0.375rem;
 		font-size: 0.8125rem;
-		color: var(--warning);
+		color: var(--warning-text);
 	}
 
 	.input-warn code {
@@ -804,7 +804,7 @@
 	}
 
 	.btn-danger:hover {
-		background: #dc2626;
+		background: var(--danger-strong);
 	}
 
 	.btn-sm {
@@ -825,7 +825,7 @@
 
 	.btn-sm.btn-danger {
 		background: rgba(239, 68, 68, 0.15);
-		color: var(--danger);
+		color: var(--danger-text);
 		border-color: rgba(239, 68, 68, 0.3);
 	}
 
@@ -1067,12 +1067,12 @@
 
 	.badge-success {
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success);
+		color: var(--success-text);
 	}
 
 	.badge-warning {
 		background: rgba(245, 158, 11, 0.15);
-		color: var(--warning);
+		color: var(--warning-text);
 	}
 
 	.empty-message {
@@ -1225,17 +1225,17 @@
 
 	.delivery-status.status-success {
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success);
+		color: var(--success-text);
 	}
 
 	.delivery-status.status-failed {
 		background: rgba(239, 68, 68, 0.15);
-		color: var(--danger);
+		color: var(--danger-text);
 	}
 
 	.delivery-status.status-skipped {
 		background: rgba(245, 158, 11, 0.15);
-		color: var(--warning);
+		color: var(--warning-text);
 	}
 
 	.delivery-details {

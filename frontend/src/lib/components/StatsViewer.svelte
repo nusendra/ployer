@@ -59,16 +59,18 @@
 		return (stats.memory_usage_mb / stats.memory_limit_mb) * 100;
 	}
 
-	function getCpuColor(usage: number): string {
-		if (usage < 50) return '#22c55e';
-		if (usage < 80) return '#eab308';
-		return '#ef4444';
+	/* One tier drives both the readable number and the saturated bar, so the two
+	   can use different lightnesses of the same hue without drifting apart. */
+	function cpuTier(usage: number): string {
+		if (usage < 50) return 'ok';
+		if (usage < 80) return 'warn';
+		return 'crit';
 	}
 
-	function getMemoryColor(percentage: number): string {
-		if (percentage < 70) return '#22c55e';
-		if (percentage < 90) return '#eab308';
-		return '#ef4444';
+	function memoryTier(percentage: number): string {
+		if (percentage < 70) return 'ok';
+		if (percentage < 90) return 'warn';
+		return 'crit';
 	}
 </script>
 
@@ -87,21 +89,21 @@
 			<div class="stats-grid">
 				<div class="stat-card">
 					<div class="stat-label">CPU Usage</div>
-					<div class="stat-value" style="color: {getCpuColor(stats.cpu_usage)}">
+					<div class="stat-value tier-{cpuTier(stats.cpu_usage)}">
 						{stats.cpu_usage.toFixed(1)}%
 					</div>
 					<div class="stat-bar">
-						<div class="stat-bar-fill" style="width: {Math.min(stats.cpu_usage, 100)}%; background: {getCpuColor(stats.cpu_usage)}"></div>
+						<div class="stat-bar-fill tier-{cpuTier(stats.cpu_usage)}" style="width: {Math.min(stats.cpu_usage, 100)}%"></div>
 					</div>
 				</div>
 
 				<div class="stat-card">
 					<div class="stat-label">Memory Usage</div>
-					<div class="stat-value" style="color: {getMemoryColor(getMemoryPercentage())}">
+					<div class="stat-value tier-{memoryTier(getMemoryPercentage())}">
 						{stats.memory_usage_mb.toFixed(0)} MB
 					</div>
 					<div class="stat-bar">
-						<div class="stat-bar-fill" style="width: {getMemoryPercentage()}%; background: {getMemoryColor(getMemoryPercentage())}"></div>
+						<div class="stat-bar-fill tier-{memoryTier(getMemoryPercentage())}" style="width: {getMemoryPercentage()}%"></div>
 					</div>
 					<div class="stat-subtext">
 						{getMemoryPercentage().toFixed(1)}% of {stats.memory_limit_mb.toFixed(0)} MB
@@ -218,6 +220,15 @@
 		transition: width 0.3s ease;
 		border-radius: 4px;
 	}
+
+	/* Text tiers stay above 4.5:1; bar tiers can use the saturated fill hue. */
+	.stat-value.tier-ok { color: var(--success-text); }
+	.stat-value.tier-warn { color: var(--warning-text); }
+	.stat-value.tier-crit { color: var(--danger-text); }
+
+	.stat-bar-fill.tier-ok { background: var(--success); }
+	.stat-bar-fill.tier-warn { background: var(--warning); }
+	.stat-bar-fill.tier-crit { background: var(--danger); }
 
 	.stat-subtext {
 		font-size: 0.75rem;

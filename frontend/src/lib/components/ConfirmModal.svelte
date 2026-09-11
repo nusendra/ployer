@@ -52,7 +52,7 @@
 		height: 52px;
 		border-radius: 50%;
 		background: rgba(239, 68, 68, 0.12);
-		color: var(--danger);
+		color: var(--danger-text);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -108,6 +108,6 @@
 	}
 
 	.btn-confirm:hover {
-		background: #dc2626;
+		background: var(--danger-strong);
 	}
 </style>

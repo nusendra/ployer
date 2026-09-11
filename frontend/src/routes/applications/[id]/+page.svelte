@@ -1253,10 +1253,10 @@
 		background: currentColor;
 	}
 
-	.status-green { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+	.status-green { background: rgba(34, 197, 94, 0.15); color: var(--success-text); }
 	.status-blue { background: rgba(50, 130, 184, 0.2); color: var(--primary); }
 	.status-gray { background: rgba(126, 137, 172, 0.15); color: var(--text-muted); }
-	.status-red { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+	.status-red { background: rgba(239, 68, 68, 0.15); color: var(--danger-text); }
 
 	/* ── Deploy button ── */
 	.btn-deploy {
@@ -1278,7 +1278,7 @@
 	.error-banner {
 		background: rgba(239, 68, 68, 0.15);
 		border: 1px solid rgba(239, 68, 68, 0.3);
-		color: var(--danger);
+		color: var(--danger-text);
 		padding: 0.75rem 1rem;
 		border-radius: var(--radius);
 		margin-bottom: 1.25rem;
@@ -1409,7 +1409,7 @@
 
 	.input-warn {
 		font-size: 0.8125rem;
-		color: var(--warning);
+		color: var(--warning-text);
 	}
 
 	.input-warn code {
@@ -1524,7 +1524,7 @@
 	}
 
 	.btn-icon-danger:hover {
-		color: var(--danger);
+		color: var(--danger-text);
 		background: rgba(239, 68, 68, 0.1);
 	}
 
@@ -1590,7 +1590,7 @@
 		gap: 0.5rem;
 		background: rgba(234, 179, 8, 0.1);
 		border: 1px solid rgba(234, 179, 8, 0.35);
-		color: #ca8a04;
+		color: var(--warning-text);
 		border-radius: 8px;
 		padding: 0.65rem 1rem;
 		font-size: 0.875rem;
@@ -1766,7 +1766,7 @@
 
 	.btn-sm-ghost.btn-sm-danger:hover {
 		background: rgba(239, 68, 68, 0.1);
-		color: var(--danger);
+		color: var(--danger-text);
 		border-color: var(--danger);
 	}
 
@@ -1819,7 +1819,7 @@
 		gap: 0.35rem;
 		font-size: 0.6875rem;
 		font-weight: 700;
-		color: var(--success);
+		color: var(--success-text);
 		letter-spacing: 0.05em;
 	}
 
@@ -1917,17 +1917,17 @@
 
 	.badge-success {
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success);
+		color: var(--success-text);
 	}
 
 	.badge-warning {
 		background: rgba(234, 179, 8, 0.15);
-		color: #ca8a04;
+		color: var(--warning-text);
 	}
 
 	.badge-info {
 		background: rgba(139, 92, 246, 0.15);
-		color: #8b5cf6;
+		color: var(--info-text);
 	}
 
 	.wildcard-toggle {
@@ -2046,7 +2046,7 @@
 
 	.ip-domain-warning code {
 		font-family: monospace;
-		color: var(--warning);
+		color: var(--warning-text);
 	}
 
 	.hint {

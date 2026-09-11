@@ -177,7 +177,7 @@
 	.error-banner {
 		background: rgba(239, 68, 68, 0.15);
 		border: 1px solid rgba(239, 68, 68, 0.3);
-		color: var(--danger);
+		color: var(--danger-text);
 		padding: 0.75rem 1rem;
 		border-radius: var(--radius);
 		margin-bottom: 1.25rem;
@@ -218,7 +218,7 @@
 		height: 44px;
 		border-radius: 10px;
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success);
+		color: var(--success-text);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -274,8 +274,8 @@
 		background: currentColor;
 	}
 
-	.status-online  { background: rgba(34, 197, 94, 0.15); color: var(--success); }
-	.status-offline { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+	.status-online  { background: rgba(34, 197, 94, 0.15); color: var(--success-text); }
+	.status-offline { background: rgba(239, 68, 68, 0.15); color: var(--danger-text); }
 	.status-unknown { background: rgba(126, 137, 172, 0.15); color: var(--text-muted); }
 
 	.server-meta {
