@@ -15,6 +15,7 @@
 	let isLoginPage = $state(false);
 	let isChecking = $state(true);
 	let version = $state('');
+	let sidebarOpen = $state(false);
 	let latestVersion = $state('');
 	let updateAvailable = $state(false);
 	let updating = $state(false);
@@ -22,6 +23,7 @@
 		if (!browser) return;
 
 		const currentPath = $page.url.pathname;
+		sidebarOpen = false;
 
 		if (currentPath === '/login') {
 			isLoginPage = true;
@@ -112,6 +114,10 @@
 		}
 	}
 
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') sidebarOpen = false;
+	}
+
 	function handleLogout() {
 		wsClient.disconnect();
 		clearAuth();
@@ -159,6 +165,8 @@
 	<title>Ployer</title>
 </svelte:head>
 
+<svelte:window onkeydown={handleKeydown} />
+
 <Toast />
 
 {#if isChecking}
@@ -169,7 +177,31 @@
 	{@render children()}
 {:else if isAuthenticated}
 	<div class="app-shell">
-		<nav class="sidebar">
+		<a class="skip-link" href="#main-content">Skip to main content</a>
+		<header class="topbar">
+			<button
+				class="nav-toggle"
+				aria-label="Open navigation menu"
+				aria-expanded={sidebarOpen}
+				aria-controls="sidebar-nav"
+				onclick={() => (sidebarOpen = true)}
+			>
+				<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"
+					><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+				/></svg>
+			</button>
+			<span class="topbar-title">Ployer</span>
+		</header>
+		{#if sidebarOpen}
+			<button class="sidebar-backdrop" aria-label="Close navigation menu" onclick={() => (sidebarOpen = false)}
+			></button>
+		{/if}
+		<nav class="sidebar" id="sidebar-nav" class:open={sidebarOpen} aria-label="Main">
+			<button class="nav-close" aria-label="Close navigation menu" onclick={() => (sidebarOpen = false)}>
+				<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"
+					><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" /></svg
+				>
+			</button>
 			<!-- Logo -->
 			<div class="sidebar-logo">
 				<div class="logo-title">
@@ -243,7 +275,7 @@
 				<button class="btn-logout" onclick={handleLogout}>Logout</button>
 			</div>
 		</nav>
-		<main class="content">
+		<main class="content" id="main-content">
 			{@render children()}
 		</main>
 	</div>
@@ -254,15 +286,64 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-height: 100vh;
+		min-height: 100svh;
 		background: var(--bg);
 		color: var(--text-muted);
 	}
 
 	.app-shell {
 		display: flex;
-		height: 100vh;
+		height: 100svh;
 		overflow: hidden;
+	}
+
+	/* Mobile-only header; the sidebar is off-canvas at that width. */
+	.topbar {
+		display: none;
+		align-items: center;
+		gap: 0.75rem;
+		height: 56px;
+		padding: 0 0.75rem;
+		background: var(--bg-secondary);
+		border-bottom: 1px solid var(--border);
+		position: fixed;
+		inset: 0 0 auto 0;
+		z-index: 30;
+	}
+
+	.topbar-title {
+		font-size: 1.0625rem;
+		font-weight: 600;
+		letter-spacing: -0.02em;
+	}
+
+	.nav-toggle,
+	.nav-close {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: var(--control-min);
+		background: transparent;
+		color: var(--text);
+		padding: 0.5rem;
+	}
+
+	.nav-close {
+		display: none;
+		position: absolute;
+		top: 0.75rem;
+		right: 0.75rem;
+		color: var(--text-muted);
+	}
+
+	.sidebar-backdrop {
+		display: none;
+		position: fixed;
+		inset: 0;
+		z-index: 40;
+		background: rgba(4, 8, 20, 0.6);
+		border-radius: 0;
+		padding: 0;
 	}
 
 	.sidebar {
@@ -275,7 +356,7 @@
 		flex-direction: column;
 		gap: 0.5rem;
 		box-shadow: 4px 0 20px rgba(0, 0, 0, 0.2);
-		height: 100vh;
+		height: 100svh;
 		overflow-y: auto;
 	}
 
@@ -516,9 +597,43 @@
 		color: var(--text);
 	}
 
-.content {
+	.content {
 		flex: 1;
 		padding: 2rem;
 		overflow-y: auto;
+	}
+
+	@media (max-width: 900px) {
+		.topbar,
+		.nav-close,
+		.sidebar-backdrop {
+			display: flex;
+		}
+
+		.sidebar {
+			position: fixed;
+			inset: 0 auto 0 0;
+			z-index: 50;
+			width: min(280px, 85vw);
+			transform: translateX(-100%);
+			/* visibility keeps the closed drawer out of the tab order */
+			visibility: hidden;
+			transition: transform 0.2s ease, visibility 0.2s ease;
+		}
+
+		.sidebar.open {
+			transform: translateX(0);
+			visibility: visible;
+		}
+
+		.content {
+			padding: calc(56px + 1rem) 1rem 1rem;
+		}
+	}
+
+	@media (max-width: 500px) {
+		.content {
+			padding: calc(56px + 0.75rem) 0.75rem 0.75rem;
+		}
 	}
 </style>

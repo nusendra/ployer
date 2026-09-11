@@ -632,7 +632,6 @@
 	}
 
 	.ip-row input:focus {
-		outline: none;
 		border-color: var(--primary);
 	}
 
@@ -697,7 +696,6 @@
 	}
 
 	.token-row input:focus {
-		outline: none;
 		border-color: var(--primary);
 	}
 
