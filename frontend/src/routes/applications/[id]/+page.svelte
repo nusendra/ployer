@@ -1443,7 +1443,6 @@
 		padding: 0.5rem 0.75rem;
 		font-size: 0.875rem;
 		color: var(--text);
-		outline: none;
 		transition: border-color 0.15s;
 	}
 
@@ -1562,7 +1561,6 @@
 		color: var(--text);
 		line-height: 1.6;
 		resize: vertical;
-		outline: none;
 		transition: border-color 0.15s;
 		box-sizing: border-box;
 	}
@@ -1615,7 +1613,6 @@
 		font-size: 0.875rem;
 		color: var(--text);
 		font-family: 'Courier New', monospace;
-		outline: none;
 		transition: border-color 0.15s;
 	}
 
@@ -1627,7 +1624,6 @@
 		padding: 0.5rem 0.75rem;
 		font-size: 0.875rem;
 		color: var(--text);
-		outline: none;
 		transition: border-color 0.15s;
 	}
 
@@ -1857,7 +1853,6 @@
 		padding: 0.5rem 0.75rem;
 		font-size: 0.875rem;
 		color: var(--text);
-		outline: none;
 		transition: border-color 0.15s;
 	}
 

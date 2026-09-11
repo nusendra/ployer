@@ -3,14 +3,23 @@
 	--bg-secondary: #0d1b3e;
 	--bg-tertiary: #162040;
 	--text: #ffffff;
-	--text-muted: #3282B8;
+	/* Muted text: >=4.5:1 on --bg, --bg-secondary and --bg-tertiary (WCAG AA). */
+	--text-muted: #8fa8c8;
 	--primary: #3282B8;
 	--primary-hover: #BBE1FA;
+	--focus-ring: #BBE1FA;
 	--success: #22c55e;
 	--warning: #f59e0b;
 	--danger: #ef4444;
+	/* Darker red so white button labels reach 4.83:1. */
+	--danger-strong: #dc2626;
 	--border: #1e2d4d;
+	/* Form-control border: >=3:1 against --bg-tertiary (WCAG 1.4.11). */
+	--border-strong: #5c74a0;
 	--radius: 8px;
+	/* Minimum comfortable hit area; raised to 44px on coarse pointers. */
+	--control-min: 36px;
+	color-scheme: dark;
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -23,11 +32,12 @@
 body {
 	background: var(--bg);
 	color: var(--text);
-	min-height: 100vh;
+	min-height: 100svh;
+	-webkit-text-size-adjust: 100%;
 }
 
 a {
-	color: var(--primary);
+	color: var(--primary-hover);
 	text-decoration: none;
 }
 
@@ -36,9 +46,22 @@ button {
 	border: none;
 	border-radius: var(--radius);
 	padding: 0.5rem 1rem;
+	min-height: var(--control-min);
 	font-size: 0.875rem;
 	font-weight: 500;
+	font-family: inherit;
 	transition: background 0.15s;
+}
+
+button:disabled {
+	cursor: not-allowed;
+}
+
+/* Single visible focus indicator for every control, keyboard-only. */
+:focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 2px;
+	border-radius: var(--radius);
 }
 
 .btn-primary {
@@ -51,8 +74,12 @@ button {
 }
 
 .btn-danger {
-	background: var(--danger);
+	background: var(--danger-strong);
 	color: white;
+}
+
+.btn-danger:hover {
+	background: var(--danger);
 }
 
 .card {
@@ -64,17 +91,27 @@ button {
 
 input, select, textarea {
 	background: var(--bg-tertiary);
-	border: 1px solid var(--border);
+	border: 1px solid var(--border-strong);
 	border-radius: var(--radius);
 	color: var(--text);
 	padding: 0.5rem 0.75rem;
+	min-height: var(--control-min);
 	font-size: 0.875rem;
+	font-family: inherit;
 	width: 100%;
 }
 
+textarea {
+	min-height: auto;
+}
+
 input:focus, select:focus, textarea:focus {
-	outline: none;
-	border-color: var(--primary);
+	border-color: var(--primary-hover);
+}
+
+input::placeholder, textarea::placeholder {
+	color: var(--text-muted);
+	opacity: 1;
 }
 
 .status-running { color: var(--success); }
@@ -82,3 +119,38 @@ input:focus, select:focus, textarea:focus {
 .status-building { color: var(--warning); }
 .status-online { color: var(--success); }
 .status-offline { color: var(--danger); }
+
+/* Keyboard shortcut out of the sidebar and into page content. */
+.skip-link {
+	position: absolute;
+	left: 0.5rem;
+	top: -3rem;
+	z-index: 100;
+	padding: 0.625rem 1rem;
+	background: var(--primary-hover);
+	color: #081028;
+	border-radius: var(--radius);
+	font-size: 0.875rem;
+	font-weight: 600;
+	transition: top 0.15s;
+}
+
+.skip-link:focus-visible {
+	top: 0.5rem;
+}
+
+/* Touch devices cannot hit a 36px target reliably. */
+@media (pointer: coarse) {
+	:root {
+		--control-min: 44px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
