@@ -5,14 +5,34 @@
 	--text: #ffffff;
 	/* Muted text: >=4.5:1 on --bg, --bg-secondary and --bg-tertiary (WCAG AA). */
 	--text-muted: #8fa8c8;
-	--primary: #3282B8;
+	/* Lightened from #3282B8 (4.04:1 on --bg-secondary) so the brand blue also
+	   works as body text and as a button fill: 6.28:1 on the lightest surface. */
+	--primary: #5AA9E6;
 	--primary-hover: #BBE1FA;
 	--focus-ring: #BBE1FA;
+
+	/* Status *fills* — used as backgrounds and icon shapes, not as small text. */
 	--success: #22c55e;
 	--warning: #f59e0b;
 	--danger: #ef4444;
-	/* Darker red so white button labels reach 4.83:1. */
+	--info: #8b5cf6;
+	--accent: #38BDF8;
+
+	/* Status *text* — same hues raised until each clears 4.5:1 on every surface
+	   (worst case is --bg-tertiary). Use these for labels, badges and pills. */
+	--success-text: #22c55e;
+	--warning-text: #fbbf24;
+	--danger-text: #f87171;
+	--info-text: #c4b5fd;
+	--accent-text: #38BDF8;
+
+	/* Solid red button fills: white label reaches 4.83:1, hover 6.47:1. */
 	--danger-strong: #dc2626;
+	--danger-strong-hover: #b91c1c;
+
+	/* Log/terminal surface, tinted toward the app navy instead of neutral black. */
+	--surface-terminal: #050a18;
+	--surface-terminal-text: #d7e0f0;
 	--border: #1e2d4d;
 	/* Form-control border: >=3:1 against --bg-tertiary (WCAG 1.4.11). */
 	--border-strong: #5c74a0;
@@ -79,7 +99,8 @@ button:disabled {
 }
 
 .btn-danger:hover {
-	background: var(--danger);
+	/* Darker, not lighter: white on --danger is only 3.76:1. */
+	background: var(--danger-strong-hover);
 }
 
 .card {
@@ -89,7 +110,9 @@ button:disabled {
 	padding: 1.5rem;
 }
 
-input, select, textarea {
+/* Checkboxes and radios are excluded: they are not text fields, and the
+   full-width/min-height rules below stretched them into blank grey squares. */
+input:not([type='checkbox']):not([type='radio']), select, textarea {
 	background: var(--bg-tertiary);
 	border: 1px solid var(--border-strong);
 	border-radius: var(--radius);
@@ -109,16 +132,24 @@ input:focus, select:focus, textarea:focus {
 	border-color: var(--primary-hover);
 }
 
+input[type='checkbox'], input[type='radio'] {
+	width: 1.05rem;
+	height: 1.05rem;
+	accent-color: var(--primary);
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
 input::placeholder, textarea::placeholder {
 	color: var(--text-muted);
 	opacity: 1;
 }
 
-.status-running { color: var(--success); }
-.status-stopped { color: var(--danger); }
-.status-building { color: var(--warning); }
-.status-online { color: var(--success); }
-.status-offline { color: var(--danger); }
+.status-running { color: var(--success-text); }
+.status-stopped { color: var(--danger-text); }
+.status-building { color: var(--warning-text); }
+.status-online { color: var(--success-text); }
+.status-offline { color: var(--danger-text); }
 
 /* Keyboard shortcut out of the sidebar and into page content. */
 .skip-link {

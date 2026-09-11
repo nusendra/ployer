@@ -181,7 +181,7 @@
 		background: rgba(239, 68, 68, 0.1);
 		border: 1px solid var(--danger);
 		border-radius: var(--radius);
-		color: var(--danger);
+		color: var(--danger-text);
 		font-size: 0.875rem;
 	}
 

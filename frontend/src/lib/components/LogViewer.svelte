@@ -159,7 +159,7 @@
 	}
 
 	.logs-container {
-		background: #1a1a1a;
+		background: var(--surface-terminal);
 		border-radius: var(--radius);
 		padding: 1rem;
 		height: 500px;
@@ -170,7 +170,7 @@
 	}
 
 	.log-line {
-		color: #e0e0e0;
+		color: var(--surface-terminal-text);
 		margin: 0.25rem 0;
 		white-space: pre-wrap;
 		word-break: break-all;

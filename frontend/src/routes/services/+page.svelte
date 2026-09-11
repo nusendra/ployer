@@ -182,7 +182,7 @@
 	.error {
 		background: rgba(239, 68, 68, 0.1);
 		border: 1px solid var(--danger);
-		color: var(--danger);
+		color: var(--danger-text);
 		padding: 0.75rem 1rem;
 		border-radius: var(--radius);
 	}

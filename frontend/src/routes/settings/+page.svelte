@@ -392,7 +392,7 @@
 	.error-banner {
 		background: rgba(239, 68, 68, 0.15);
 		border: 1px solid rgba(239, 68, 68, 0.3);
-		color: var(--danger);
+		color: var(--danger-text);
 		padding: 0.75rem 1rem;
 		border-radius: var(--radius);
 		margin-bottom: 1.25rem;
@@ -541,7 +541,7 @@
 	}
 
 	.status-line.ok {
-		color: var(--success, #22c55e);
+		color: var(--success-text);
 	}
 
 	.status-line.muted {
@@ -598,7 +598,7 @@
 		font-size: 0.6875rem;
 		font-weight: 600;
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success, #22c55e);
+		color: var(--success-text);
 	}
 
 	.badge.muted {

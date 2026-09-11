@@ -60,9 +60,9 @@
 		font-size: 1rem;
 		flex-shrink: 0;
 	}
-	.toast-success .toast-icon { color: var(--success); }
-	.toast-error   .toast-icon { color: var(--danger); }
-	.toast-warning .toast-icon { color: var(--warning); }
+	.toast-success .toast-icon { color: var(--success-text); }
+	.toast-error   .toast-icon { color: var(--danger-text); }
+	.toast-warning .toast-icon { color: var(--warning-text); }
 	.toast-info    .toast-icon { color: var(--primary); }
 
 	.toast-message {

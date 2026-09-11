@@ -415,7 +415,7 @@
 	.error {
 		background: rgba(239, 68, 68, 0.1);
 		border: 1px solid var(--danger);
-		color: var(--danger);
+		color: var(--danger-text);
 		padding: 0.6rem 0.85rem;
 		border-radius: var(--radius);
 		font-size: 0.875rem;
