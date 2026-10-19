@@ -1,16 +1,18 @@
 use axum::{
-    extract::State,
+    extract::{Query, State},
     http::{HeaderMap, StatusCode},
     routing::{get, post},
     Json, Router,
 };
-use ployer_db::repositories::SettingsRepository;
+use ployer_db::repositories::{ApplicationRepository, SettingsRepository};
 use ployer_proxy::cloudflare::{self, CloudflareClient, RecordOutcome, Zone};
+use ployer_proxy::DEFAULT_ROUTE_KEY;
 use serde::{Deserialize, Serialize};
 
 use crate::app_state::SharedState;
 use crate::auth::extract_user_id;
 use crate::routes::domains::{is_valid_hostname, normalize_domain};
+use crate::services::caddy_reconcile::live_upstream;
 
 pub fn router() -> Router<SharedState> {
     Router::new()
@@ -46,6 +48,12 @@ struct SettingsResponse {
     /// dashboard domain needs. `null` when detection failed and no override is
     /// set.
     server_ip: Option<String>,
+    /// App that receives every HTTPS hostname no route claims (e.g. customer
+    /// domains proxied through Cloudflare). `null` when unset.
+    default_app_id: Option<String>,
+    /// Whether the default-app catch-all is live in Caddy. False while a
+    /// default app is set but not running — it's routed on its next deploy.
+    default_app_routed: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,6 +67,10 @@ struct UpdateSettingsRequest {
     /// Override the detected public IP (NAT, multi-homed hosts, floating IPs).
     #[serde(default)]
     server_ip: Option<String>,
+    /// Set the default app by id. An empty string clears it. Omit to leave it
+    /// unchanged.
+    #[serde(default)]
+    default_app_id: Option<String>,
 }
 
 /// Resolve the hostname the dashboard is actually served on. The Caddyfile is
@@ -84,6 +96,11 @@ async fn current_settings(state: &SharedState) -> Result<SettingsResponse, (Stat
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
+    let default_app_id = repo
+        .default_app_id()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
     let hosts = effective_dashboard_hosts(state);
     let dashboard_domain = hosts.first().cloned().unwrap_or_default();
 
@@ -95,6 +112,8 @@ async fn current_settings(state: &SharedState) -> Result<SettingsResponse, (Stat
         dashboard_domain,
         dashboard_hosts: hosts,
         server_ip,
+        default_app_routed: state.caddy.current_upstream(DEFAULT_ROUTE_KEY).is_some(),
+        default_app_id,
     })
 }
 
@@ -145,7 +164,88 @@ async fn update_settings(
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 
+    if let Some(app_id) = req.default_app_id {
+        set_default_app(&state, &repo, app_id.trim()).await?;
+    }
+
     Ok(Json(current_settings(&state).await?))
+}
+
+// ===== Default app =====
+
+/// Make `app_id` the default app (empty clears it) and update Caddy's
+/// catch-all to match. A stopped app is recorded but only routed on its next
+/// deploy, when its container's host port is known.
+async fn set_default_app(
+    state: &SharedState,
+    repo: &SettingsRepository,
+    app_id: &str,
+) -> Result<(), (StatusCode, String)> {
+    if app_id.is_empty() {
+        repo.set_default_app_id("")
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        state
+            .caddy
+            .remove_default_route()
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        return Ok(());
+    }
+
+    let app = ApplicationRepository::new(state.db.clone())
+        .find_by_id(app_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "Application not found".to_string()))?;
+
+    repo.set_default_app_id(&app.id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let upstream = match state.docker.as_deref() {
+        Some(docker) => live_upstream(docker, &app).await,
+        None => None,
+    };
+    match upstream {
+        Some(upstream) => state.caddy.persist_default_route(&upstream),
+        // Don't leave the catch-all pointing at the previous default app.
+        None => state.caddy.remove_default_route(),
+    }
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TlsAskQuery {
+    #[serde(default)]
+    domain: String,
+}
+
+/// Caddy's `on_demand_tls` ask endpoint. Caddy calls it (unauthenticated,
+/// from localhost) before issuing a certificate for a hostname that hit the
+/// default-app catch-all; anything but 200 refuses the certificate. Approve
+/// real hostnames only while a default app is set, so the catch-all can't be
+/// used to mint certificates for arbitrary names otherwise.
+pub async fn tls_ask(
+    State(state): State<SharedState>,
+    Query(q): Query<TlsAskQuery>,
+) -> StatusCode {
+    if !is_on_demand_hostname(&q.domain) {
+        return StatusCode::FORBIDDEN;
+    }
+    match SettingsRepository::new(state.db.clone()).default_app_id().await {
+        Ok(Some(_)) => StatusCode::OK,
+        Ok(None) => StatusCode::FORBIDDEN,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    }
+}
+
+/// A DNS name worth a certificate: a valid hostname that isn't an IP literal.
+fn is_on_demand_hostname(domain: &str) -> bool {
+    let d = domain.trim_end_matches('.').to_lowercase();
+    is_valid_hostname(&d)
+        && !d.rsplit('.').next().is_some_and(|tld| tld.chars().all(|c| c.is_ascii_digit()))
 }
 
 // ===== Dashboard domain =====
@@ -386,6 +486,15 @@ async fn list_cloudflare_zones(
 #[cfg(test)]
 mod tests {
     use super::is_shared_ip_dns;
+
+    #[test]
+    fn on_demand_hostname_filter() {
+        assert!(super::is_on_demand_hostname("resodemo.com"));
+        assert!(super::is_on_demand_hostname("www.ResoDemo.com."));
+        assert!(!super::is_on_demand_hostname("3.144.143.144"));
+        assert!(!super::is_on_demand_hostname("localhost"));
+        assert!(!super::is_on_demand_hostname(""));
+    }
 
     #[test]
     fn shared_ip_dns_detection() {

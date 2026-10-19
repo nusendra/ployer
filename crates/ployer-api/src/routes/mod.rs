@@ -33,6 +33,7 @@ pub fn api_router() -> Router<SharedState> {
         .nest("/settings", settings::router())
         .nest("/templates", templates::router())
         .nest("/system", system::router())
+        .route("/internal/tls-ask", get(settings::tls_ask))
         .route("/ws", get(websocket::websocket_handler))
         .route("/applications/:id/terminal", get(terminal::terminal_ws_handler))
 }

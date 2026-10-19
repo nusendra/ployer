@@ -11,6 +11,14 @@
 		dashboard_hosts: string[];
 		dashboard_domain_custom: boolean;
 		server_ip: string | null;
+		default_app_id: string | null;
+		default_app_routed: boolean;
+	}
+
+	interface AppOption {
+		id: string;
+		name: string;
+		status: string;
 	}
 
 	interface DnsResult {
@@ -48,12 +56,22 @@
 	let ipSaving = $state(false);
 	let zones = $state<Zone[]>([]);
 
+	// Default app
+	let apps = $state<AppOption[]>([]);
+	let defaultAppInput = $state('');
+	let defaultAppSaving = $state(false);
+	let defaultAppName = $derived(
+		apps.find((a) => a.id === settings?.default_app_id)?.name ?? null
+	);
+
 	onMount(async () => {
 		try {
 			const res = await api.get<Settings>('/settings');
 			settings = res;
 			serverIpInput = res.server_ip ?? '';
+			defaultAppInput = res.default_app_id ?? '';
 			if (res.cf_api_token_set) loadZones();
+			loadApps();
 		} catch (e: any) {
 			error = e.message || 'Failed to load settings';
 		} finally {
@@ -69,6 +87,34 @@
 			// A token that can't list zones can still be valid for DNS-01 certs,
 			// so a failure here is informational only.
 			zones = [];
+		}
+	}
+
+	async function loadApps() {
+		try {
+			const res = await api.get<{ applications: AppOption[] }>('/applications');
+			apps = res?.applications ?? [];
+		} catch {
+			apps = [];
+		}
+	}
+
+	async function saveDefaultApp(appId: string) {
+		defaultAppSaving = true;
+		try {
+			settings = await api.put<Settings>('/settings', { default_app_id: appId });
+			defaultAppInput = settings.default_app_id ?? '';
+			if (!settings.default_app_id) {
+				toast.success('Default app cleared');
+			} else if (settings.default_app_routed) {
+				toast.success('Default app set');
+			} else {
+				toast.success('Default app set — it will be routed on its next deploy');
+			}
+		} catch (e: any) {
+			toast.error(e.message || 'Failed to set default app');
+		} finally {
+			defaultAppSaving = false;
 		}
 	}
 
@@ -311,6 +357,44 @@
 						domain that isn't resolving yet can't lock you out.
 					</p>
 				{/if}
+			</div>
+
+			<div class="settings-section cf-section">
+				<h3>Default App</h3>
+				<p class="section-hint">
+					Send every HTTPS hostname that no app claims to one app — for example
+					customer domains proxied through Cloudflare to this server. Caddy
+					presents a self-signed certificate for them, which Cloudflare's
+					<strong>Full</strong> SSL mode accepts (not <strong>Full (strict)</strong>).
+					The app sees the original hostname in the <code>Host</code> header.
+				</p>
+
+				{#if settings.default_app_id && settings.default_app_routed}
+					<div class="status-line ok">✓ Unclaimed hostnames go to {defaultAppName ?? 'the selected app'}</div>
+				{:else if settings.default_app_id}
+					<div class="status-line muted">
+						{defaultAppName ?? 'The selected app'} isn't running — it will be routed on its next deploy.
+					</div>
+				{:else}
+					<div class="status-line muted">No default app — unknown hostnames are refused.</div>
+				{/if}
+
+				<div class="ip-row">
+					<label for="default-app">Default app</label>
+					<select id="default-app" bind:value={defaultAppInput} disabled={defaultAppSaving}>
+						<option value="">None</option>
+						{#each apps as app (app.id)}
+							<option value={app.id}>{app.name}</option>
+						{/each}
+					</select>
+					<button
+						class="btn-primary"
+						onclick={() => saveDefaultApp(defaultAppInput)}
+						disabled={defaultAppSaving || defaultAppInput === (settings.default_app_id ?? '')}
+					>
+						{defaultAppSaving ? 'Saving…' : 'Save'}
+					</button>
+				</div>
 			</div>
 
 			<div class="settings-section cf-section">
@@ -620,7 +704,8 @@
 		min-width: 9.5rem;
 	}
 
-	.ip-row input {
+	.ip-row input,
+	.ip-row select {
 		flex: 1;
 		min-width: 180px;
 		padding: 0.6rem 0.75rem;
@@ -631,7 +716,8 @@
 		font-size: 0.875rem;
 	}
 
-	.ip-row input:focus {
+	.ip-row input:focus,
+	.ip-row select:focus {
 		border-color: var(--primary);
 	}
 

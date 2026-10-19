@@ -57,4 +57,15 @@ impl SettingsRepository {
     pub async fn set_dashboard_domain(&self, domain: &str) -> Result<()> {
         self.set("dashboard_domain", domain).await
     }
+
+    /// The application that receives every HTTPS hostname no route claims
+    /// (Caddy's on-demand catch-all), if one is set.
+    pub async fn default_app_id(&self) -> Result<Option<String>> {
+        Ok(self.get("default_app_id").await?.filter(|s| !s.trim().is_empty()))
+    }
+
+    /// Set the default app. An empty id clears it.
+    pub async fn set_default_app_id(&self, app_id: &str) -> Result<()> {
+        self.set("default_app_id", app_id).await
+    }
 }

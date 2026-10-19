@@ -14,7 +14,7 @@ use crate::middleware::validation;
 use crate::services::deployment::DeploymentService;
 use ployer_core::crypto;
 use ployer_core::models::{Application, BuildStrategy};
-use ployer_db::repositories::{ApplicationRepository, DeployKeyRepository, EnvVarRepository};
+use ployer_db::repositories::{ApplicationRepository, DeployKeyRepository, EnvVarRepository, SettingsRepository};
 use ployer_git::GitService;
 
 pub fn router() -> Router<SharedState> {
@@ -245,6 +245,15 @@ async fn delete_application(
     repo.delete(&id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // A deleted default app must not keep receiving unclaimed hostnames.
+    let settings = SettingsRepository::new(state.db.clone());
+    if settings.default_app_id().await.ok().flatten().as_deref() == Some(id.as_str()) {
+        let _ = settings.set_default_app_id("").await;
+        if let Err(e) = state.caddy.remove_default_route() {
+            tracing::warn!("Failed to remove default-app Caddy route: {}", e);
+        }
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -368,6 +368,14 @@ write_caddyfile() {
     # Disable Caddy's catch-all HTTP→HTTPS redirect so app subdomains
     # served with http:// prefix are not silently upgraded to HTTPS.
     auto_https disable_redirects
+
+    # Certificates for the default-app catch-all (apps.caddy) come from Caddy's
+    # own CA: keep that CA out of the system trust store, and only issue for
+    # hostnames Ployer approves while a default app is set.
+    skip_install_trust
+    on_demand_tls {
+        ask http://localhost:3001/api/v1/internal/tls-ask
+    }
 }
 
 ${DOMAIN} {

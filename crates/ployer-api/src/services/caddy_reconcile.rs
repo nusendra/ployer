@@ -12,9 +12,10 @@
 //! It is idempotent: a route already pointing at the live port is left
 //! untouched (no rewrite, no Caddy reload), so a healthy host is a near no-op.
 
-use ployer_db::repositories::{ApplicationRepository, DomainRepository};
+use ployer_core::models::Application;
+use ployer_db::repositories::{ApplicationRepository, DomainRepository, SettingsRepository};
 use ployer_docker::DockerClient;
-use ployer_proxy::{CaddyClient, RouteSpec};
+use ployer_proxy::{CaddyClient, RouteSpec, DEFAULT_ROUTE_KEY};
 use sqlx::SqlitePool;
 use tracing::{info, warn};
 
@@ -33,6 +34,7 @@ pub async fn reconcile_caddy_upstreams(
     let domain_repo = DomainRepository::new(db.clone());
 
     let apps = app_repo.list().await?;
+    let default_app_id = SettingsRepository::new(db.clone()).default_app_id().await.ok().flatten();
     let mut fixed = 0usize;
 
     for app in apps {
@@ -87,7 +89,62 @@ pub async fn reconcile_caddy_upstreams(
                 Err(e) => warn!("Caddy reconcile: failed to repoint {}: {}", domain, e),
             }
         }
+
+        // The default-app catch-all follows the same container port.
+        if default_app_id.as_deref() == Some(app.id.as_str())
+            && caddy.current_upstream(DEFAULT_ROUTE_KEY).as_deref() != Some(upstream.as_str())
+        {
+            match caddy.persist_default_route(&upstream) {
+                Ok(_) => {
+                    info!("Caddy reconcile: repointed default app -> {}", upstream);
+                    fixed += 1;
+                }
+                Err(e) => warn!("Caddy reconcile: failed to repoint default app: {}", e),
+            }
+        }
     }
 
     Ok(fixed)
+}
+
+/// `localhost:<host port>` for `app`'s running container — what Caddy proxies
+/// to. `None` when the app has no HTTP port or its container isn't running.
+pub async fn live_upstream(docker: &DockerClient, app: &Application) -> Option<String> {
+    let port = app.port?;
+    let container = format!("ployer-{}", app.slug());
+    match docker.get_published_host_port(&container, port).await {
+        Ok(Some(host_port)) => Some(format!("localhost:{}", host_port)),
+        Ok(None) => None,
+        Err(e) => {
+            warn!("Could not read host port for '{}': {}", container, e);
+            None
+        }
+    }
+}
+
+/// Write `domain`'s route for `app` right away if its container is running,
+/// so a newly added (or re-flagged) domain works without a redeploy. Returns
+/// whether a route was written; otherwise the next deploy writes it.
+pub async fn apply_domain_route(
+    docker: Option<&DockerClient>,
+    caddy: &CaddyClient,
+    app: &Application,
+    domain: &str,
+    wildcard: bool,
+) -> bool {
+    let Some(docker) = docker else { return false };
+    let Some(upstream) = live_upstream(docker, app).await else { return false };
+    let spec = RouteSpec {
+        domain: domain.to_string(),
+        upstream,
+        wildcard,
+        tls: caddy.tls_mode_for(domain),
+    };
+    match caddy.persist_route_spec(&spec) {
+        Ok(_) => true,
+        Err(e) => {
+            warn!("Failed to persist Caddy route for {}: {}", domain, e);
+            false
+        }
+    }
 }

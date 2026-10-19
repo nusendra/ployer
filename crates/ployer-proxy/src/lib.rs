@@ -85,6 +85,26 @@ fn render_block(spec: &RouteSpec, cf_token: Option<&str>) -> String {
     block
 }
 
+/// Marker key of the default-app route in apps.caddy. Not a valid hostname, so
+/// it can never collide with a real domain's `# ployer-route:` marker.
+pub const DEFAULT_ROUTE_KEY: &str = "default";
+
+/// Render the default-app catch-all: every HTTPS hostname no other route
+/// claims goes to `upstream`.
+///
+/// This is what makes domains pointed at the server without being registered
+/// in Ployer work — e.g. customer domains proxied through Cloudflare to an app
+/// that routes on the Host header. Caddy issues a certificate from its own
+/// local CA on the first handshake for each hostname (gated by the global
+/// `on_demand_tls` ask endpoint); Cloudflare's "Full" SSL mode accepts it.
+/// Without this block Caddy has no certificate for an unknown SNI, refuses the
+/// handshake, and Cloudflare shows a 525.
+fn render_default_block(upstream: &str) -> String {
+    format!(
+        "# ployer-route: {DEFAULT_ROUTE_KEY}\nhttps:// {{\n    tls internal {{\n        on_demand\n    }}\n    reverse_proxy {upstream}\n}}\n"
+    )
+}
+
 /// Render the base Caddyfile: the dashboard site block, the plain-HTTP
 /// LAN/direct-IP catch-all, and the import of the app routes file.
 ///
@@ -103,6 +123,14 @@ fn render_base_caddyfile(hosts: &[String], apps_caddy_path: &str) -> String {
     # Disable Caddy's catch-all HTTP→HTTPS redirect so app subdomains
     # served with http:// prefix are not silently upgraded to HTTPS.
     auto_https disable_redirects
+
+    # Certificates for the default-app catch-all (apps.caddy) come from Caddy's
+    # own CA: keep that CA out of the system trust store, and only issue for
+    # hostnames Ployer approves while a default app is set.
+    skip_install_trust
+    on_demand_tls {{
+        ask http://localhost:3001/api/v1/internal/tls-ask
+    }}
 }}
 
 {domain} {{
@@ -292,6 +320,48 @@ impl CaddyClient {
         Ok(())
     }
 
+    /// Point the default-app catch-all at `upstream` and reload Caddy.
+    pub fn persist_default_route(&self, upstream: &str) -> Result<()> {
+        let apps_file = self.apps_caddyfile();
+        let existing = std::fs::read_to_string(&apps_file).unwrap_or_default();
+        let filtered = remove_domain_block(&existing, DEFAULT_ROUTE_KEY);
+
+        let mut content = filtered.trim_end().to_string();
+        if !content.is_empty() {
+            content.push('\n');
+        }
+        content.push('\n');
+        content.push_str(&render_default_block(upstream));
+        std::fs::write(&apps_file, content)?;
+        info!("Persisted default-app Caddy route -> {}", upstream);
+
+        self.reload();
+        Ok(())
+    }
+
+    /// Drop the default-app catch-all, if present.
+    pub fn remove_default_route(&self) -> Result<()> {
+        self.remove_route(DEFAULT_ROUTE_KEY)
+    }
+
+    /// Remove `domain`'s block from apps.caddy and reload Caddy. A domain with
+    /// no block is a no-op (no write, no reload).
+    pub fn remove_route(&self, domain: &str) -> Result<()> {
+        let apps_file = self.apps_caddyfile();
+        let Ok(existing) = std::fs::read_to_string(&apps_file) else {
+            return Ok(());
+        };
+        let filtered = remove_domain_block(&existing, domain);
+        if filtered.trim_end() == existing.trim_end() {
+            return Ok(());
+        }
+        std::fs::write(&apps_file, filtered)?;
+        info!("Removed Caddy route for {}", domain);
+
+        self.reload();
+        Ok(())
+    }
+
     /// Read the `reverse_proxy` upstream currently persisted for `domain` in
     /// apps.caddy, if any.
     ///
@@ -371,9 +441,17 @@ impl CaddyClient {
         let Ok(content) = std::fs::read_to_string(&self.caddyfile_path) else {
             return Vec::new();
         };
+        // Only top-level lines open a site block; nested ones (e.g. the global
+        // `on_demand_tls {`) are options, not addresses.
+        let mut depth: i32 = 0;
         for line in content.lines() {
             let trimmed = line.trim();
             if trimmed.starts_with('#') {
+                continue;
+            }
+            let top_level = depth == 0;
+            depth += trimmed.matches('{').count() as i32 - trimmed.matches('}').count() as i32;
+            if !top_level {
                 continue;
             }
             let Some(addr) = trimmed.strip_suffix('{') else { continue };
@@ -523,19 +601,6 @@ impl CaddyClient {
             warn!("Failed to add Caddy route: {}", error_text);
             Err(anyhow!("Failed to add Caddy route: {}", error_text))
         }
-    }
-
-    /// Remove a route by domain
-    pub async fn remove_route(&self, domain: &str) -> Result<()> {
-        info!("Removing Caddy route for domain: {}", domain);
-
-        // For simplicity, we'll reload the entire config without this domain
-        // In production, you'd use Caddy's @id-based route removal
-        warn!("Route removal is a stub - implement with Caddy route IDs in production");
-
-        // TODO: Implement proper route removal using Caddy's route IDs
-        // For now, just log the intention
-        Ok(())
     }
 
     /// List all active routes (stub for now)

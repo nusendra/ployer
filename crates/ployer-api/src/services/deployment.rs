@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use ployer_core::models::{AppStatus, Application, Deployment, DeploymentStatus, WsEvent};
-use ployer_db::repositories::{ApplicationRepository, DeploymentRepository, DomainRepository, EnvVarRepository};
+use ployer_db::repositories::{ApplicationRepository, DeploymentRepository, DomainRepository, EnvVarRepository, SettingsRepository};
 use ployer_docker::{DockerClient, ContainerConfig};
 use ployer_git::GitService;
 use ployer_proxy::{CaddyClient, RouteSpec};
@@ -352,6 +352,22 @@ impl DeploymentService {
                             }
                             Err(e) => {
                                 warn!("Failed to list domains for Caddy refresh: {}", e);
+                            }
+                        }
+
+                        // The default app's catch-all follows its new port too.
+                        let is_default = SettingsRepository::new(db.clone())
+                            .default_app_id()
+                            .await
+                            .ok()
+                            .flatten()
+                            .is_some_and(|id| id == application.id);
+                        if is_default {
+                            if let Err(e) = caddy_client.persist_default_route(&upstream) {
+                                warn!("Failed to persist default-app Caddy route: {}", e);
+                                send_log(format!("Warning: default-app route persistence failed: {}", e)).await;
+                            } else {
+                                send_log(format!("Caddy configured: default app (unclaimed HTTPS hosts) -> {}", upstream)).await;
                             }
                         }
                     }

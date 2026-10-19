@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 use crate::app_state::SharedState;
 use crate::auth::extract_user_id;
 use ployer_core::models::Domain;
-use ployer_db::repositories::DomainRepository;
+use ployer_db::repositories::{ApplicationRepository, DomainRepository};
+
+use crate::services::caddy_reconcile::apply_domain_route;
 
 pub fn router() -> Router<SharedState> {
     Router::new()
@@ -28,8 +30,8 @@ struct AddDomainRequest {
     #[serde(default)]
     is_primary: bool,
     /// Serve as a wildcard (`*.<domain>`) plus the apex, for tenant subdomains.
-    /// The route (with HTTPS if a Cloudflare token is configured) is applied on
-    /// the next deploy.
+    /// The route (with HTTPS if a Cloudflare token is configured) is applied
+    /// immediately when the app is running, otherwise on the next deploy.
     #[serde(default)]
     wildcard: bool,
 }
@@ -51,6 +53,16 @@ struct VerifyDomainResponse {
 }
 
 // ===== Handlers =====
+
+/// Write `domain`'s Caddy route for a running app. Best effort: a stopped app
+/// (or no Docker) leaves it to the next deploy, which always rewrites routes.
+async fn refresh_route(state: &SharedState, app_id: &str, domain: &str, wildcard: bool) {
+    let app = match ApplicationRepository::new(state.db.clone()).find_by_id(app_id).await {
+        Ok(Some(app)) => app,
+        _ => return,
+    };
+    apply_domain_route(state.docker.as_deref(), &state.caddy, &app, domain, wildcard).await;
+}
 
 async fn list_domains(
     State(state): State<SharedState>,
@@ -126,8 +138,9 @@ async fn add_domain(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // Caddy route is written by the deployment service on the next deploy,
-    // where the running container's host port is known. Redeploy to apply.
+    // Route the domain now if the app is running; otherwise the next deploy
+    // writes it once the container's host port is known.
+    refresh_route(&state, &app_id, &domain.domain, domain.wildcard).await;
 
     Ok((StatusCode::CREATED, Json(DomainResponse { domain })))
 }
@@ -157,10 +170,9 @@ async fn remove_domain(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // TODO: Remove Caddy route
-    // if let Some(ref caddy) = state.caddy {
-    //     let _ = caddy.remove_route(&domain).await;
-    // }
+    if let Err(e) = state.caddy.remove_route(&domain) {
+        tracing::warn!("Failed to remove Caddy route for {}: {}", domain, e);
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -262,7 +274,8 @@ async fn set_wildcard_domain(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // The route is (re)written on the next deploy; redeploy to apply.
+    // Rewrite the route with/without `*.<domain>` now if the app is running.
+    refresh_route(&state, &app_id, &domain_record.domain, req.wildcard).await;
     Ok(StatusCode::NO_CONTENT)
 }
 

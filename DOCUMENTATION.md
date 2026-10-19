@@ -872,7 +872,7 @@ Response (201 Created):
 }
 ```
 
-Note: When you deploy an application, a subdomain is automatically generated in the format `{app-name}.{base-domain}`.
+Note: When you deploy an application, a subdomain is automatically generated in the format `{app-name}.{base-domain}`. If the application is running, the new domain is routed immediately; otherwise it is routed on the next deploy.
 
 **Remove a domain**
 
@@ -911,6 +911,20 @@ Authorization: Bearer <token>
 Response: 204 No Content
 
 Note: Only one domain can be primary per application.
+
+**Default app (catch-all for unclaimed hostnames)**
+
+One application can be the *default app*: every HTTPS hostname that no other route claims is proxied to it, with the original hostname in the `Host` header. Use it for apps that serve many customer domains without registering each one in Ployer — e.g. domains proxied through Cloudflare to this server.
+
+```bash
+PUT /api/v1/settings
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "default_app_id": "uuid" }   # "" clears it
+```
+
+Caddy issues a certificate from its own local CA on the first request for each hostname (on-demand TLS, approved by `GET /api/v1/internal/tls-ask?domain=…` only while a default app is set). Browsers don't trust that certificate, so put the domain behind a Cloudflare proxy with SSL mode **Full** (not *Full (strict)*). The route follows the app's container port on every deploy and on boot. Can also be set under **Settings → Default App**.
 
 ### Webhooks
 

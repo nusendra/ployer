@@ -332,3 +332,75 @@ fn persist_env_is_a_no_op_without_an_env_file() {
 
     assert!(!dir.join("ployer.env").exists());
 }
+
+// ── Default app ─────────────────────────────────────────────────────
+
+#[test]
+fn default_route_is_an_on_demand_https_catch_all() {
+    let (dir, client) = make_client("default-route-render");
+    client.persist_route("app.example.com", "localhost:3000").unwrap();
+
+    client.persist_default_route("localhost:32781").unwrap();
+
+    let content = fs::read_to_string(client.apps_caddyfile_path()).unwrap();
+    assert!(content.contains("# ployer-route: default\nhttps:// {"));
+    assert!(content.contains("tls internal {\n        on_demand\n    }"));
+    assert_eq!(client.current_upstream(DEFAULT_ROUTE_KEY).as_deref(), Some("localhost:32781"));
+    // Other routes are untouched.
+    assert_eq!(client.current_upstream("app.example.com").as_deref(), Some("localhost:3000"));
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn default_route_upsert_replaces_the_previous_upstream() {
+    let (dir, client) = make_client("default-route-upsert");
+
+    client.persist_default_route("localhost:1111").unwrap();
+    client.persist_default_route("localhost:2222").unwrap();
+
+    let content = fs::read_to_string(client.apps_caddyfile_path()).unwrap();
+    assert_eq!(content.matches("https:// {").count(), 1);
+    assert_eq!(client.current_upstream(DEFAULT_ROUTE_KEY).as_deref(), Some("localhost:2222"));
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn remove_default_route_keeps_app_routes() {
+    let (dir, client) = make_client("default-route-remove");
+    client.persist_route("app.example.com", "localhost:3000").unwrap();
+    client.persist_default_route("localhost:32781").unwrap();
+
+    client.remove_default_route().unwrap();
+
+    let content = fs::read_to_string(client.apps_caddyfile_path()).unwrap();
+    assert!(!content.contains("https://"));
+    assert!(content.contains("# ployer-route: app.example.com"));
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn remove_route_drops_only_that_domain() {
+    let (dir, client) = make_client("remove-route");
+    client.persist_route("a.example.com", "localhost:3000").unwrap();
+    client.persist_route("b.example.com", "localhost:3001").unwrap();
+
+    client.remove_route("a.example.com").unwrap();
+    // Unknown domain is a no-op.
+    client.remove_route("missing.example.com").unwrap();
+
+    assert_eq!(client.current_upstream("a.example.com"), None);
+    assert_eq!(client.current_upstream("b.example.com").as_deref(), Some("localhost:3001"));
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
+fn dashboard_hosts_skips_nested_global_options() {
+    let (dir, client) = make_client("dashboard-hosts-nested-globals");
+    write_installer_caddyfile(&dir, "ployer.example.com");
+
+    // The template's global block nests `on_demand_tls { ... }`; that line
+    // must not be read as the dashboard address.
+    let content = fs::read_to_string(dir.join("Caddyfile")).unwrap();
+    assert!(content.contains("on_demand_tls {"));
+    assert_eq!(client.dashboard_hosts(), vec!["ployer.example.com"]);
+}
