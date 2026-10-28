@@ -63,9 +63,9 @@ jobs:
       - name: cargo clippy -- -D warnings
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      # Not a gate: the tree is not rustfmt-clean and a blanket reformat is a
-      # separate decision. Reported so the backlog stays visible instead of
-      # silently growing.
+      # Not a gate: the tree has ~325 unformatted hunks and a blanket reformat
+      # is a separate decision. GitHub reports a continue-on-error step as
+      # green whatever happens, so this is log-only visibility, not a signal.
       - name: cargo fmt (advisory, non-blocking)
         continue-on-error: true
         run: cargo fmt --all -- --check

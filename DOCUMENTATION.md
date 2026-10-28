@@ -111,11 +111,13 @@ why, rather than widening the gate or silencing the lint crate-wide. There are
 currently six such allows, all `clippy::too_many_arguments` on SQL writers whose
 arguments are one-per-column.
 
-`cargo fmt --check` is deliberately **not** in CI yet: the tree predates any
-formatting discipline and is not rustfmt-clean, so turning it on would either
-fail immediately or require a tree-wide reformat that would bury every
-subsequent `git blame`. That is its own decision, not a side effect of a lint
-cleanup.
+`cargo fmt --check` is **not** a gate: the tree predates any formatting
+discipline and currently has ~325 unformatted hunks spread across nearly every
+file, so turning it on would either fail immediately or require a tree-wide
+reformat that would bury every subsequent `git blame`. That is its own
+decision, not a side effect of a lint cleanup. CI still runs it as a
+`continue-on-error` step, so the current state is one click away in the job
+log; note that GitHub reports such a step as green regardless of its result.
 
 ## CLI Commands
 
