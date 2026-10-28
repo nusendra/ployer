@@ -14,8 +14,6 @@ pub struct IndexEntry {
     pub description: String,
     pub category: String,
     #[serde(default)]
-    pub icon: Option<String>,
-    #[serde(default)]
     pub tags: Vec<String>,
     pub version: serde_json::Value,
     pub sha256: String,
@@ -28,8 +26,6 @@ pub struct Template {
     pub name: String,
     pub description: String,
     pub category: String,
-    #[serde(default)]
-    pub icon: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
     pub version: serde_json::Value,

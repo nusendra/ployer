@@ -7,7 +7,6 @@
 		name: string;
 		description: string;
 		category: string;
-		icon: string | null;
 		tags: string[];
 	};
 
