@@ -118,11 +118,9 @@ impl WebhookRepository {
     }
 
     /// Create a webhook delivery record
-    #[allow(
-        clippy::too_many_arguments,
-        reason = "one parameter per `webhook_deliveries` column; a params struct would duplicate \
-                  the column list and could drift from the INSERT silently"
-    )]
+    // one parameter per `webhook_deliveries` column; a params struct would duplicate the column
+    // list and could drift from the INSERT silently
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_delivery(
         &self,
         webhook_id: &str,

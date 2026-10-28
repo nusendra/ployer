@@ -12,11 +12,9 @@ impl ApplicationRepository {
         Self { pool }
     }
 
-    #[allow(
-        clippy::too_many_arguments,
-        reason = "one parameter per `applications` column; a params struct would duplicate \
-                  the column list and could drift from the INSERT silently"
-    )]
+    // one parameter per `applications` column; a params struct would duplicate the column list
+    // and could drift from the INSERT silently
+    #[allow(clippy::too_many_arguments)]
     pub async fn create(
         &self,
         name: &str,
@@ -129,11 +127,9 @@ impl ApplicationRepository {
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
-    #[allow(
-        clippy::too_many_arguments,
-        reason = "one parameter per `applications` column; a params struct would duplicate \
-                  the column list and could drift from the UPDATE silently"
-    )]
+    // one parameter per `applications` column; a params struct would duplicate the column list
+    // and could drift from the UPDATE silently
+    #[allow(clippy::too_many_arguments)]
     pub async fn update(
         &self,
         id: &str,

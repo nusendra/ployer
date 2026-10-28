@@ -105,13 +105,11 @@ impl DeploymentService {
     }
 
     /// Execute the full deployment pipeline
-    #[allow(
-        clippy::too_many_arguments,
-        reason = "spawned as a detached task, so every dependency must be passed by value \
-                  rather than borrowed from AppState; the first six are the ambient services \
-                  and the last four are this job's inputs. Bundling them into a struct is a \
-                  refactor of the deployment hot path, deliberately not folded into a lint fix."
-    )]
+    // spawned as a detached task, so every dependency must be passed by value rather than
+    // borrowed from AppState; the first six are the ambient services and the last four are this
+    // job's inputs. Bundling them into a struct is a refactor of the deployment hot path,
+    // deliberately not folded into a lint fix.
+    #[allow(clippy::too_many_arguments)]
     async fn execute_deployment(
         db: SqlitePool,
         docker: Arc<DockerClient>,

@@ -5,12 +5,53 @@
 - **Rust** (1.75+) — [rustup.rs](https://rustup.rs)
 - **Node.js** (20+) or **Bun** (1.0+) — for frontend builds
 - **Docker** (optional) — required for container management features
+- **OpenSSL headers** — `libssl-dev` on Debian/Ubuntu, `openssl-devel` on
+  Fedora/RHEL, `openssl` on macOS (Homebrew). Required: `reqwest` is built with
+  its default `native-tls` feature, so `openssl-sys` must find system OpenSSL
+  or the build fails on the very first dependency, long before any Ployer code
+  is reached.
+
+  ```bash
+  sudo apt-get install -y libssl-dev pkg-config   # Debian / Ubuntu
+  ```
+
+  The failure looks like this, and it is not a Ployer bug:
+
+  ```
+  error: failed to run custom build command for `openssl-sys v0.9.x`
+    Could not find directory of OpenSSL installation
+  ```
+
+### `SQLX_OFFLINE=true` is required for every cargo command
+
+Ployer uses `sqlx`'s compile-time-checked `query!` macros, which need either a
+live database matching the schema or the checked-in offline metadata in
+`.sqlx/`. Always build and test with:
+
+```bash
+export SQLX_OFFLINE=true
+```
+
+Without it, `.cargo/config.toml` points `DATABASE_URL` at
+`sqlite://ployer.db?mode=rwc`, whose `mode=rwc` *creates* an empty database in
+whatever directory you happen to be in. The macros then type-check against that
+empty database and every one of them fails:
+
+```
+error: error returned from database: (code: 1) no such table: applications
+```
+
+The fix is never "run the migrations" — it is to set `SQLX_OFFLINE=true` and
+use the committed `.sqlx/` metadata. Only regenerate that metadata
+(`cargo sqlx prepare --workspace`, against a migrated database) when you change
+a SQL query.
 
 ## Quick Start
 
 ### 1. Build the backend
 
 ```bash
+export SQLX_OFFLINE=true
 cargo build --workspace
 ```
 
@@ -51,6 +92,30 @@ Expected response:
 ```
 
 `docker: false` is normal if Docker is not running.
+
+## Development Checks
+
+CI (`.github/workflows/ci.yml`) runs these on every push and pull request, and
+they are the same commands to run locally before opening a PR:
+
+```bash
+export SQLX_OFFLINE=true
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+The clippy gate is enforced: **any** warning fails the build. If you are adding
+a function that trips a lint you believe is wrong for the case at hand, add a
+narrowly scoped `#[allow(clippy::the_lint)]` on that item with a comment saying
+why, rather than widening the gate or silencing the lint crate-wide. There are
+currently six such allows, all `clippy::too_many_arguments` on SQL writers whose
+arguments are one-per-column.
+
+`cargo fmt --check` is deliberately **not** in CI yet: the tree predates any
+formatting discipline and is not rustfmt-clean, so turning it on would either
+fail immediately or require a tree-wide reformat that would bury every
+subsequent `git blame`. That is its own decision, not a side effect of a lint
+cleanup.
 
 ## CLI Commands
 

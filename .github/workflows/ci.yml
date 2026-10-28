@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Required: `.cargo/config.toml` points DATABASE_URL at
+  # sqlite://ployer.db?mode=rwc, which would CREATE an empty database here and
+  # make every sqlx::query! macro fail with "no such table". Offline mode uses
+  # the committed .sqlx/ metadata instead. See DOCUMENTATION.md > Prerequisites.
+  SQLX_OFFLINE: true
+
+jobs:
+  check:
+    name: Clippy and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      # reqwest is built with its default native-tls feature, so openssl-sys
+      # needs system OpenSSL or the build fails on the first dependency.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libssl-dev pkg-config
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      # The gate. Any warning is an error; see DOCUMENTATION.md >
+      # Development Checks for how to handle a lint that is wrong for a
+      # specific call site.
+      - name: cargo clippy -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace
+
+      # Not a gate: the tree is not rustfmt-clean and a blanket reformat is a
+      # separate decision. Reported so the backlog stays visible instead of
+      # silently growing.
+      - name: cargo fmt (advisory, non-blocking)
+        continue-on-error: true
+        run: cargo fmt --all -- --check
