@@ -35,7 +35,6 @@ struct CatalogEntry {
     name: String,
     description: String,
     category: String,
-    icon: Option<String>,
     tags: Vec<String>,
 }
 
@@ -54,7 +53,6 @@ async fn list_templates(
             name: e.name,
             description: e.description,
             category: e.category,
-            icon: e.icon,
             tags: e.tags,
         })
         .collect();
