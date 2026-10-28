@@ -7,6 +7,12 @@ pub struct ServerManager {
     system: System,
 }
 
+impl Default for ServerManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ServerManager {
     pub fn new() -> Self {
         info!("Server manager initialized");

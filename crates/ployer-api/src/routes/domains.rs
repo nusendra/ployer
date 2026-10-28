@@ -128,7 +128,11 @@ async fn add_domain(
     let repo = DomainRepository::new(state.db.clone());
 
     // Check if domain already exists
-    if let Some(_) = repo.find_by_domain(&domain_name).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))? {
+    let existing = repo
+        .find_by_domain(&domain_name)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    if existing.is_some() {
         return Err((StatusCode::CONFLICT, "Domain already exists".to_string()));
     }
 

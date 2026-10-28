@@ -105,6 +105,13 @@ impl DeploymentService {
     }
 
     /// Execute the full deployment pipeline
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "spawned as a detached task, so every dependency must be passed by value \
+                  rather than borrowed from AppState; the first six are the ambient services \
+                  and the last four are this job's inputs. Bundling them into a struct is a \
+                  refactor of the deployment hot path, deliberately not folded into a lint fix."
+    )]
     async fn execute_deployment(
         db: SqlitePool,
         docker: Arc<DockerClient>,
@@ -226,9 +233,9 @@ impl DeploymentService {
         }
 
         // Also force-remove by fixed name (catches untracked containers with the same name)
-        match docker.remove_container(&container_name, true).await {
-            Ok(_) => send_log(format!("Removed existing container '{}'", container_name)).await,
-            Err(_) => {} // doesn't exist — that's fine
+        // An Err here just means no such container, which is the normal case.
+        if docker.remove_container(&container_name, true).await.is_ok() {
+            send_log(format!("Removed existing container '{}'", container_name)).await;
         }
 
         // Note: we no longer kill "containers bound to this port" — app containers

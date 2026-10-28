@@ -23,18 +23,13 @@ pub struct Application {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum BuildStrategy {
+    #[default]
     Dockerfile,
     Nixpacks,
     DockerCompose,
-}
-
-impl Default for BuildStrategy {
-    fn default() -> Self {
-        BuildStrategy::Dockerfile
-    }
 }
 
 impl BuildStrategy {

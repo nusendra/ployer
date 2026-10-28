@@ -14,6 +14,11 @@ impl ContainerStatsRepository {
     }
 
     /// Record container stats
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "one parameter per `container_stats` column; a params struct would duplicate \
+                  the column list and could drift from the INSERT silently"
+    )]
     pub async fn record(
         &self,
         container_id: &str,

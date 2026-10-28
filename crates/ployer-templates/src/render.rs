@@ -75,13 +75,11 @@ fn resolve_inputs(
             fallback_value(spec)?
         };
 
-        if matches!(spec.kind, InputKind::Number) {
-            if value.parse::<f64>().is_err() {
-                return Err(TemplateError::InvalidInput {
-                    key: spec.key.clone(),
-                    reason: "expected number".to_string(),
-                });
-            }
+        if matches!(spec.kind, InputKind::Number) && value.parse::<f64>().is_err() {
+            return Err(TemplateError::InvalidInput {
+                key: spec.key.clone(),
+                reason: "expected number".to_string(),
+            });
         }
 
         out.insert(spec.key.clone(), value);
