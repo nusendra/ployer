@@ -525,8 +525,13 @@
 	}
 
 	.toggle-row.disabled {
-		opacity: 0.6;
+		/* Mute the label rather than the whole row: opacity: 0.6 dropped the
+		   description to ~3.3:1. The real disabled signal lives on the switch. */
 		cursor: not-allowed;
+	}
+
+	.toggle-row.disabled .toggle-label {
+		color: var(--text-muted);
 	}
 
 	.toggle-info {
@@ -591,8 +596,21 @@
 		transform: translateX(20px);
 	}
 
+	/* Same material as a disabled button: the track is hatched and the knob
+	   drops to --text-muted (6.5:1 on the hatch), so the switch reads inert on
+	   a touchscreen where cursor: not-allowed never shows. */
 	.toggle-control input:disabled ~ .toggle-switch {
 		cursor: not-allowed;
+		background: repeating-linear-gradient(
+			135deg,
+			var(--bg-tertiary) 0 5px,
+			var(--bg) 5px 10px
+		);
+		box-shadow: inset 0 0 0 1px var(--border-strong);
+	}
+
+	.toggle-control input:disabled ~ .toggle-switch::after {
+		background: var(--text-muted);
 	}
 
 	.cf-section {
@@ -787,32 +805,20 @@
 
 	.btn-primary {
 		padding: 0.6rem 1.1rem;
-		background: var(--primary);
-		color: white;
-		border: none;
+		background: var(--btn-fill, var(--primary));
+		color: var(--btn-label, white);
+		border: 1px solid var(--btn-border, transparent);
 		border-radius: 8px;
 		font-size: 0.875rem;
 		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 
 	.btn-ghost {
 		padding: 0.6rem 0.9rem;
-		background: transparent;
-		color: var(--text-muted);
-		border: 1px solid var(--border);
+		background: var(--btn-fill, transparent);
+		color: var(--btn-label, var(--text-muted));
+		border: 1px solid var(--btn-border, var(--border));
 		border-radius: 8px;
 		font-size: 0.875rem;
-		cursor: pointer;
-	}
-
-	.btn-ghost:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 </style>

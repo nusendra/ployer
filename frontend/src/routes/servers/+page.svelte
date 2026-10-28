@@ -328,21 +328,15 @@
 		border-radius: 6px;
 		font-size: 0.75rem;
 		font-weight: 500;
-		background: transparent;
-		color: var(--text-muted);
-		border: 1px solid var(--border);
-		cursor: pointer;
+		background: var(--btn-fill, transparent);
+		color: var(--btn-label, var(--text-muted));
+		border: 1px solid var(--btn-border, var(--border));
 		transition: color 0.15s, border-color 0.15s;
 	}
 
 	.btn-refresh:hover:not(:disabled) {
 		color: var(--primary);
 		border-color: var(--primary);
-	}
-
-	.btn-refresh:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 
 	.stats-grid {

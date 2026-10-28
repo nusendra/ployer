@@ -1264,15 +1264,15 @@
 		border-radius: var(--radius);
 		font-size: 0.875rem;
 		font-weight: 600;
-		background: var(--primary);
-		color: var(--bg);
-		border: none;
-		cursor: pointer;
-		transition: opacity 0.15s;
+		background: var(--btn-fill, var(--primary));
+		color: var(--btn-label, var(--bg));
+		border: 1px solid var(--btn-border, transparent);
+		transition: background 0.15s;
 	}
 
-	.btn-deploy:hover { opacity: 0.85; }
-	.btn-deploy:disabled { opacity: 0.5; cursor: not-allowed; }
+	/* Hover lightens the fill instead of fading the whole control: opacity
+	   hover and opacity disabled were the same gesture at two strengths. */
+	.btn-deploy:hover:not(:disabled) { background: var(--primary-hover); }
 
 	/* ── Error ── */
 	.error-banner {
@@ -1482,15 +1482,13 @@
 		border-radius: var(--radius);
 		font-size: 0.875rem;
 		font-weight: 600;
-		background: var(--primary);
-		color: var(--bg);
-		border: none;
-		cursor: pointer;
-		transition: opacity 0.15s;
+		background: var(--btn-fill, var(--primary));
+		color: var(--btn-label, var(--bg));
+		border: 1px solid var(--btn-border, transparent);
+		transition: background 0.15s;
 	}
 
-	.btn-primary:hover { opacity: 0.85; }
-	.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+	.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
 
 	.btn-primary.btn-sm {
 		padding: 0.375rem 0.875rem;
@@ -1502,14 +1500,14 @@
 		border-radius: var(--radius);
 		font-size: 0.875rem;
 		font-weight: 600;
-		background: var(--danger);
-		color: white;
-		border: none;
-		cursor: pointer;
-		transition: opacity 0.15s;
+		/* --danger-strong, not --danger: white on #ef4444 is 3.76:1. */
+		background: var(--btn-fill, var(--danger-strong));
+		color: var(--btn-label, white);
+		border: 1px solid var(--btn-border, transparent);
+		transition: background 0.15s;
 	}
 
-	.btn-danger:hover { opacity: 0.85; }
+	.btn-danger:hover:not(:disabled) { background: var(--danger-strong-hover); }
 
 	.btn-icon-danger {
 		background: transparent;
