@@ -23,18 +23,13 @@ pub struct Application {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum BuildStrategy {
+    #[default]
     Dockerfile,
     Nixpacks,
     DockerCompose,
-}
-
-impl Default for BuildStrategy {
-    fn default() -> Self {
-        BuildStrategy::Dockerfile
-    }
 }
 
 impl BuildStrategy {
@@ -46,7 +41,16 @@ impl BuildStrategy {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    /// Parse a `BuildStrategy` out of the string stored in its database column.
+    ///
+    /// Total and lossy by design: an unrecognised value yields
+    /// [`BuildStrategy::Dockerfile`] rather than an error, so a row written by a newer
+    /// schema can never make an existing row unreadable.
+    ///
+    /// Deliberately not [`std::str::FromStr`]: that trait would need
+    /// `Err = Infallible`, which hides the fallback from callers and makes
+    /// `"nonsense".parse()` look like a successful parse.
+    pub fn from_db_str(s: &str) -> Self {
         match s {
             "dockerfile" => BuildStrategy::Dockerfile,
             "nixpacks" => BuildStrategy::Nixpacks,
@@ -77,7 +81,16 @@ impl AppStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    /// Parse a `AppStatus` out of the string stored in its database column.
+    ///
+    /// Total and lossy by design: an unrecognised value yields
+    /// [`AppStatus::Idle`] rather than an error, so a row written by a newer
+    /// schema can never make an existing row unreadable.
+    ///
+    /// Deliberately not [`std::str::FromStr`]: that trait would need
+    /// `Err = Infallible`, which hides the fallback from callers and makes
+    /// `"nonsense".parse()` look like a successful parse.
+    pub fn from_db_str(s: &str) -> Self {
         match s {
             "idle" => AppStatus::Idle,
             "building" => AppStatus::Building,

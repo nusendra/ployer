@@ -27,7 +27,18 @@ impl WebhookProvider {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    /// Parse a `WebhookProvider` out of the string stored in its database column.
+    ///
+    /// Total and lossy by design: an unrecognised value yields
+    /// [`WebhookProvider::GitHub`] rather than an error, so a row written by a newer
+    /// schema can never make an existing row unreadable.
+    ///
+    /// Matching is case-insensitive.
+    ///
+    /// Deliberately not [`std::str::FromStr`]: that trait would need
+    /// `Err = Infallible`, which hides the fallback from callers and makes
+    /// `"nonsense".parse()` look like a successful parse.
+    pub fn from_db_str(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "github" => WebhookProvider::GitHub,
             "gitlab" => WebhookProvider::GitLab,
@@ -71,7 +82,16 @@ impl WebhookDeliveryStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    /// Parse a `WebhookDeliveryStatus` out of the string stored in its database column.
+    ///
+    /// Total and lossy by design: an unrecognised value yields
+    /// [`WebhookDeliveryStatus::Failed`] rather than an error, so a row written by a newer
+    /// schema can never make an existing row unreadable.
+    ///
+    /// Deliberately not [`std::str::FromStr`]: that trait would need
+    /// `Err = Infallible`, which hides the fallback from callers and makes
+    /// `"nonsense".parse()` look like a successful parse.
+    pub fn from_db_str(s: &str) -> Self {
         match s {
             "success" => WebhookDeliveryStatus::Success,
             "failed" => WebhookDeliveryStatus::Failed,

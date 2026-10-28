@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Required: `.cargo/config.toml` points DATABASE_URL at
+  # sqlite://ployer.db?mode=rwc, which would CREATE an empty database here and
+  # make every sqlx::query! macro fail with "no such table". Offline mode uses
+  # the committed .sqlx/ metadata instead. See DOCUMENTATION.md > Prerequisites.
+  SQLX_OFFLINE: true
+
+jobs:
+  # The lint gate runs on a PINNED toolchain, on purpose.
+  #
+  # `-D warnings` plus a floating `stable` means every six-week Rust release can
+  # red-light every open PR over a brand-new lint that has nothing to do with the
+  # change under review. Pinning makes the gate deterministic: a clippy upgrade
+  # becomes its own PR that bumps this version and fixes the new findings in one
+  # place, reviewed on its own merits.
+  #
+  # To upgrade: bump the version below, run
+  #   cargo +<version> clippy --workspace --all-targets -- -D warnings
+  # locally, fix what it finds, and ship both together.
+  lint:
+    name: Clippy (pinned 1.99.1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.1
+          components: clippy, rustfmt
+
+      # reqwest is built with its default native-tls feature, so openssl-sys
+      # needs system OpenSSL or the build fails on the first dependency.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libssl-dev pkg-config
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: lint-1.99.1
+
+      # The gate. Any warning is an error; see DOCUMENTATION.md >
+      # Development Checks for how to handle a lint that is wrong for a
+      # specific call site.
+      - name: cargo clippy -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # Not a gate: the tree has ~325 unformatted hunks and a blanket reformat
+      # is a separate decision. GitHub reports a continue-on-error step as
+      # green whatever happens, so this is log-only visibility, not a signal.
+      - name: cargo fmt (advisory, non-blocking)
+        continue-on-error: true
+        run: cargo fmt --all -- --check
+
+  # Tests run on floating `stable` so genuine compiler and runtime regressions
+  # still surface; a test failure is always worth looking at, whereas a new lint
+  # usually is not urgent.
+  test:
+    name: Tests (stable)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libssl-dev pkg-config
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: test-stable
+
+      - name: cargo test
+        run: cargo test --workspace

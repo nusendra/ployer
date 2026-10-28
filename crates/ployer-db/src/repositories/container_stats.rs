@@ -14,6 +14,9 @@ impl ContainerStatsRepository {
     }
 
     /// Record container stats
+    // one parameter per `container_stats` column; a params struct would duplicate the column
+    // list and could drift from the INSERT silently
+    #[allow(clippy::too_many_arguments)]
     pub async fn record(
         &self,
         container_id: &str,

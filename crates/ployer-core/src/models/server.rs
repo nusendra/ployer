@@ -34,7 +34,16 @@ impl ServerStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    /// Parse a `ServerStatus` out of the string stored in its database column.
+    ///
+    /// Total and lossy by design: an unrecognised value yields
+    /// [`ServerStatus::Unknown`] rather than an error, so a row written by a newer
+    /// schema can never make an existing row unreadable.
+    ///
+    /// Deliberately not [`std::str::FromStr`]: that trait would need
+    /// `Err = Infallible`, which hides the fallback from callers and makes
+    /// `"nonsense".parse()` look like a successful parse.
+    pub fn from_db_str(s: &str) -> Self {
         match s {
             "online" => ServerStatus::Online,
             "offline" => ServerStatus::Offline,

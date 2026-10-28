@@ -107,7 +107,7 @@ impl From<UserRow> for User {
             email: row.email,
             password_hash: row.password_hash,
             name: row.name,
-            role: UserRole::from_str(&row.role),
+            role: UserRole::from_db_str(&row.role),
             created_at: chrono::DateTime::parse_from_rfc3339(&row.created_at)
                 .unwrap()
                 .with_timezone(&chrono::Utc),

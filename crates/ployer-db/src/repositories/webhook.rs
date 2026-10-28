@@ -67,7 +67,7 @@ impl WebhookRepository {
         Ok(row.map(|r| Webhook {
             id: r.id,
             application_id: r.application_id,
-            provider: WebhookProvider::from_str(&r.provider),
+            provider: WebhookProvider::from_db_str(&r.provider),
             secret: r.secret,
             enabled: r.enabled != 0,
             created_at: r.created_at.parse().unwrap(),
@@ -118,6 +118,9 @@ impl WebhookRepository {
     }
 
     /// Create a webhook delivery record
+    // one parameter per `webhook_deliveries` column; a params struct would duplicate the column
+    // list and could drift from the INSERT silently
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_delivery(
         &self,
         webhook_id: &str,
@@ -208,13 +211,13 @@ impl WebhookRepository {
                 id: r.id,
                 webhook_id: r.webhook_id,
                 application_id: r.application_id,
-                provider: WebhookProvider::from_str(&r.provider),
+                provider: WebhookProvider::from_db_str(&r.provider),
                 event_type: r.event_type,
                 branch: r.branch,
                 commit_sha: r.commit_sha,
                 commit_message: r.commit_message,
                 author: r.author,
-                status: WebhookDeliveryStatus::from_str(&r.status),
+                status: WebhookDeliveryStatus::from_db_str(&r.status),
                 response_code: r.response_code.map(|c| c as i32),
                 error_message: r.error_message,
                 deployment_id: r.deployment_id,

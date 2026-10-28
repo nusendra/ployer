@@ -28,7 +28,19 @@ impl UserRole {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    /// Parse a `UserRole` out of the string stored in its database column.
+    ///
+    /// Total and lossy by design: an unrecognised value yields
+    /// [`UserRole::User`] rather than an error, so a row written by a newer
+    /// schema can never make an existing row unreadable.
+    ///
+    /// Anything that is not `"admin"` is treated as an unprivileged user, so a
+    /// corrupt value fails closed.
+    ///
+    /// Deliberately not [`std::str::FromStr`]: that trait would need
+    /// `Err = Infallible`, which hides the fallback from callers and makes
+    /// `"nonsense".parse()` look like a successful parse.
+    pub fn from_db_str(s: &str) -> Self {
         match s {
             "admin" => UserRole::Admin,
             _ => UserRole::User,

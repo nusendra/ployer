@@ -3,6 +3,7 @@ use git2::{Cred, FetchOptions, RemoteCallbacks, Repository};
 use std::path::Path;
 use tracing::info;
 
+#[derive(Debug, Clone, Copy, Default)]
 pub struct GitService;
 
 #[derive(Debug, Clone)]
@@ -42,10 +43,10 @@ impl GitService {
         let mut n_bytes = private_key.n().to_bytes_be();
 
         // SSH wire format: if MSB is set, prepend 0x00 to indicate positive number
-        if e_bytes.first().map_or(false, |&b| b & 0x80 != 0) {
+        if e_bytes.first().is_some_and(|&b| b & 0x80 != 0) {
             e_bytes.insert(0, 0x00);
         }
-        if n_bytes.first().map_or(false, |&b| b & 0x80 != 0) {
+        if n_bytes.first().is_some_and(|&b| b & 0x80 != 0) {
             n_bytes.insert(0, 0x00);
         }
 

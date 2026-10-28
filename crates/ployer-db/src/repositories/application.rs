@@ -12,6 +12,9 @@ impl ApplicationRepository {
         Self { pool }
     }
 
+    // one parameter per `applications` column; a params struct would duplicate the column list
+    // and could drift from the INSERT silently
+    #[allow(clippy::too_many_arguments)]
     pub async fn create(
         &self,
         name: &str,
@@ -124,6 +127,9 @@ impl ApplicationRepository {
         Ok(rows.into_iter().map(|r| r.into()).collect())
     }
 
+    // one parameter per `applications` column; a params struct would duplicate the column list
+    // and could drift from the UPDATE silently
+    #[allow(clippy::too_many_arguments)]
     pub async fn update(
         &self,
         id: &str,
@@ -243,12 +249,12 @@ impl From<ApplicationRow> for Application {
             server_id: row.server_id,
             git_url: row.git_url,
             git_branch: row.git_branch,
-            build_strategy: BuildStrategy::from_str(&row.build_strategy),
+            build_strategy: BuildStrategy::from_db_str(&row.build_strategy),
             dockerfile_path: row.dockerfile_path,
             port: row.port.map(|p| p as u16),
             cpu_limit: row.cpu_limit,
             memory_limit: row.memory_limit,
-            status: AppStatus::from_str(&row.status),
+            status: AppStatus::from_db_str(&row.status),
             auto_deploy: row.auto_deploy != 0,
             compose_content: row.compose_content,
             template_slug: row.template_slug,

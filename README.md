@@ -35,6 +35,8 @@ A lightweight, self-hosted PaaS — deploy your apps from Git with automatic SSL
 
 > **Important:** Install on a **fresh, dedicated server**. Ployer owns ports 80 and 443 via Caddy. It will conflict with Nginx, Apache, Coolify, or any other reverse proxy already running on those ports.
 
+**Building from source?** You need `libssl-dev` and `SQLX_OFFLINE=true` as well — see [DOCUMENTATION.md § Prerequisites](DOCUMENTATION.md#prerequisites). The above applies to *running* a release binary.
+
 ---
 
 ## Quick Install

@@ -43,7 +43,16 @@ impl DeploymentStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    /// Parse a `DeploymentStatus` out of the string stored in its database column.
+    ///
+    /// Total and lossy by design: an unrecognised value yields
+    /// [`DeploymentStatus::Queued`] rather than an error, so a row written by a newer
+    /// schema can never make an existing row unreadable.
+    ///
+    /// Deliberately not [`std::str::FromStr`]: that trait would need
+    /// `Err = Infallible`, which hides the fallback from callers and makes
+    /// `"nonsense".parse()` look like a successful parse.
+    pub fn from_db_str(s: &str) -> Self {
         match s {
             "queued" => DeploymentStatus::Queued,
             "cloning" => DeploymentStatus::Cloning,
@@ -103,7 +112,16 @@ impl HealthCheckStatus {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    /// Parse a `HealthCheckStatus` out of the string stored in its database column.
+    ///
+    /// Total and lossy by design: an unrecognised value yields
+    /// [`HealthCheckStatus::Unknown`] rather than an error, so a row written by a newer
+    /// schema can never make an existing row unreadable.
+    ///
+    /// Deliberately not [`std::str::FromStr`]: that trait would need
+    /// `Err = Infallible`, which hides the fallback from callers and makes
+    /// `"nonsense".parse()` look like a successful parse.
+    pub fn from_db_str(s: &str) -> Self {
         match s {
             "healthy" => HealthCheckStatus::Healthy,
             "unhealthy" => HealthCheckStatus::Unhealthy,
