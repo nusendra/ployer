@@ -68,7 +68,7 @@ pub fn remove_ports_from_all_services(yaml: &str) -> Result<String, TemplateErro
     if let Some(services) = root.get_mut("services").and_then(|s| s.as_mapping_mut()) {
         for (_, svc) in services.iter_mut() {
             if let Some(svc_map) = svc.as_mapping_mut() {
-                svc_map.remove(&serde_yaml::Value::String("ports".to_string()));
+                svc_map.remove(serde_yaml::Value::String("ports".to_string()));
             }
         }
     }

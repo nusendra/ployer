@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use rand::{distributions::Alphanumeric, Rng, RngCore};
 
+use ployer_core::models::slugify;
+
 use crate::error::TemplateError;
 use crate::schema::{Generate, GenerateKind, Input, InputKind, Template};
 
@@ -28,21 +30,49 @@ pub fn render(template: &Template, ctx: RenderContext) -> Result<Rendered, Templ
         .map(|v| (v.name.clone(), format!("ployer_{}_{}", ctx.app_name, v.name)))
         .collect();
 
-    let compose = substitute(&template.compose, &resolved, &volumes, ctx.app_name, ctx.app_id, ctx.network);
+    // Derived, not supplied by the caller: `{{ app.slug }}` must always equal
+    // `Application::slug()`, which is what `deployment.rs` uses to name
+    // containers. Deriving it here makes the two impossible to desync.
+    let app_slug = slugify(ctx.app_name);
+
+    let compose = substitute(
+        &template.compose,
+        &resolved,
+        &volumes,
+        ctx.app_name,
+        &app_slug,
+        ctx.app_id,
+        ctx.network,
+    );
 
     let (post_install_message, outputs) = match &template.post_install {
         Some(pi) => {
-            let message = pi
-                .message
-                .as_ref()
-                .map(|m| substitute(m, &resolved, &volumes, ctx.app_name, ctx.app_id, ctx.network));
+            let message = pi.message.as_ref().map(|m| {
+                substitute(
+                    m,
+                    &resolved,
+                    &volumes,
+                    ctx.app_name,
+                    &app_slug,
+                    ctx.app_id,
+                    ctx.network,
+                )
+            });
             let outputs = pi
                 .outputs
                 .iter()
                 .map(|o| {
                     (
                         o.label.clone(),
-                        substitute(&o.value, &resolved, &volumes, ctx.app_name, ctx.app_id, ctx.network),
+                        substitute(
+                            &o.value,
+                            &resolved,
+                            &volumes,
+                            ctx.app_name,
+                            &app_slug,
+                            ctx.app_id,
+                            ctx.network,
+                        ),
                     )
                 })
                 .collect();
@@ -75,13 +105,11 @@ fn resolve_inputs(
             fallback_value(spec)?
         };
 
-        if matches!(spec.kind, InputKind::Number) {
-            if value.parse::<f64>().is_err() {
-                return Err(TemplateError::InvalidInput {
-                    key: spec.key.clone(),
-                    reason: "expected number".to_string(),
-                });
-            }
+        if matches!(spec.kind, InputKind::Number) && value.parse::<f64>().is_err() {
+            return Err(TemplateError::InvalidInput {
+                key: spec.key.clone(),
+                reason: "expected number".to_string(),
+            });
         }
 
         out.insert(spec.key.clone(), value);
@@ -115,12 +143,17 @@ fn generate(g: &Generate) -> String {
 }
 
 /// Minimal `{{ var }}` substitution. Supports:
-///   inputs.KEY, volumes.NAME, app.name, app.id, network
+///   inputs.KEY, volumes.NAME, app.name, app.slug, app.id, network
+///
+/// `app.slug` is the Docker/DNS-safe form of `app.name`; it is the only one of
+/// the two that resolves over Docker's embedded DNS, because containers are
+/// named `ployer-<app.slug>-<service>`.
 fn substitute(
     src: &str,
     inputs: &HashMap<String, String>,
     volumes: &HashMap<String, String>,
     app_name: &str,
+    app_slug: &str,
     app_id: &str,
     network: &str,
 ) -> String {
@@ -143,6 +176,7 @@ fn substitute(
             Some(("inputs", key)) => inputs.get(key).cloned(),
             Some(("volumes", name)) => volumes.get(name).cloned(),
             Some(("app", "name")) => Some(app_name.to_string()),
+            Some(("app", "slug")) => Some(app_slug.to_string()),
             Some(("app", "id")) => Some(app_id.to_string()),
             _ if expr == "network" => Some(network.to_string()),
             _ => None,
@@ -160,3 +194,7 @@ fn substitute(
     out.push_str(rest);
     out
 }
+
+#[cfg(test)]
+#[path = "render_tests.rs"]
+mod tests;
