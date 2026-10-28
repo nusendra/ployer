@@ -22,16 +22,28 @@ env:
   SQLX_OFFLINE: true
 
 jobs:
-  check:
-    name: Clippy and tests
+  # The lint gate runs on a PINNED toolchain, on purpose.
+  #
+  # `-D warnings` plus a floating `stable` means every six-week Rust release can
+  # red-light every open PR over a brand-new lint that has nothing to do with the
+  # change under review. Pinning makes the gate deterministic: a clippy upgrade
+  # becomes its own PR that bumps this version and fixes the new findings in one
+  # place, reviewed on its own merits.
+  #
+  # To upgrade: bump the version below, run
+  #   cargo +<version> clippy --workspace --all-targets -- -D warnings
+  # locally, fix what it finds, and ship both together.
+  lint:
+    name: Clippy (pinned 1.99.1)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
-          components: clippy
+          toolchain: 1.99.1
+          components: clippy, rustfmt
 
       # reqwest is built with its default native-tls feature, so openssl-sys
       # needs system OpenSSL or the build fails on the first dependency.
@@ -42,6 +54,8 @@ jobs:
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          key: lint-1.99.1
 
       # The gate. Any warning is an error; see DOCUMENTATION.md >
       # Development Checks for how to handle a lint that is wrong for a
@@ -49,12 +63,34 @@ jobs:
       - name: cargo clippy -- -D warnings
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: cargo test
-        run: cargo test --workspace
-
       # Not a gate: the tree is not rustfmt-clean and a blanket reformat is a
       # separate decision. Reported so the backlog stays visible instead of
       # silently growing.
       - name: cargo fmt (advisory, non-blocking)
         continue-on-error: true
         run: cargo fmt --all -- --check
+
+  # Tests run on floating `stable` so genuine compiler and runtime regressions
+  # still surface; a test failure is always worth looking at, whereas a new lint
+  # usually is not urgent.
+  test:
+    name: Tests (stable)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libssl-dev pkg-config
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: test-stable
+
+      - name: cargo test
+        run: cargo test --workspace

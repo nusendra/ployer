@@ -101,7 +101,10 @@ async fn fetch_latest_version() -> Option<String> {
                 .map(|t| (t.to_string(), r))
         })
         .collect();
-    candidates.sort_by(|a, b| version_key(&b.0).cmp(&version_key(&a.0)));
+    // `sort_by_cached_key` rather than `sort_by_key`: `version_key` allocates a
+    // Vec<(u32, String)> per call, and a plain comparator recomputes it twice per
+    // comparison. Caching makes it one key per element.
+    candidates.sort_by_cached_key(|c| std::cmp::Reverse(version_key(&c.0)));
 
     let latest_tag = candidates
         .into_iter()
