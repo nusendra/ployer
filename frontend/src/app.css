@@ -63,7 +63,9 @@ a {
 
 button {
 	cursor: pointer;
-	border: none;
+	/* Transparent 1px edge, not `none`: disabling a button then has an edge to
+	   colour in without changing the control's size (box-sizing is border-box). */
+	border: 1px solid transparent;
 	border-radius: var(--radius);
 	padding: 0.5rem 1rem;
 	min-height: var(--control-min);
@@ -73,8 +75,42 @@ button {
 	transition: background 0.15s;
 }
 
-button:disabled {
+/* ── Disabled controls ──────────────────────────────────────────────────────
+   A disabled button is a different *material*, not a faded copy of an enabled
+   one. Opacity is the cheap route and it drops every label to 1.8–2.9:1 on
+   these surfaces; the hatch below keeps --text-muted at 6.54:1 over its light
+   stripe and 7.72:1 over its dark one, and --border-strong holds 3.39:1 for
+   the edge (WCAG 1.4.11). No new colour values — four existing tokens.
+
+   The 135° hatch is the signal that survives touch, where `cursor:
+   not-allowed` is invisible. It has to be texture rather than just a muted
+   fill, because an *enabled* .btn-action is already a flat --bg-tertiary fill
+   with a --border edge: colour alone would read as "secondary", not
+   "unavailable". Nothing enabled in Ployer is textured, and the dark stripe
+   drops the surface below the card it sits on instead of above it.
+
+   Svelte scopes every route's button rules with a hash class, so a plain
+   `button:disabled` block here loses the cascade to `.btn-primary.svelte-x`.
+   The state is therefore also published as three custom properties, which
+   route rules read through a fallback:
+       background: var(--btn-fill, var(--primary));
+   Only this rule ever assigns them, so there is no specificity fight and the
+   disabled palette stays defined in exactly one place. */
+button:disabled,
+button[aria-disabled='true'] {
+	--btn-fill: repeating-linear-gradient(
+		135deg,
+		var(--bg-tertiary) 0 5px,
+		var(--bg) 5px 10px
+	);
+	--btn-label: var(--text-muted);
+	--btn-border: var(--border-strong);
+
 	cursor: not-allowed;
+	background: var(--btn-fill);
+	color: var(--btn-label);
+	border-color: var(--btn-border);
+	box-shadow: none;
 }
 
 /* Single visible focus indicator for every control, keyboard-only. */
@@ -85,20 +121,22 @@ button:disabled {
 }
 
 .btn-primary {
-	background: var(--primary);
-	color: #081028;
+	background: var(--btn-fill, var(--primary));
+	color: var(--btn-label, #081028);
+	border-color: var(--btn-border, transparent);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
 	background: var(--primary-hover);
 }
 
 .btn-danger {
-	background: var(--danger-strong);
-	color: white;
+	background: var(--btn-fill, var(--danger-strong));
+	color: var(--btn-label, white);
+	border-color: var(--btn-border, transparent);
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
 	/* Darker, not lighter: white on --danger is only 3.76:1. */
 	background: var(--danger-strong-hover);
 }

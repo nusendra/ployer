@@ -189,9 +189,4 @@
 		width: 100%;
 		margin-top: 0.5rem;
 	}
-
-	button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
 </style>

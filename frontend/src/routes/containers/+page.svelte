@@ -602,10 +602,9 @@
 		border-radius: 6px;
 		font-size: 0.75rem;
 		font-weight: 500;
-		background: var(--bg-tertiary);
-		color: var(--text);
-		border: 1px solid var(--border);
-		cursor: pointer;
+		background: var(--btn-fill, var(--bg-tertiary));
+		color: var(--btn-label, var(--text));
+		border: 1px solid var(--btn-border, var(--border));
 		transition: background 0.15s, border-color 0.15s;
 	}
 
@@ -615,15 +614,10 @@
 		color: var(--primary);
 	}
 
-	.btn-action:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
 	.btn-action.btn-start {
-		background: var(--primary);
-		color: var(--bg);
-		border-color: var(--primary);
+		background: var(--btn-fill, var(--primary));
+		color: var(--btn-label, var(--bg));
+		border-color: var(--btn-border, var(--primary));
 	}
 
 	.btn-action.btn-start:hover:not(:disabled) {
@@ -633,8 +627,8 @@
 	}
 
 	.btn-action.btn-delete {
-		color: var(--danger-text);
-		border-color: rgba(239, 68, 68, 0.3);
+		color: var(--btn-label, var(--danger-text));
+		border-color: var(--btn-border, rgba(239, 68, 68, 0.3));
 	}
 
 	.btn-action.btn-delete:hover:not(:disabled) {
@@ -643,20 +637,15 @@
 	}
 
 	.btn-secondary {
-		background: var(--bg-tertiary);
-		color: var(--text);
-		border: 1px solid var(--border);
+		background: var(--btn-fill, var(--bg-tertiary));
+		color: var(--btn-label, var(--text));
+		border: 1px solid var(--btn-border, var(--border));
 		padding: 0.5rem 0.75rem;
 		font-size: 0.875rem;
 	}
 
-	.btn-secondary:hover {
+	.btn-secondary:hover:not(:disabled) {
 		background: var(--border);
-	}
-
-	.btn-secondary:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 
 

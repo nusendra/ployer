@@ -450,21 +450,15 @@
 		border-radius: 6px;
 		font-size: 0.75rem;
 		font-weight: 600;
-		background: transparent;
-		color: var(--primary);
-		border: 1px solid var(--primary);
-		cursor: pointer;
+		background: var(--btn-fill, transparent);
+		color: var(--btn-label, var(--primary));
+		border: 1px solid var(--btn-border, var(--primary));
 		transition: background 0.15s, color 0.15s;
 	}
 
 	.btn-deploy-sm:hover:not(:disabled) {
 		background: var(--primary);
 		color: var(--bg);
-	}
-
-	.btn-deploy-sm:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 
 	.btn-view {
@@ -634,37 +628,31 @@
 		border-radius: 6px;
 		font-size: 0.75rem;
 		font-weight: 500;
-		background: var(--bg-tertiary);
-		color: var(--text);
-		border: 1px solid var(--border);
-		cursor: pointer;
+		background: var(--btn-fill, var(--bg-tertiary));
+		color: var(--btn-label, var(--text));
+		border: 1px solid var(--btn-border, var(--border));
 		transition: background 0.15s, border-color 0.15s;
 		text-decoration: none;
 		display: inline-flex;
 		align-items: center;
 	}
 
-	.btn-action:hover {
+	.btn-action:hover:not(:disabled) {
 		background: rgba(50, 130, 184, 0.15);
 		border-color: var(--primary);
 		color: var(--primary);
 	}
 
 	.btn-action.btn-deploy {
-		background: var(--primary);
-		color: var(--bg);
-		border-color: var(--primary);
+		background: var(--btn-fill, var(--primary));
+		color: var(--btn-label, var(--bg));
+		border-color: var(--btn-border, var(--primary));
 	}
 
 	.btn-action.btn-deploy:hover:not(:disabled) {
 		background: var(--primary-hover);
 		border-color: var(--primary-hover);
 		color: var(--bg);
-	}
-
-	.btn-action.btn-deploy:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 
 	.btn-action.btn-delete {
@@ -760,51 +748,49 @@
 	}
 
 	.btn-primary {
-		background: var(--primary);
-		color: var(--bg);
+		background: var(--btn-fill, var(--primary));
+		color: var(--btn-label, var(--bg));
 		padding: 0.5rem 1rem;
-		border: none;
+		border: 1px solid var(--btn-border, transparent);
 		border-radius: var(--radius);
-		cursor: pointer;
 		font-size: 0.875rem;
 		font-weight: 500;
 		transition: background 0.15s;
 	}
 
-	.btn-primary:hover {
+	.btn-primary:hover:not(:disabled) {
 		background: var(--primary-hover);
 	}
 
 	.btn-secondary {
-		background: var(--bg-tertiary);
-		color: var(--text);
+		background: var(--btn-fill, var(--bg-tertiary));
+		color: var(--btn-label, var(--text));
 		padding: 0.5rem 1rem;
-		border: 1px solid var(--border);
+		border: 1px solid var(--btn-border, var(--border));
 		border-radius: var(--radius);
-		cursor: pointer;
 		font-size: 0.875rem;
 		font-weight: 500;
 		transition: background 0.15s;
 	}
 
-	.btn-secondary:hover {
+	.btn-secondary:hover:not(:disabled) {
 		background: rgba(50, 130, 184, 0.1);
 	}
 
 	.btn-danger {
-		background: var(--danger);
-		color: white;
+		/* --danger-strong, not --danger: white on #ef4444 is 3.76:1. */
+		background: var(--btn-fill, var(--danger-strong));
+		color: var(--btn-label, white);
 		padding: 0.5rem 1rem;
-		border: none;
+		border: 1px solid var(--btn-border, transparent);
 		border-radius: var(--radius);
-		cursor: pointer;
 		font-size: 0.875rem;
 		font-weight: 500;
 		transition: background 0.15s;
 	}
 
-	.btn-danger:hover {
-		background: var(--danger-strong);
+	.btn-danger:hover:not(:disabled) {
+		background: var(--danger-strong-hover);
 	}
 
 	.btn-sm {
@@ -812,40 +798,34 @@
 		border-radius: 6px;
 		font-size: 0.8125rem;
 		font-weight: 500;
-		background: var(--bg-tertiary);
-		color: var(--text);
-		border: 1px solid var(--border);
-		cursor: pointer;
+		background: var(--btn-fill, var(--bg-tertiary));
+		color: var(--btn-label, var(--text));
+		border: 1px solid var(--btn-border, var(--border));
 		transition: background 0.15s;
 	}
 
-	.btn-sm:hover {
+	.btn-sm:hover:not(:disabled) {
 		background: rgba(50, 130, 184, 0.1);
 	}
 
 	.btn-sm.btn-danger {
-		background: rgba(239, 68, 68, 0.15);
-		color: var(--danger-text);
-		border-color: rgba(239, 68, 68, 0.3);
+		background: var(--btn-fill, rgba(239, 68, 68, 0.15));
+		color: var(--btn-label, var(--danger-text));
+		border-color: var(--btn-border, rgba(239, 68, 68, 0.3));
 	}
 
-	.btn-sm.btn-danger:hover {
+	.btn-sm.btn-danger:hover:not(:disabled) {
 		background: rgba(239, 68, 68, 0.25);
 	}
 
 	.btn-sm.btn-primary {
-		background: var(--primary);
-		color: var(--bg);
-		border-color: var(--primary);
+		background: var(--btn-fill, var(--primary));
+		color: var(--btn-label, var(--bg));
+		border-color: var(--btn-border, var(--primary));
 	}
 
 	.btn-sm.btn-primary:hover:not(:disabled) {
 		background: var(--primary-hover);
-	}
-
-	.btn-sm:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 
 	/* ── Env vars ── */

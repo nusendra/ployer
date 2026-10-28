@@ -422,8 +422,12 @@
 		border-color: var(--primary);
 	}
 
+	/* Deliberately NOT the app-wide hatched disabled material: the banner is
+	   *busy*, not unavailable — hatching it would read as "no update exists".
+	   The spinner and the "Updating..." label carry the state; the label just
+	   steps back to --text-muted (6.5:1 here) instead of being faded. */
 	.update-banner:disabled {
-		opacity: 0.7;
+		color: var(--text-muted);
 		cursor: progress;
 	}
 
