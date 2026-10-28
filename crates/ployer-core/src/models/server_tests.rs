@@ -8,11 +8,11 @@ fn server_status_round_trips() {
         (ServerStatus::Unknown, "unknown"),
     ] {
         assert_eq!(variant.as_str(), s);
-        assert_eq!(ServerStatus::from_str(s), variant);
+        assert_eq!(ServerStatus::from_db_str(s), variant);
     }
 }
 
 #[test]
 fn server_status_unknown_defaults_to_unknown() {
-    assert_eq!(ServerStatus::from_str("unreachable"), ServerStatus::Unknown);
+    assert_eq!(ServerStatus::from_db_str("unreachable"), ServerStatus::Unknown);
 }

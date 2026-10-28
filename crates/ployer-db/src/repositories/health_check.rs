@@ -219,7 +219,7 @@ impl HealthCheckRepository {
                 id: r.id,
                 application_id: r.application_id,
                 container_id: r.container_id,
-                status: HealthCheckStatus::from_str(&r.status),
+                status: HealthCheckStatus::from_db_str(&r.status),
                 response_time_ms: r.response_time_ms.map(|v| v as i32),
                 status_code: r.status_code.map(|v| v as i32),
                 error_message: r.error_message,
@@ -243,7 +243,7 @@ impl HealthCheckRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| HealthCheckStatus::from_str(&r.status)))
+        Ok(row.map(|r| HealthCheckStatus::from_db_str(&r.status)))
     }
 
     /// Clean up old health check results (keep only last N days)

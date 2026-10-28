@@ -8,13 +8,13 @@ fn build_strategy_round_trips() {
         (BuildStrategy::DockerCompose, "docker_compose"),
     ] {
         assert_eq!(variant.as_str(), s);
-        assert_eq!(BuildStrategy::from_str(s), variant);
+        assert_eq!(BuildStrategy::from_db_str(s), variant);
     }
 }
 
 #[test]
 fn build_strategy_unknown_defaults_to_dockerfile() {
-    assert_eq!(BuildStrategy::from_str("unknown"), BuildStrategy::Dockerfile);
+    assert_eq!(BuildStrategy::from_db_str("unknown"), BuildStrategy::Dockerfile);
 }
 
 #[test]
@@ -27,13 +27,13 @@ fn app_status_round_trips() {
         (AppStatus::Failed, "failed"),
     ] {
         assert_eq!(variant.as_str(), s);
-        assert_eq!(AppStatus::from_str(s), variant);
+        assert_eq!(AppStatus::from_db_str(s), variant);
     }
 }
 
 #[test]
 fn app_status_unknown_defaults_to_idle() {
-    assert_eq!(AppStatus::from_str("mystery"), AppStatus::Idle);
+    assert_eq!(AppStatus::from_db_str("mystery"), AppStatus::Idle);
 }
 
 #[test]

@@ -172,7 +172,7 @@ impl From<ServerRow> for Server {
             username: row.username,
             ssh_key_encrypted: row.ssh_key_encrypted,
             is_local: row.is_local != 0,
-            status: ServerStatus::from_str(&row.status),
+            status: ServerStatus::from_db_str(&row.status),
             last_seen_at: row.last_seen_at.and_then(|s| {
                 chrono::DateTime::parse_from_rfc3339(&s)
                     .ok()
