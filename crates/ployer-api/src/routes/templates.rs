@@ -212,3 +212,7 @@ fn map_err(err: TemplateError) -> (StatusCode, String) {
         _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
     }
 }
+
+#[cfg(test)]
+#[path = "templates_tests.rs"]
+mod tests;
