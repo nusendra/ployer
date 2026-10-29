@@ -37,7 +37,10 @@ fn rendered_compose_parses_into_the_supported_subset() {
     assert_eq!(svc.restart.as_deref(), Some("unless-stopped"));
     assert_eq!(svc.volumes, vec!["ployer_shop_data:/var/lib/fixture/data"]);
     assert_eq!(svc.networks, vec!["ployer"]);
-    assert!(svc.ports.is_empty(), "nothing is published to the host by default");
+    assert!(
+        svc.ports.is_empty(),
+        "nothing is published to the host by default"
+    );
 }
 
 #[test]
@@ -84,7 +87,10 @@ fn service_without_an_environment_block_is_valid() {
 fn service_without_an_image_is_rejected() {
     // `image` is the one field the Docker call cannot invent a default for.
     let yaml = "services:\n  fixture:\n    restart: always\n";
-    assert!(parse(yaml).is_err(), "a service with no image must not parse");
+    assert!(
+        parse(yaml).is_err(),
+        "a service with no image must not parse"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -257,7 +263,10 @@ fn re_exposing_replaces_the_binding_instead_of_appending() {
 #[test]
 fn current_port_bindings_reports_container_then_host() {
     let exposed = add_ports_to_all_services(RENDERED, &[(5432, 15432)]).unwrap();
-    assert_eq!(current_port_bindings(&exposed).unwrap(), vec![(5432, 15432)]);
+    assert_eq!(
+        current_port_bindings(&exposed).unwrap(),
+        vec![(5432, 15432)]
+    );
 }
 
 #[test]
@@ -297,5 +306,8 @@ fn split_port_maps_a_bare_port_to_itself() {
 
 #[test]
 fn split_port_separates_host_from_container() {
-    assert_eq!(split_port("15432:5432"), Some(("15432".into(), "5432".into())));
+    assert_eq!(
+        split_port("15432:5432"),
+        Some(("15432".into(), "5432".into()))
+    );
 }

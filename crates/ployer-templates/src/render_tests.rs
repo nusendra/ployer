@@ -103,7 +103,8 @@ fn render_fixture(app_name: &str, inputs: &[(&str, &str)]) -> Rendered {
 fn volume_placeholder_expands_to_ployer_prefixed_name() {
     let out = render_fixture("shop", &[]);
     assert!(
-        out.compose.contains("ployer_shop_data:/var/lib/fixture/data"),
+        out.compose
+            .contains("ployer_shop_data:/var/lib/fixture/data"),
         "expected the volume mount to use the ployer_<app>_<volume> name, got:\n{}",
         out.compose
     );
@@ -283,8 +284,8 @@ fn number_input_accepts_an_integer_string() {
         required: Some(true),
     });
 
-    let out = render(&template, ctx("app", &[("MAX_CONNECTIONS", "100")]))
-        .expect("100 is a number");
+    let out =
+        render(&template, ctx("app", &[("MAX_CONNECTIONS", "100")])).expect("100 is a number");
     assert_eq!(out.resolved_inputs["MAX_CONNECTIONS"], "100");
 }
 
@@ -419,7 +420,8 @@ mod password_in_compose {
         let out = render_fixture("app", &[]);
         let password = &out.resolved_inputs["DB_PASSWORD"];
         assert!(
-            out.compose.contains(&format!("DB_PASSWORD: \"{password}\"")),
+            out.compose
+                .contains(&format!("DB_PASSWORD: \"{password}\"")),
             "compose must carry the same password that was reported to the user"
         );
     }
@@ -459,7 +461,6 @@ fn template_echoing(expr: &str) -> Template {
         }),
     }
 }
-
 
 /// An `Application` as `deployment.rs` sees it, so the container-name assertion
 /// goes through the real `Application::slug()` rather than a copy of it.

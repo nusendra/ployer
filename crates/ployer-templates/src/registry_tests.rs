@@ -106,7 +106,10 @@ fn a_new_template_version_gets_a_new_cache_file() {
 #[test]
 fn index_is_cached_next_to_the_templates() {
     let scratch = Scratch::new();
-    assert_eq!(registry(&scratch.0).index_path(), scratch.0.join("index.json"));
+    assert_eq!(
+        registry(&scratch.0).index_path(),
+        scratch.0.join("index.json")
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -122,7 +125,9 @@ async fn cached_template_is_returned_when_its_hash_still_matches() {
     let reg = registry(&scratch.0);
     let e = entry(&sha256_hex(BODY.as_bytes()));
 
-    reg.write_disk_template(&e, BODY).await.expect("cache write");
+    reg.write_disk_template(&e, BODY)
+        .await
+        .expect("cache write");
     let template = reg.read_disk_template(&e).await.expect("cache hit");
 
     assert_eq!(template.slug, "fixture");
@@ -134,14 +139,20 @@ async fn a_tampered_cache_file_is_rejected_rather_than_parsed() {
     let reg = registry(&scratch.0);
     let e = entry(&sha256_hex(BODY.as_bytes()));
 
-    reg.write_disk_template(&e, BODY).await.expect("cache write");
+    reg.write_disk_template(&e, BODY)
+        .await
+        .expect("cache write");
     // Someone edits the cached file in place, keeping the same filename.
     let tampered = BODY.replace("Fixture", "Evil");
     assert_ne!(tampered, BODY, "the tamper must actually change the bytes");
     std::fs::write(reg.template_path(&e), &tampered).expect("tamper");
 
     match reg.read_disk_template(&e).await {
-        Err(TemplateError::HashMismatch { slug, expected, actual }) => {
+        Err(TemplateError::HashMismatch {
+            slug,
+            expected,
+            actual,
+        }) => {
             assert_eq!(slug, "fixture");
             assert_eq!(expected, e.sha256);
             assert_eq!(actual, sha256_hex(tampered.as_bytes()));
@@ -172,8 +183,12 @@ async fn the_cache_directory_is_created_on_first_write() {
     let e = entry(&sha256_hex(BODY.as_bytes()));
 
     assert!(!nested.exists());
-    reg.write_disk_template(&e, BODY).await.expect("cache write");
-    assert!(nested.join(format!("fixture-{}.yaml", &e.sha256[..16])).exists());
+    reg.write_disk_template(&e, BODY)
+        .await
+        .expect("cache write");
+    assert!(nested
+        .join(format!("fixture-{}.yaml", &e.sha256[..16]))
+        .exists());
 }
 
 // ---------------------------------------------------------------------------

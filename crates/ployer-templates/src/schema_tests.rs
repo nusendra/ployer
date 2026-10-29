@@ -277,7 +277,10 @@ fn a_template_survives_a_json_round_trip() {
     assert_eq!(round_tripped.slug, original.slug);
     assert_eq!(round_tripped.inputs.len(), 1);
     assert_eq!(round_tripped.inputs[0].kind, InputKind::Password);
-    assert_eq!(round_tripped.inputs[0].generate.as_ref().unwrap().length, Some(32));
+    assert_eq!(
+        round_tripped.inputs[0].generate.as_ref().unwrap().length,
+        Some(32)
+    );
     assert_eq!(round_tripped.ports[0].container, 5432);
     assert_eq!(round_tripped.volumes[0].mount, "/var/lib/fixture/data");
 }
