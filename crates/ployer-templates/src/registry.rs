@@ -153,3 +153,7 @@ fn sha256_hex(bytes: &[u8]) -> String {
     hasher.update(bytes);
     hex::encode(hasher.finalize())
 }
+
+#[cfg(test)]
+#[path = "registry_tests.rs"]
+mod tests;
