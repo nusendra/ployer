@@ -126,7 +126,7 @@
 	{#if loading}
 		<p class="muted">Loading...</p>
 	{:else if error && !template}
-		<div class="error">{error}</div>
+		<div class="error" role="alert">{error}</div>
 	{:else if template}
 		<header class="hero">
 			<h1>{template.name}</h1>
@@ -232,7 +232,7 @@
 				{/if}
 
 				{#if error}
-					<div class="error">{error}</div>
+					<div class="error" role="alert">{error}</div>
 				{/if}
 
 				<div class="actions">
