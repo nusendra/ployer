@@ -50,6 +50,10 @@
 	let values = $state<Record<string, string>>({});
 	let showSecrets = $state<Record<string, boolean>>({});
 	let expose = $state(false);
+	// Which host interface to publish on. Loopback by default: publishing a
+	// database on every interface puts it on the LAN and on any VPN this host
+	// has joined, and Docker's port publishing is not filtered by ufw.
+	let bind = $state<'loopback' | 'all_interfaces'>('loopback');
 	let hostPorts = $state<Record<number, number>>({});
 
 	let installing = $state(false);
@@ -96,7 +100,8 @@
 				server_id: serverId,
 				inputs: values,
 				expose,
-				host_ports: expose ? hostPorts : {}
+				host_ports: expose ? hostPorts : {},
+				bind: expose ? bind : 'loopback'
 			});
 			toast.success('Service installed, deploying...');
 		} catch (e: any) {
@@ -208,10 +213,44 @@
 						</label>
 						<small>
 							Publish the service port on the host so it's reachable from outside the Ployer
-							Docker network. Anyone who can reach this server will be able to connect — make
-							sure your firewall is set up.
+							Docker network. Other containers on the Ployer network can always reach it
+							without this.
 						</small>
 						{#if expose}
+							<fieldset class="bind-choice">
+								<legend>Reachable from</legend>
+								<label class="bind-option">
+									<input type="radio" bind:group={bind} value="loopback" />
+									<span>
+										<strong>This host only</strong>
+										<small>127.0.0.1 — local processes and SSH tunnels. Recommended.</small>
+									</span>
+								</label>
+								<label class="bind-option">
+									<input type="radio" bind:group={bind} value="all_interfaces" />
+									<span>
+										<strong>All interfaces</strong>
+										<small>
+											0.0.0.0 — every network this host is on: your LAN, any VPN or tailnet,
+											and the internet if your router forwards the port.
+										</small>
+									</span>
+								</label>
+							</fieldset>
+							{#if bind === 'all_interfaces'}
+								<div class="bind-warning" role="alert">
+									{#if template.category === 'database'}
+										<strong>This publishes a database to every network this host is on.</strong>
+										Anyone who can reach this machine can attempt to log in, and the only thing
+										stopping them is the password.
+									{:else}
+										<strong>This publishes the port to every network this host is on.</strong>
+									{/if}
+									Docker publishes through its own iptables chain, so a <code>ufw</code> rule
+									will not filter it. Prefer "this host only" and reach the port over an SSH
+									tunnel, or put it behind a domain so it goes through the reverse proxy.
+								</div>
+							{/if}
 							<div class="port-rows">
 								{#each template.ports ?? [] as p}
 									<div class="port-row">
@@ -377,6 +416,50 @@
 	}
 	.expose-toggle input {
 		width: auto;
+	}
+	.bind-choice {
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 0.6rem 0.85rem;
+		margin-top: 0.6rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.bind-choice legend {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		padding: 0 0.3rem;
+	}
+	.bind-option {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		cursor: pointer;
+	}
+	.bind-option input {
+		width: auto;
+		margin-top: 0.25rem;
+	}
+	.bind-option span {
+		display: flex;
+		flex-direction: column;
+	}
+	.bind-option strong {
+		font-weight: 500;
+		font-size: 0.9rem;
+	}
+	.bind-warning {
+		background: rgba(245, 158, 11, 0.1);
+		border: 1px solid var(--warning);
+		color: var(--warning-text);
+		padding: 0.6rem 0.85rem;
+		border-radius: var(--radius);
+		font-size: 0.8125rem;
+		margin-top: 0.6rem;
+	}
+	.bind-warning code {
+		font-family: monospace;
 	}
 	.port-rows {
 		display: flex;

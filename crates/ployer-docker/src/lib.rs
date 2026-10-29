@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use bollard::container::{
     Config, CreateContainerOptions, InspectContainerOptions, ListContainersOptions,
     LogsOptions, RemoveContainerOptions, StartContainerOptions, StatsOptions, StopContainerOptions,
@@ -33,6 +33,166 @@ const DEFAULT_LOG_MAX_FILE: &str = "5";
 /// maintenance operations to Ployer-managed containers only.
 const MANAGED_CONTAINER_PREFIX: &str = "ployer-";
 
+/// Docker restart policy applied when neither the caller nor the template
+/// names one, so containers come back after a host reboot.
+const DEFAULT_RESTART_POLICY: &str = "unless-stopped";
+
+const LOOPBACK_IP: &str = "127.0.0.1";
+const ALL_INTERFACES_IP: &str = "0.0.0.0";
+
+/// Docker's `ExposedPorts` map: `"5432/tcp" -> {}`.
+type ExposedPorts = HashMap<String, HashMap<(), ()>>;
+/// Docker's `HostConfig.PortBindings` map: `"5432/tcp" -> [binding]`.
+type PortBindings = HashMap<String, Option<Vec<PortBinding>>>;
+
+/// Which host interface a published container port is bound to.
+///
+/// Defaults to [`BindAddress::Loopback`]. Publishing on every interface makes
+/// a service reachable from the LAN, from any VPN or tailnet the host has
+/// joined, and from the public internet if the router forwards the port.
+/// Docker publishes through its own `DOCKER` iptables chain, which a host
+/// firewall such as `ufw` does not filter, so "I'll add a firewall rule later"
+/// does not close it. Callers that want that reach have to ask for it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BindAddress {
+    /// `127.0.0.1` — reachable from this host only, including the host's own
+    /// reverse proxy. The default.
+    #[default]
+    Loopback,
+    /// `0.0.0.0` — reachable from every network this host is attached to.
+    AllInterfaces,
+    /// One specific host interface, e.g. the host's tailnet address.
+    Address(String),
+}
+
+impl BindAddress {
+    /// The literal address handed to Docker as `PortBindings[].HostIp`.
+    pub fn host_ip(&self) -> &str {
+        match self {
+            BindAddress::Loopback => LOOPBACK_IP,
+            BindAddress::AllInterfaces => ALL_INTERFACES_IP,
+            BindAddress::Address(addr) => addr,
+        }
+    }
+
+    /// Classify a host IP read back out of a compose file or a container.
+    ///
+    /// Absent or empty means the spec did not say, which is how every compose
+    /// file written before this existed looks. Those resolve to the default,
+    /// [`BindAddress::Loopback`] — redeploying an older service moves it off
+    /// `0.0.0.0` unless the operator re-picks `AllInterfaces`.
+    pub fn from_host_ip(ip: Option<&str>) -> Self {
+        match ip.map(str::trim).filter(|s| !s.is_empty()) {
+            None => BindAddress::Loopback,
+            Some(LOOPBACK_IP) => BindAddress::Loopback,
+            Some(ALL_INTERFACES_IP) => BindAddress::AllInterfaces,
+            Some(other) => BindAddress::Address(other.to_string()),
+        }
+    }
+
+    /// True when the binding cannot be reached from another machine.
+    pub fn is_loopback_only(&self) -> bool {
+        match self {
+            BindAddress::Loopback => true,
+            BindAddress::AllInterfaces => false,
+            BindAddress::Address(addr) => addr == "::1" || addr.starts_with("127."),
+        }
+    }
+}
+
+/// One published container port: the host interface it is bound to and the
+/// host port it claims.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PublishedPort {
+    #[serde(default)]
+    pub bind: BindAddress,
+    /// Host port. Empty means "let Docker pick a free ephemeral port", which
+    /// is what the application deploy path relies on so apps that `EXPOSE 80`
+    /// do not collide with each other or with the reverse proxy.
+    pub host_port: String,
+}
+
+impl PublishedPort {
+    pub fn new(bind: BindAddress, host_port: impl Into<String>) -> Self {
+        Self { bind, host_port: host_port.into() }
+    }
+
+    /// Loopback-bound on a Docker-assigned ephemeral host port.
+    pub fn ephemeral() -> Self {
+        Self::new(BindAddress::Loopback, "")
+    }
+}
+
+/// A Docker restart policy plus its optional retry cap (`on-failure:5`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RestartSpec {
+    name: RestartPolicyNameEnum,
+    max_retries: Option<i64>,
+}
+
+/// Map a compose/[`ContainerConfig`] restart string onto Docker's enum.
+///
+/// `None` (and an empty string) means the caller has no opinion and gets
+/// [`DEFAULT_RESTART_POLICY`]. An unrecognised name is an error rather than a
+/// silent fallback: a template asking for `restart: "nope"` should fail the
+/// install loudly instead of quietly running `unless-stopped`.
+fn parse_restart_policy(spec: Option<&str>) -> Result<RestartSpec> {
+    let spec = spec.map(str::trim).filter(|s| !s.is_empty()).unwrap_or(DEFAULT_RESTART_POLICY);
+    let (name, retries) = match spec.split_once(':') {
+        Some((name, retries)) => (name, Some(retries)),
+        None => (spec, None),
+    };
+
+    let policy = match name {
+        "no" => RestartPolicyNameEnum::NO,
+        "always" => RestartPolicyNameEnum::ALWAYS,
+        "unless-stopped" => RestartPolicyNameEnum::UNLESS_STOPPED,
+        "on-failure" => RestartPolicyNameEnum::ON_FAILURE,
+        other => {
+            return Err(anyhow!(
+                "unknown restart policy {other:?} (expected no, always, unless-stopped or on-failure[:max-retries])"
+            ))
+        }
+    };
+
+    let max_retries = match (policy, retries) {
+        (_, None) => None,
+        (RestartPolicyNameEnum::ON_FAILURE, Some(n)) => Some(
+            n.parse::<i64>()
+                .map_err(|_| anyhow!("restart policy {spec:?} has a non-numeric retry count"))?,
+        ),
+        (_, Some(_)) => {
+            return Err(anyhow!("restart policy {spec:?} takes no retry count (only on-failure does)"))
+        }
+    };
+
+    Ok(RestartSpec { name: policy, max_retries })
+}
+
+/// Build Docker's `ExposedPorts` and `PortBindings` for a set of published
+/// ports.
+///
+/// Split out of [`DockerClient::create_container`] and kept pure so the host
+/// interface each port lands on can be asserted without a Docker daemon.
+fn build_port_bindings(ports: &HashMap<String, PublishedPort>) -> (ExposedPorts, PortBindings) {
+    let mut exposed_ports: ExposedPorts = HashMap::new();
+    let mut port_bindings: PortBindings = HashMap::new();
+
+    for (container_port, publish) in ports {
+        exposed_ports.insert(container_port.clone(), HashMap::new());
+        port_bindings.insert(
+            container_port.clone(),
+            Some(vec![PortBinding {
+                host_ip: Some(publish.bind.host_ip().to_string()),
+                host_port: Some(publish.host_port.clone()),
+            }]),
+        );
+    }
+
+    (exposed_ports, port_bindings)
+}
+
 pub struct DockerClient {
     client: Docker,
 }
@@ -43,13 +203,13 @@ pub struct ContainerConfig {
     pub image: String,
     pub name: Option<String>,
     pub env: Option<Vec<String>>,
-    pub ports: Option<HashMap<String, String>>, // container_port -> host_port
+    pub ports: Option<HashMap<String, PublishedPort>>, // container_port -> publication
     pub volumes: Option<HashMap<String, String>>, // host_path -> container_path
     pub network: Option<String>,
     pub cmd: Option<Vec<String>>,
     pub cpu_limit: Option<f64>,       // CPU cores (e.g. 0.5 = half a core)
     pub memory_limit: Option<i64>,    // Memory in MB
-    // Docker restart policy: "no" | "always" | "unless-stopped" | "on-failure".
+    // Docker restart policy: "no" | "always" | "unless-stopped" | "on-failure[:n]".
     // None defaults to "unless-stopped" so containers survive host reboots.
     pub restart: Option<String>,
 }
@@ -291,27 +451,18 @@ impl DockerClient {
         info!("Creating container with config: {:?}", config);
 
         // Build exposed ports and port bindings
-        let mut exposed_ports: HashMap<String, HashMap<(), ()>> = HashMap::new();
-        let mut port_bindings = HashMap::new();
-        if let Some(ports) = &config.ports {
-            info!("Configuring ports: {:?}", ports);
-            for (container_port, host_port) in ports {
-                // Expose the port in the container
-                exposed_ports.insert(container_port.clone(), HashMap::new());
-
-                // Bind the port to the host
-                port_bindings.insert(
-                    container_port.clone(),
-                    Some(vec![PortBinding {
-                        host_ip: Some("0.0.0.0".to_string()),
-                        host_port: Some(host_port.clone()),
-                    }]),
-                );
+        let (exposed_ports, port_bindings) = match &config.ports {
+            Some(ports) => {
+                info!("Configuring ports: {:?}", ports);
+                let built = build_port_bindings(ports);
+                info!("Port bindings configured: {:?}", built.1);
+                built
             }
-            info!("Port bindings configured: {:?}", port_bindings);
-        } else {
-            warn!("No ports configured in ContainerConfig!");
-        }
+            None => {
+                warn!("No ports configured in ContainerConfig!");
+                (ExposedPorts::new(), PortBindings::new())
+            }
+        };
 
         // Build volume bindings
         let binds = config.volumes.as_ref().map(|volumes| {
@@ -324,13 +475,9 @@ impl DockerClient {
         let nano_cpus = config.cpu_limit.map(|c| (c * 1_000_000_000.0) as i64);
         let memory = config.memory_limit.map(|m| m * 1024 * 1024); // MB to bytes
 
-        // Default to "unless-stopped" so containers come back after a host reboot.
-        let restart_policy_name = match config.restart.as_deref().unwrap_or("unless-stopped") {
-            "no" => RestartPolicyNameEnum::NO,
-            "always" => RestartPolicyNameEnum::ALWAYS,
-            "on-failure" => RestartPolicyNameEnum::ON_FAILURE,
-            _ => RestartPolicyNameEnum::UNLESS_STOPPED,
-        };
+        // Honour the caller's (and therefore the template's) restart policy.
+        // Unnamed means "unless-stopped" so containers come back after a reboot.
+        let restart = parse_restart_policy(config.restart.as_deref())?;
 
         // Cap captured stdout/stderr logs so no single container can fill the host
         // disk (which would break Ployer's own SQLite database).
@@ -350,8 +497,8 @@ impl DockerClient {
             nano_cpus,
             memory,
             restart_policy: Some(RestartPolicy {
-                name: Some(restart_policy_name),
-                maximum_retry_count: None,
+                name: Some(restart.name),
+                maximum_retry_count: restart.max_retries,
             }),
             ..Default::default()
         });

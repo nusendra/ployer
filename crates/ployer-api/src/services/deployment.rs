@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use ployer_core::models::{AppStatus, Application, Deployment, DeploymentStatus, WsEvent};
 use ployer_db::repositories::{ApplicationRepository, DeploymentRepository, DomainRepository, EnvVarRepository, SettingsRepository};
-use ployer_docker::{DockerClient, ContainerConfig};
+use ployer_docker::{BindAddress, DockerClient, ContainerConfig, PublishedPort};
 use ployer_git::GitService;
 use ployer_proxy::{CaddyClient, RouteSpec};
 use sqlx::SqlitePool;
@@ -277,7 +277,12 @@ impl DeploymentService {
                 // bind the container's own port (e.g. 80) on the host, or apps
                 // that EXPOSE 80 collide with each other and with the reverse
                 // proxy. Caddy is pointed at the assigned port after start.
-                ports.insert(format!("{}/tcp", p), String::new());
+                //
+                // Loopback-bound: Caddy runs on the host and reaches the app
+                // over localhost, so the published port never has to leave the
+                // machine. Traffic from outside arrives through Caddy, which
+                // owns 80/443 and the TLS.
+                ports.insert(format!("{}/tcp", p), PublishedPort::ephemeral());
                 ports
             }),
             volumes: None,
@@ -562,9 +567,31 @@ impl DeploymentService {
 
             let mut ports_map = HashMap::new();
             for port_spec in &service.ports {
-                if let Some((host, container)) = ployer_templates::compose::split_port(port_spec) {
-                    ports_map.insert(format!("{}/tcp", container), host);
+                let mapping = ployer_templates::compose::parse_port_spec(port_spec)
+                    .ok_or_else(|| anyhow!("invalid port spec: {port_spec}"))?;
+                let bind = BindAddress::from_host_ip(mapping.host_ip.as_deref());
+
+                // Say out loud, in the deploy log, what the host just published
+                // and to whom. A compose written before bind addresses existed
+                // names no interface and so lands on the loopback default.
+                if bind.is_loopback_only() {
+                    send_log(format!(
+                        "Publishing {} -> {}:{} (this host only)",
+                        mapping.container_port, bind.host_ip(), mapping.host_port
+                    ))
+                    .await;
+                } else {
+                    send_log(format!(
+                        "Warning: publishing {} -> {}:{} — reachable from every network this host is on (LAN, VPN, and the internet if your router forwards it). Docker publishes through its own iptables chain, so a ufw rule will not filter this.",
+                        mapping.container_port, bind.host_ip(), mapping.host_port
+                    ))
+                    .await;
                 }
+
+                ports_map.insert(
+                    format!("{}/tcp", mapping.container_port),
+                    PublishedPort::new(bind, mapping.host_port),
+                );
             }
             let ports = if ports_map.is_empty() { None } else { Some(ports_map) };
 
@@ -579,7 +606,9 @@ impl DeploymentService {
                 cmd: None,
                 cpu_limit: application.cpu_limit,
                 memory_limit: application.memory_limit,
-                restart: None,
+                // Honour the template's declared policy. None (the common case)
+                // still means "unless-stopped".
+                restart: service.restart.clone(),
             };
 
             let container_id = docker.create_container(config).await?;

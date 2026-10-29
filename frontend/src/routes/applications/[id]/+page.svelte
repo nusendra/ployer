@@ -38,6 +38,10 @@
 	type PortSpec = { container: number; expose?: boolean };
 	let templatePorts = $state<PortSpec[]>([]);
 	let exposed = $state(false);
+	// Which host interface the published port(s) are bound to. Read back out
+	// of the stored compose so the form shows what is actually running.
+	let exposeBind = $state<'loopback' | 'all_interfaces'>('loopback');
+	let templateCategory = $state('');
 	let hostPorts = $state<Record<number, number>>({});
 	let exposing = $state(false);
 
@@ -145,10 +149,16 @@
 	async function loadServiceState() {
 		if (!app?.template_slug) return;
 		try {
-			const tpl = await api.get<{ ports?: PortSpec[] }>(`/templates/${app.template_slug}`);
+			const tpl = await api.get<{ ports?: PortSpec[]; category?: string }>(
+				`/templates/${app.template_slug}`
+			);
 			templatePorts = tpl.ports ?? [];
-			const bindings = parseComposeBindings(app.compose_content ?? '');
+			templateCategory = tpl.category ?? '';
+			const { bindings, hostIp } = parseComposeBindings(app.compose_content ?? '');
 			exposed = Object.keys(bindings).length > 0;
+			// A compose with no interface named predates bind addresses and is
+			// deployed on loopback, same as the backend's default.
+			exposeBind = hostIp === '0.0.0.0' ? 'all_interfaces' : 'loopback';
 			for (const p of templatePorts) {
 				hostPorts[p.container] = bindings[p.container] ?? p.container;
 			}
@@ -157,9 +167,15 @@
 		}
 	}
 
-	// Returns { container_port: host_port } from a docker-compose YAML string.
-	function parseComposeBindings(yaml: string): Record<number, number> {
-		const result: Record<number, number> = {};
+	// Reads a docker-compose YAML's `ports:` entries. Accepts both the
+	// two-part `host:container` form and the three-part
+	// `host_ip:host:container` form (including a bracketed IPv6 address).
+	function parseComposeBindings(yaml: string): {
+		bindings: Record<number, number>;
+		hostIp: string | null;
+	} {
+		const bindings: Record<number, number> = {};
+		let hostIp: string | null = null;
 		const lines = yaml.split('\n');
 		let inPorts = false;
 		let portsIndent = -1;
@@ -171,9 +187,12 @@
 				continue;
 			}
 			if (inPorts) {
-				const portMatch = line.match(/^\s*-\s*"?(\d+):(\d+)"?\s*$/);
+				const portMatch = line.match(
+					/^\s*-\s*"?(?:(\[[0-9a-fA-F:]+\]|[0-9.]+):)?(\d+):(\d+)"?\s*$/
+				);
 				if (portMatch) {
-					result[parseInt(portMatch[2], 10)] = parseInt(portMatch[1], 10);
+					if (portMatch[1]) hostIp = portMatch[1].replace(/^\[|\]$/g, '');
+					bindings[parseInt(portMatch[3], 10)] = parseInt(portMatch[2], 10);
 					continue;
 				}
 				const indent = line.match(/^(\s*)\S/);
@@ -182,7 +201,7 @@
 				}
 			}
 		}
-		return result;
+		return { bindings, hostIp };
 	}
 
 	async function saveExpose() {
@@ -192,7 +211,8 @@
 		try {
 			await api.put(`/applications/${app.id}/expose`, {
 				expose: exposed,
-				host_ports: exposed ? hostPorts : {}
+				host_ports: exposed ? hostPorts : {},
+				bind: exposed ? exposeBind : 'loopback'
 			});
 			toast.success('Service redeploying with new port settings');
 			await loadApp();
@@ -722,6 +742,51 @@
 									Ployer Docker network. The container restarts when you save.
 								</p>
 								{#if exposed}
+									<fieldset class="bind-choice">
+										<legend>Reachable from</legend>
+										<label class="bind-option">
+											<input
+												type="radio"
+												bind:group={exposeBind}
+												value="loopback"
+												disabled={exposing}
+											/>
+											<span>
+												<strong>This host only</strong>
+												<small>127.0.0.1 — local processes and SSH tunnels. Recommended.</small>
+											</span>
+										</label>
+										<label class="bind-option">
+											<input
+												type="radio"
+												bind:group={exposeBind}
+												value="all_interfaces"
+												disabled={exposing}
+											/>
+											<span>
+												<strong>All interfaces</strong>
+												<small>
+													0.0.0.0 — every network this host is on: your LAN, any VPN or
+													tailnet, and the internet if your router forwards the port.
+												</small>
+											</span>
+										</label>
+									</fieldset>
+									{#if exposeBind === 'all_interfaces'}
+										<div class="bind-warning" role="alert">
+											{#if templateCategory === 'database'}
+												<strong>
+													This publishes a database to every network this host is on.
+												</strong>
+												Anyone who can reach this machine can attempt to log in, and the only
+												thing stopping them is the password.
+											{:else}
+												<strong>This publishes the port to every network this host is on.</strong>
+											{/if}
+											Docker publishes through its own iptables chain, so a <code>ufw</code>
+											rule will not filter it.
+										</div>
+									{/if}
 									<div class="port-rows">
 										{#each templatePorts as p}
 											<div class="port-row">
@@ -2116,6 +2181,53 @@
 	}
 	.expose-toggle-label input {
 		width: auto;
+	}
+	.bind-choice {
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 0.6rem 0.85rem;
+		margin-top: 0.6rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.bind-choice legend {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		padding: 0 0.3rem;
+	}
+	.bind-option {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		cursor: pointer;
+	}
+	.bind-option input {
+		width: auto;
+		margin-top: 0.25rem;
+	}
+	.bind-option span {
+		display: flex;
+		flex-direction: column;
+	}
+	.bind-option strong {
+		font-weight: 500;
+		font-size: 0.9rem;
+	}
+	.bind-option small {
+		color: var(--text-muted);
+	}
+	.bind-warning {
+		background: rgba(245, 158, 11, 0.1);
+		border: 1px solid var(--warning);
+		color: var(--warning-text);
+		padding: 0.6rem 0.85rem;
+		border-radius: var(--radius);
+		font-size: 0.8125rem;
+		margin-top: 0.6rem;
+	}
+	.bind-warning code {
+		font-family: monospace;
 	}
 	.port-rows {
 		display: flex;

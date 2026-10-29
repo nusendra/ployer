@@ -11,7 +11,10 @@ use crate::app_state::SharedState;
 use crate::auth::extract_user_id;
 use ployer_core::models::AppStatus;
 use ployer_db::repositories::ApplicationRepository;
-use ployer_docker::{ContainerConfig, ContainerInfo, ContainerStats, NetworkInfo, VolumeInfo};
+use ployer_docker::{
+    BindAddress, ContainerConfig, ContainerInfo, ContainerStats, NetworkInfo, PublishedPort,
+    VolumeInfo,
+};
 
 // Reconcile the owning application's stored status with the container's actual
 // state in Docker. The convention is that Ployer-managed containers are named
@@ -88,10 +91,16 @@ struct CreateContainerRequest {
     image: String,
     name: Option<String>,
     env: Option<Vec<String>>,
+    /// container_port (e.g. `"80/tcp"`) -> host port. An empty host port lets
+    /// Docker pick a free ephemeral one.
     ports: Option<HashMap<String, String>>,
     volumes: Option<HashMap<String, String>>,
     network: Option<String>,
     cmd: Option<Vec<String>>,
+    /// Host interface every published port is bound to. Defaults to loopback;
+    /// see `ployer_docker::BindAddress`.
+    #[serde(default)]
+    bind: BindAddress,
 }
 
 #[derive(Debug, Serialize)]
@@ -167,11 +176,21 @@ async fn create_container(
         return Err((StatusCode::BAD_REQUEST, "Image name is required".to_string()));
     }
 
+    // Every published port lands on the same interface — the request carries
+    // one `bind` for the whole container.
+    let bind = req.bind.clone();
     let config = ContainerConfig {
         image: req.image,
         name: req.name,
         env: req.env,
-        ports: req.ports,
+        ports: req.ports.map(|ports| {
+            ports
+                .into_iter()
+                .map(|(container_port, host_port)| {
+                    (container_port, PublishedPort::new(bind.clone(), host_port))
+                })
+                .collect()
+        }),
         volumes: req.volumes,
         network: req.network,
         cmd: req.cmd,

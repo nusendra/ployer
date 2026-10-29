@@ -15,6 +15,7 @@ use crate::services::deployment::DeploymentService;
 use ployer_core::crypto;
 use ployer_core::models::{Application, BuildStrategy};
 use ployer_db::repositories::{ApplicationRepository, DeployKeyRepository, EnvVarRepository, SettingsRepository};
+use ployer_docker::BindAddress;
 use ployer_git::GitService;
 
 pub fn router() -> Router<SharedState> {
@@ -411,6 +412,10 @@ struct UpdateExposeRequest {
     expose: bool,
     #[serde(default)]
     host_ports: HashMap<u16, u16>,
+    /// Which host interface to publish on. Defaults to loopback; see
+    /// `ployer_docker::BindAddress`.
+    #[serde(default)]
+    bind: BindAddress,
 }
 
 #[derive(Debug, Serialize)]
@@ -469,8 +474,12 @@ async fn update_expose(
             .iter()
             .map(|p| (p.container, *req.host_ports.get(&p.container).unwrap_or(&p.container)))
             .collect();
-        new_compose = ployer_templates::compose::add_ports_to_all_services(&new_compose, &bindings)
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        new_compose = ployer_templates::compose::add_ports_to_all_services(
+            &new_compose,
+            &bindings,
+            req.bind.host_ip(),
+        )
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 
     app_repo

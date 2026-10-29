@@ -8,6 +8,7 @@ use axum::{
     Json, Router,
 };
 use ployer_core::crypto;
+use ployer_docker::BindAddress;
 use ployer_db::repositories::{ApplicationRepository, EnvVarRepository};
 use ployer_templates::{render, Template, TemplateError};
 use ployer_templates::render::RenderContext;
@@ -84,6 +85,13 @@ struct InstallRequest {
     /// Map of container_port -> host_port. Only used when `expose` is true.
     #[serde(default)]
     host_ports: HashMap<u16, u16>,
+    /// Which host interface to publish on when `expose` is true. Defaults to
+    /// loopback — `all_interfaces` makes the service reachable from the LAN,
+    /// from any VPN the host has joined, and from the internet if the router
+    /// forwards the port, and Docker's publishing is not filtered by a host
+    /// firewall such as ufw.
+    #[serde(default)]
+    bind: BindAddress,
 }
 
 #[derive(Debug, Serialize)]
@@ -136,9 +144,12 @@ async fn install_template(
             .iter()
             .map(|p| (p.container, *req.host_ports.get(&p.container).unwrap_or(&p.container)))
             .collect();
-        rendered.compose =
-            ployer_templates::compose::add_ports_to_all_services(&rendered.compose, &bindings)
-                .map_err(map_err)?;
+        rendered.compose = ployer_templates::compose::add_ports_to_all_services(
+            &rendered.compose,
+            &bindings,
+            req.bind.host_ip(),
+        )
+        .map_err(map_err)?;
     }
 
     // Persist application + env vars.
