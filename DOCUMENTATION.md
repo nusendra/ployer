@@ -111,6 +111,19 @@ why, rather than widening the gate or silencing the lint crate-wide. There are
 currently six such allows, all `clippy::too_many_arguments` on SQL writers whose
 arguments are one-per-column.
 
+`cargo check --workspace` is **not** a substitute for either of them. It does not
+build `#[cfg(test)]` code, so a struct field removed from a type the tests
+construct type-checks clean under `check` and fails under `test`/`--all-targets`.
+That is exactly how `ac178ed` (drop the `icon` field) left `main` red: the commit
+verified with `cargo check --workspace`, and the only remaining `icon` reference
+was in `render_tests.rs`, which `check` never compiled. Use the two commands
+above.
+
+CI runs on the PR head, not on the PR merged into `main`, so two PRs that are
+each green can still break `main` together — one removing a field, the other
+adding a test that uses it. If your branch has been open across other merges,
+rebase onto `main` and re-run the two commands before merging.
+
 `cargo fmt --check` is **not** a gate: the tree predates any formatting
 discipline and currently has ~325 unformatted hunks spread across nearly every
 file, so turning it on would either fail immediately or require a tree-wide
