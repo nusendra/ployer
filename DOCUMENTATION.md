@@ -448,12 +448,17 @@ Content-Type: application/json
   "ports": {
     "80/tcp": "8080"
   },
+  "bind": "loopback",
   "volumes": {
     "/host/data": "/app/data"
   },
   "cmd": ["nginx", "-g", "daemon off;"]
 }
 ```
+
+`bind` picks the host interface every published port is bound to. It is
+optional and defaults to `"loopback"`; see
+[Port publishing and bind addresses](#port-publishing-and-bind-addresses).
 
 Response (201 Created):
 
@@ -521,6 +526,75 @@ Authorization: Bearer <token>
 ```
 
 Response: 204 No Content
+
+### Port publishing and bind addresses
+
+A container port published to the host is bound to **`127.0.0.1` by default**.
+Anything else has to be asked for explicitly, with a `bind` field:
+
+| `bind`                        | Host IP          | Who can reach it                                                      |
+| ----------------------------- | ---------------- | --------------------------------------------------------------------- |
+| `"loopback"` (default)        | `127.0.0.1`      | This host only — local processes, SSH tunnels, and Ployer's own Caddy |
+| `"all_interfaces"`            | `0.0.0.0`        | Every network the host is on: LAN, any VPN or tailnet, and the public internet if the router forwards the port |
+| `{"address": "100.92.195.33"}`| that address     | Whoever can route to that interface                                   |
+
+It accepts the field on:
+
+- `POST /api/v1/containers`
+- `POST /api/v1/templates/:slug/install` (alongside `expose` and `host_ports`)
+- `PUT /api/v1/applications/:id/expose`
+
+Why the default is loopback: Docker publishes through its **own `DOCKER`
+iptables chain, which `ufw` does not filter**. A port published on `0.0.0.0` is
+reachable from the LAN whether or not a host firewall is configured, and adding
+a `ufw` rule afterwards does not close it. For a database that means the
+password is the only thing between the network and the data.
+
+The choice is recorded in the stored compose as a three-part port spec, so it
+survives a redeploy and can be read back:
+
+```yaml
+services:
+  postgresql:
+    ports:
+      - 127.0.0.1:15432:5432 # host-only
+      - 0.0.0.0:15432:5432   # every interface
+```
+
+A two-part spec (`15432:5432`) names no interface and therefore gets the
+default. **This is a behaviour change**: services installed before this
+existed have two-part specs, so the next redeploy moves them from `0.0.0.0` to
+`127.0.0.1`. To keep LAN access, pick "All interfaces" on the application's
+page and save — the redeploy writes the interface into the compose explicitly.
+
+Reaching a loopback-bound service from another machine, without republishing
+it:
+
+```bash
+ssh -L 15432:127.0.0.1:15432 user@ployer-host
+```
+
+Applications deployed from git are always loopback-bound on a Docker-assigned
+ephemeral port. Caddy runs on the host and proxies to `localhost:<port>`, so
+outside traffic arrives through the reverse proxy, which owns 80/443 and TLS.
+
+### Restart policies
+
+A service template's `restart:` is honoured. A template that declares
+
+```yaml
+services:
+  oneshot:
+    image: busybox
+    restart: "no"
+```
+
+gets Docker's `no` policy, not `unless-stopped`. Accepted values are `no`,
+`always`, `unless-stopped` and `on-failure[:max-retries]`; anything else fails
+the deploy with an error rather than silently falling back.
+
+A template that declares nothing, and every application deployed from git,
+still gets `unless-stopped` so containers come back after a host reboot.
 
 ### Network Management
 
