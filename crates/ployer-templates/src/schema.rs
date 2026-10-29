@@ -103,3 +103,7 @@ pub struct OutputItem {
     pub label: String,
     pub value: String,
 }
+
+#[cfg(test)]
+#[path = "schema_tests.rs"]
+mod tests;
