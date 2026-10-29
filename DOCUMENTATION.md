@@ -111,6 +111,55 @@ why, rather than widening the gate or silencing the lint crate-wide. There are
 currently six such allows, all `clippy::too_many_arguments` on SQL writers whose
 arguments are one-per-column.
 
+`cargo check --workspace` is **not** a substitute for either of them. It does not
+build `#[cfg(test)]` code, so a struct field removed from a type the tests
+construct type-checks clean under `check` and fails under `test`/`--all-targets`.
+That is exactly how `ac178ed` (drop the `icon` field) left `main` red: the commit
+verified with `cargo check --workspace`, and the only remaining `icon` reference
+was in `render_tests.rs`, which `check` never compiled. Use the two commands
+above.
+
+### A green PR is not a green `main`
+
+Two PRs that are each green can still break `main` together — one removing a
+field, the other adding a test that uses it. That is what happened here, and the
+mechanism is worth knowing because the gate alone does not close it.
+
+CI *does* test the merge result, not the branch tip: on a `pull_request` event
+`actions/checkout@v4` checks out `refs/pull/N/merge`. From the job log of the
+run that validated this very fix:
+
+```
+git checkout --progress --force refs/remotes/pull/7/merge
+HEAD is now at a679483 Merge a3d9fea... into f314846...
+```
+
+The catch is that this merge commit is a *snapshot*, recomputed when the PR
+changes but not re-tested when `main` moves underneath it. PRs #3 and #4 both
+declared base `6777b2c` and were merged twelve seconds apart; #4's green run had
+been computed against a `main` that did not yet contain #3's new test file. No
+job ever compiled the two together.
+
+Nothing stopped that merge because `main` has no branch protection
+(`GET /repos/nusendra/ployer/branches/main/protection` → 404, "Branch not
+protected"): no required status check, and no *Require branches to be up to date
+before merging*, which is the setting that would have forced #4 to re-run
+against the new base. Until that is enabled, the check is advisory.
+
+So: if your branch has been open across other merges, rebase onto `main` and
+re-run the two commands above before merging. A green tick from a run that
+predates the current `main` is not evidence about the `main` you are about to
+create.
+
+Two further notes from the same incident, both still true:
+
+- `ci.yml` did not exist when #3 and #4 merged — it arrived eleven minutes later
+  in #6. The first run it ever did on `main` (push `f314846`) failed both jobs on
+  this exact error, and `main` stayed red for eighteen hours. A gate nobody reads
+  is not a gate.
+- `--all-targets` is what makes clippy catch this class of break. The clippy job
+  failed here for the same reason the test job did.
+
 `cargo fmt --check` is **not** a gate: the tree predates any formatting
 discipline and currently has ~325 unformatted hunks spread across nearly every
 file, so turning it on would either fail immediately or require a tree-wide

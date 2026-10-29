@@ -14,7 +14,6 @@ fn template_echoing(expr: &str) -> Template {
         name: "PostgreSQL".to_string(),
         description: String::new(),
         category: "database".to_string(),
-        icon: None,
         tags: Vec::new(),
         version: serde_json::Value::String("1.0.0".to_string()),
         inputs: Vec::new(),
