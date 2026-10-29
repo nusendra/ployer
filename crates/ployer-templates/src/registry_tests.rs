@@ -45,7 +45,6 @@ fn entry(sha256: &str) -> IndexEntry {
         name: "Fixture".to_string(),
         description: "d".to_string(),
         category: "database".to_string(),
-        icon: None,
         tags: vec![],
         version: serde_json::json!(1),
         sha256: sha256.to_string(),

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use chrono::Utc;
 use ployer_core::models::{AppStatus, Application, BuildStrategy};
 
@@ -329,6 +327,7 @@ fn app_name_and_id_placeholders_are_substituted() {
         &Default::default(),
         &Default::default(),
         "shop",
+        "shop",
         "app-0001",
         "ployer",
     );
@@ -344,6 +343,7 @@ fn unknown_placeholder_is_left_untouched() {
         &Default::default(),
         &Default::default(),
         "app",
+        "app",
         "id",
         "net",
     );
@@ -357,6 +357,7 @@ fn unclosed_placeholder_does_not_hang_or_panic() {
         &Default::default(),
         &Default::default(),
         "app",
+        "app",
         "id",
         "net",
     );
@@ -369,7 +370,7 @@ fn whitespace_inside_the_placeholder_braces_is_tolerated() {
     let mut inputs = std::collections::HashMap::new();
     inputs.insert("K".to_string(), "v".to_string());
     for form in ["{{inputs.K}}", "{{ inputs.K }}", "{{   inputs.K   }}"] {
-        let out = substitute(form, &inputs, &Default::default(), "a", "i", "n");
+        let out = substitute(form, &inputs, &Default::default(), "a", "a", "i", "n");
         assert_eq!(out, "v", "failed for {form}");
     }
 }

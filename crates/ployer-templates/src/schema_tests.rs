@@ -34,7 +34,6 @@ fn a_template_needs_only_identity_and_a_compose_body() {
 fn optional_sections_default_to_empty_rather_than_failing() {
     let t: Template = serde_yaml::from_str(MINIMAL).unwrap();
 
-    assert!(t.icon.is_none());
     assert!(t.tags.is_empty());
     assert!(t.inputs.is_empty());
     assert!(t.ports.is_empty());
@@ -205,7 +204,7 @@ fn an_index_entry_must_carry_a_sha256_and_url() {
 }
 
 #[test]
-fn an_index_entry_without_an_icon_or_tags_still_parses() {
+fn an_index_entry_without_tags_still_parses() {
     let json = r#"{
       "schema_version": 1,
       "generated_at": "2026-10-19T10:03:38.550Z",
@@ -216,9 +215,12 @@ fn an_index_entry_without_an_icon_or_tags_still_parses() {
       }]
     }"#;
     let index: RegistryIndex = serde_json::from_str(json).unwrap();
-    assert!(index.templates[0].icon.is_none());
     assert!(index.templates[0].tags.is_empty());
 }
+
+// The two `icon`-key guard tests that used to live here landed upstream in
+// c652aea; their verified-against-the-live-registry versions are at the end of
+// this file.
 
 // ---------------------------------------------------------------------------
 // API serialisation
@@ -238,7 +240,6 @@ fn template_serialises_with_the_field_names_the_dashboard_reads() {
         "name",
         "description",
         "category",
-        "icon",
         "tags",
         "version",
         "inputs",
