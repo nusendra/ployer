@@ -148,3 +148,7 @@ pub fn split_port(spec: &str) -> Option<(String, String)> {
         Some((spec.to_string(), spec.to_string()))
     }
 }
+
+#[cfg(test)]
+#[path = "compose_tests.rs"]
+mod tests;

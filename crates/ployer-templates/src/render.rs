@@ -160,3 +160,7 @@ fn substitute(
     out.push_str(rest);
     out
 }
+
+#[cfg(test)]
+#[path = "render_tests.rs"]
+mod tests;
